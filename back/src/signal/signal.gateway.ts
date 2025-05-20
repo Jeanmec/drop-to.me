@@ -4,17 +4,17 @@ import {
   OnGatewayDisconnect,
   SubscribeMessage,
   MessageBody,
+  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { RedisService } from '../redis/redis.service';
 import { StatsService } from '../stats/stats.service';
+import { RoomService } from 'src/room/room.service';
+import { RedisService } from 'src/redis/redis.service';
 
 interface SignalData {
   type: 'offer' | 'answer' | 'candidate';
-  sdp?: any;
-  candidate?: any;
-  target: string;
-  sender: string;
+  sdp?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
   room: string;
   fileSize?: number;
 }
@@ -26,6 +26,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private redisService: RedisService,
     private statsService: StatsService,
+    private RoomService: RoomService,
   ) {}
 
   afterInit(server: Server) {
@@ -33,40 +34,68 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(socket: Socket) {
-    const ip = (socket.handshake.headers['x-forwarded-for'] ||
-      socket.handshake.address) as string;
-    await socket.join(ip);
-    await this.redisService.addClient(ip, socket.id);
+    const ip = this.RoomService.extractIp(socket.request);
+    const hashedIp = this.RoomService.hashIp(ip);
 
-    const clients = (await this.redisService.getClients(ip)).filter(
-      (id) => id !== socket.id,
-    );
-    this.server.to(ip).emit('clients', clients);
+    await socket.join(hashedIp);
+    socket.emit('room', hashedIp);
   }
 
   async handleDisconnect(socket: Socket) {
-    for (const room of socket.rooms) {
-      if (room !== socket.id) {
-        await this.redisService.removeClient(room, socket.id);
-        const clients = (await this.redisService.getClients(room)).filter(
-          (id) => id !== socket.id,
-        );
-        this.server.to(room).emit('clients', clients);
-      }
-    }
+    const ip = this.RoomService.extractIp(socket.request);
+    const hashedIp = this.RoomService.hashIp(ip);
+
+    await socket.leave(hashedIp);
+    socket.emit('room', hashedIp);
   }
 
   @SubscribeMessage('signal')
-  async handleSignal(@MessageBody() data: SignalData) {
-    this.server.to(data.target).emit('signal', data);
-    console.log(`📡 ${data.sender} -> ${data.target} (${data.type})`);
+  async handleSignal(
+    @MessageBody() data: SignalData,
+    @ConnectedSocket() socket: Socket,
+  ) {
+    this.server.to(data.room).except(socket.id).emit('signal', data);
 
     if (data.fileSize) {
-      await this.statsService.addTransfer(
-        data.sender,
-        data.target,
-        data.fileSize,
-      );
+      await this.statsService.addTransfer(data.fileSize);
     }
+  }
+
+  @SubscribeMessage('join')
+  async handleJoin(
+    @MessageBody() data: { room: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const ip = this.RoomService.extractIp(socket.request);
+    const hashedIp = this.RoomService.hashIp(ip);
+
+    await socket.join(data.room);
+    socket.emit('room', data.room);
+
+    const peers = await this.redisService.getPeers(data.room);
+    socket.emit('peers', peers);
+
+    this.server.to(data.room).emit('peer-joined', hashedIp);
+  }
+  @SubscribeMessage('leave')
+  async handleLeave(
+    @MessageBody() data: { room: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const ip = this.RoomService.extractIp(socket.request);
+    const hashedIp = this.RoomService.hashIp(ip);
+
+    await socket.leave(data.room);
+    socket.emit('room', data.room);
+
+    this.server.to(data.room).emit('peer-left', hashedIp);
+  }
+  @SubscribeMessage('getPeers')
+  async handleGetPeers(
+    @MessageBody() data: { room: string },
+    @ConnectedSocket() socket: Socket,
+  ) {
+    const peers = await this.redisService.getPeers(data.room);
+    socket.emit('peers', peers);
   }
 }

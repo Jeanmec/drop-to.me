@@ -11,12 +11,6 @@ export class FileTransfer {
   id: number;
 
   @Column()
-  senderIp: string;
-
-  @Column()
-  receiverIp: string;
-
-  @Column()
   fileSize: number; // en octets
 
   @CreateDateColumn()

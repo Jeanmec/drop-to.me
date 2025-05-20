@@ -7,16 +7,18 @@ import { FileTransfer } from './stats.entity';
 export class StatsService {
   constructor(
     @InjectRepository(FileTransfer)
-    private repo: Repository<FileTransfer>,
+    private statsRepository: Repository<FileTransfer>,
   ) {}
 
-  async addTransfer(senderIp: string, receiverIp: string, fileSize: number) {
-    const transfer = this.repo.create({ senderIp, receiverIp, fileSize });
-    return this.repo.save(transfer);
+  async addTransfer(fileSize: number) {
+    const transfer = this.statsRepository.create({
+      fileSize,
+    });
+    return this.statsRepository.save(transfer);
   }
 
   async getStats() {
-    const count = await this.repo.count();
+    const count = await this.statsRepository.count();
 
     return {
       totalTransfers: count,
