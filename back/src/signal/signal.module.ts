@@ -1,12 +1,12 @@
 import { Module } from '@nestjs/common';
 import { SignalGateway } from './signal.gateway';
-import { RoomModule } from 'src/room/room.module';
 import { RedisModule } from 'src/redis/redis.module';
 import { SignalService } from './signal.service';
+import { StatsModule } from 'src/stats/stats.module';
 
 @Module({
-  imports: [RoomModule, RedisModule],
+  imports: [RedisModule, StatsModule],
   providers: [SignalGateway, SignalService],
-  exports: [SignalGateway],
+  exports: [SignalGateway, SignalService],
 })
 export class SignalModule {}

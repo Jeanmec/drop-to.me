@@ -2,11 +2,12 @@ import { Controller, Req, Post, Body } from '@nestjs/common';
 import { Request } from 'express';
 import { RoomService } from './room.service';
 import { SignalService } from 'src/signal/signal.service';
+import { getHashedIp } from 'src/utils/ip.utils';
 
 @Controller('room')
 export class RoomController {
   constructor(
-    private readonly RoomService: RoomService,
+    private readonly roomService: RoomService,
     private readonly signalService: SignalService,
   ) {}
 
@@ -15,12 +16,12 @@ export class RoomController {
     @Req() req: Request,
     @Body('peerId') peerId: string,
   ): Promise<{ peers: string[] }> {
-    const room = this.RoomService.getHashedIp(req);
-    const roomJoined = await this.RoomService.joinRoom(room, peerId);
+    const room = getHashedIp(req);
+    const roomJoined = await this.roomService.joinRoom(room, peerId);
     if (roomJoined) {
-      this.signalService.sendPeerJoinedNotification(room, peerId);
+      await this.signalService.notifyPeerJoined(room, peerId);
 
-      const peers = await this.RoomService.getPeers(room, peerId);
+      const peers = await this.roomService.getPeers(room, peerId);
       return { peers };
     }
     return { peers: [] };

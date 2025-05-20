@@ -5,6 +5,7 @@ import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { RoomModule } from './room/room.module';
+import { SignalModule } from './signal/signal.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -23,6 +24,7 @@ import * as Joi from 'joi';
     StatsModule,
     RedisModule,
     RoomModule,
+    SignalModule,
   ],
   providers: [SignalGateway],
 })
