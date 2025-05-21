@@ -11,7 +11,6 @@ import { Injectable } from '@nestjs/common';
 
 import { StatsService } from '../stats/stats.service';
 import { RedisService } from 'src/redis/redis.service';
-// import { removeElementFromStringArray } from 'src/utils/array.utils';
 
 import { getHashedIp } from 'src/utils/ip.utils';
 
@@ -44,9 +43,11 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(socket: Socket) {
     const hashedIp = getHashedIp(socket.request);
-
-    await socket.leave(hashedIp);
-    socket.emit('room', hashedIp);
+    const peerId = await this.redisService.getClient(hashedIp, socket.id);
+    await this.redisService.removeClient(hashedIp, socket.id);
+    if (peerId) {
+      this.sendClientLeave(hashedIp, peerId);
+    }
   }
 
   @SubscribeMessage('signal')
@@ -60,21 +61,11 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.statsService.addTransfer(data.fileSize);
     }
   }
-
-  @SubscribeMessage('leave')
-  async handleLeave(
-    @MessageBody() data: { room: string },
-    @ConnectedSocket() socket: Socket,
-  ) {
-    const hashedIp = getHashedIp(socket.request);
-
-    await socket.leave(data.room);
-    socket.emit('room', data.room);
-
-    this.server.to(data.room).emit('peer-left', hashedIp);
+  sendClientLeave(room: string, peerId: string): void {
+    this.server.to(room).emit('peer-left', peerId);
   }
-  async sendPeerClientsUpdate(room: string, peerId: string): Promise<void> {
-    const peers = await this.redisService.getPeers(room);
-    this.server.to(room).emit('peers', peers);
+
+  sendClientJoin(room: string, peerId: string): void {
+    this.server.to(room).emit('peer-joined', peerId);
   }
 }

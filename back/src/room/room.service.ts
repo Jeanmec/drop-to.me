@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Request } from 'express';
 import { RedisService } from 'src/redis/redis.service';
-import { removeElementFromStringArray } from 'src/utils/array.utils';
+import { getPeersFromClients, removePeerById } from 'src/utils/array.utils';
 
 @Injectable()
 export class RoomService {
@@ -9,27 +9,19 @@ export class RoomService {
 
   constructor(private readonly redisService: RedisService) {}
 
-  async joinRoom(room: string, peerId: string): Promise<boolean> {
-    return await this.redisService.addPeer(room, peerId);
+  async joinRoom(
+    room: string,
+    socketId: string,
+    peerId: string,
+  ): Promise<boolean> {
+    return await this.redisService.addClient(room, socketId, peerId);
   }
 
-  async getPeers(room: string, peerId: string): Promise<string[]> {
-    const peers = await this.redisService.getPeers(room);
+  async getTargetPeers(room: string, socketId: string): Promise<string[]> {
+    const clients = await this.redisService.getClients(room);
+    const peers = getPeersFromClients(clients);
+    const peersFiltered = removePeerById(peers, socketId);
 
-    if (peers) {
-      return removeElementFromStringArray(peers, peerId);
-    }
-    return [];
-  }
-
-  async addPeer(room: string, peerId: string): Promise<boolean> {
-    const res = await this.redisService.addPeer(room, peerId);
-    console.log({ res });
-    return true;
-    // if (res) {
-    //   return true;
-    // } else {
-    //   return false;
-    // }
+    return peersFiltered;
   }
 }

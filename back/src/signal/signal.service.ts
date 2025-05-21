@@ -5,7 +5,7 @@ import { SignalGateway } from './signal.gateway';
 export class SignalService {
   constructor(private readonly signalGateway: SignalGateway) {}
 
-  async notifyPeerJoined(room: string, peerId: string) {
-    await this.signalGateway.sendPeerClientsUpdate(room, peerId);
+  notifyClientJoined(room: string, peerId: string) {
+    this.signalGateway.sendClientJoin(room, peerId);
   }
 }

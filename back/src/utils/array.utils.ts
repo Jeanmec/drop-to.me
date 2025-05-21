@@ -1,10 +1,18 @@
-export function removeElementFromStringArray(
-  array: string[],
-  element: string,
-): string[] {
-  const index = array.indexOf(element);
-  if (index > -1) {
-    array.splice(index, 1);
-  }
-  return array;
+export function removePeerBySocketId(
+  clients: Record<string, string>,
+  socketId: string,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(clients).filter(
+      ([clientSocketId]) => clientSocketId !== socketId,
+    ),
+  );
+}
+
+export function getPeersFromClients(clients: Record<string, string>): string[] {
+  return Object.values(clients);
+}
+
+export function removePeerById(peers: string[], peerId: string): string[] {
+  return peers.filter((peer) => peer !== peerId);
 }

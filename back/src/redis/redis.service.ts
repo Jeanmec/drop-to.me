@@ -12,17 +12,25 @@ export class RedisService implements OnModuleInit {
     });
   }
 
-  async addPeer(room: string, socketId: string): Promise<boolean> {
-    const res = await this.redis.sadd(room, socketId);
+  async addClient(
+    room: string,
+    socketId: string,
+    peerId: string,
+  ): Promise<boolean> {
+    const res = await this.redis.hset(room, socketId, peerId);
     return res === 1;
   }
 
-  async removePeer(room: string, socketId: string): Promise<boolean> {
-    const res = await this.redis.srem(room, socketId);
+  async removeClient(room: string, socketId: string): Promise<boolean> {
+    const res = await this.redis.hdel(room, socketId);
     return res === 1;
   }
 
-  async getPeers(room: string): Promise<string[]> {
-    return await this.redis.smembers(room);
+  async getClients(room: string): Promise<Record<string, string>> {
+    return await this.redis.hgetall(room);
+  }
+
+  async getClient(room: string, socketId: string): Promise<string | null> {
+    return await this.redis.hget(room, socketId);
   }
 }

@@ -15,13 +15,13 @@ export class RoomController {
   async joinLocalRoom(
     @Req() req: Request,
     @Body('peerId') peerId: string,
+    @Body('socketId') socketId: string,
   ): Promise<{ peers: string[] }> {
     const room = getHashedIp(req);
-    const roomJoined = await this.roomService.joinRoom(room, peerId);
+    const roomJoined = await this.roomService.joinRoom(room, socketId, peerId);
     if (roomJoined) {
-      await this.signalService.notifyPeerJoined(room, peerId);
-
-      const peers = await this.roomService.getPeers(room, peerId);
+      await this.signalService.notifyClientJoined(room, peerId);
+      const peers = await this.roomService.getTargetPeers(room, socketId);
       return { peers };
     }
     return { peers: [] };
