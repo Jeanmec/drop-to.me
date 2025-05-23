@@ -1,6 +1,0 @@
-FROM postgres:15
-
-COPY db-init/init.sh /docker-entrypoint-initdb.d/init.sh
-COPY db-init/init.sql /docker-entrypoint-initdb.d/init.sql
-
-RUN chmod +x /docker-entrypoint-initdb.d/init.sh

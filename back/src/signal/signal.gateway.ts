@@ -36,6 +36,8 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(socket: Socket) {
+    console.log('Client connecté :', socket.id);
+
     const hashedIp = getHashedIp(socket.request);
     await socket.join(hashedIp);
     socket.emit('room', hashedIp);
@@ -50,12 +52,13 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('signal')
+  @SubscribeMessage('peer/send')
   async handleSignal(
     @MessageBody() data: SignalData,
     @ConnectedSocket() socket: Socket,
   ) {
-    this.server.to(data.room).except(socket.id).emit('signal', data);
+    console.log('Signal data received:', data);
+    // this.server.to(data.room).except(socket.id).emit('signal', data);
 
     if (data.fileSize) {
       await this.statsService.addTransfer(data.fileSize);

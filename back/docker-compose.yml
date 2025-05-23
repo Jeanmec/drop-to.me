@@ -2,10 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    build:
-      context: ./docker
-      dockerfile: Dockerfile-postgres
-    container_name: transfer_postgres
+    image: postgres:15
     restart: always
     env_file:
       - .env
@@ -26,7 +23,9 @@ services:
       - app_network
 
   nest:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: transfer_nest
     restart: always
     depends_on:
