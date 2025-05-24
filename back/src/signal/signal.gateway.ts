@@ -22,7 +22,12 @@ interface SignalData {
   fileSize?: number;
 }
 @Injectable()
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({
+  cors: {
+    origin: process.env.CORS_WEB_SOCKET_ORIGINS,
+    credentials: true,
+  },
+})
 export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private server: Server;
 

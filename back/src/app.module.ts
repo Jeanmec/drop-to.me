@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { StatsModule } from './stats/stats.module';
-import { SignalGateway } from './signal/signal.gateway';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
@@ -26,6 +25,5 @@ import * as Joi from 'joi';
     RoomModule,
     SignalModule,
   ],
-  providers: [SignalGateway],
 })
 export class AppModule {}
