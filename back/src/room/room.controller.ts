@@ -20,7 +20,7 @@ export class RoomController {
     const room = getHashedIp(req);
     const roomJoined = await this.roomService.joinRoom(room, socketId, peerId);
     if (roomJoined) {
-      this.signalService.notifyClientJoined(room, peerId);
+      this.signalService.notifyClientJoined(room, socketId, peerId);
       const peers = await this.roomService.getTargetPeers(room, socketId);
       return { peers };
     }

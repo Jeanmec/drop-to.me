@@ -5,7 +5,7 @@ import { SignalGateway } from './signal.gateway';
 export class SignalService {
   constructor(private readonly signalGateway: SignalGateway) {}
 
-  notifyClientJoined(room: string, peerId: string) {
-    this.signalGateway.sendClientJoin(room, peerId);
+  notifyClientJoined(room: string, socketId: string, peerId: string) {
+    this.signalGateway.sendSignalExcept(room, socketId, 'peer-joined', peerId);
   }
 }

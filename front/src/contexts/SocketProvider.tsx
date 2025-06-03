@@ -1,5 +1,5 @@
-// 📁 contexts/SocketProvider.tsx
 "use client";
+import { setSocketInstance } from "@/services/socketService";
 import React, {
   createContext,
   useContext,
@@ -25,6 +25,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       autoConnect: true,
     });
     socketRef.current = socket;
+    setSocketInstance(socket);
 
     socket.on("connect", () => setSocketId(socket.id));
     socket.on("disconnect", () => setSocketId(undefined));

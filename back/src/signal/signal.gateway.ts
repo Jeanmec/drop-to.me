@@ -76,4 +76,13 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   sendClientJoin(room: string, peerId: string): void {
     this.server.to(room).emit('peer-joined', peerId);
   }
+
+  sendSignalExcept(
+    room: string,
+    socketIdToSkip: string,
+    event: string,
+    data: object | string | number | boolean,
+  ): void {
+    this.server.in(room).except(socketIdToSkip).emit(event, data);
+  }
 }

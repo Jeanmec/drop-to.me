@@ -1,10 +1,11 @@
-import "~/styles/globals.css";
+import "@/styles/globals.css";
 
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
 
-import { SocketProvider } from "~/contexts/SocketProvider";
-import { PeerProvider } from "~/contexts/PeerProvider";
+import { SocketProvider } from "@/contexts/SocketProvider";
+import { PeerProvider } from "@/contexts/PeerProvider";
+import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -24,7 +25,10 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable}`}>
       <body>
         <PeerProvider>
-          <SocketProvider>{children}</SocketProvider>
+          <SocketProvider>
+            <Navbar />
+            {children}
+          </SocketProvider>
         </PeerProvider>
       </body>
     </html>

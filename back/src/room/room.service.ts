@@ -18,10 +18,11 @@ export class RoomService {
   }
 
   async getTargetPeers(room: string, socketId: string): Promise<string[]> {
-    const clients = await this.redisService.getClients(room);
-    const peers = getPeersFromClients(clients);
-    const peersFiltered = removePeerById(peers, socketId);
+    const targetPeerIds = await this.redisService.getPeerIdsExcept(
+      room,
+      socketId,
+    );
 
-    return peersFiltered;
+    return targetPeerIds;
   }
 }

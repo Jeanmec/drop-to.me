@@ -33,4 +33,14 @@ export class RedisService implements OnModuleInit {
   async getClient(room: string, socketId: string): Promise<string | null> {
     return await this.redis.hget(room, socketId);
   }
+
+  async getPeerIdsExcept(
+    room: string,
+    socketIdToExclude: string,
+  ): Promise<string[]> {
+    const clients = await this.redis.hgetall(room);
+    return Object.entries(clients)
+      .filter(([socketId]) => socketId !== socketIdToExclude)
+      .map(([, peerId]) => peerId);
+  }
 }
