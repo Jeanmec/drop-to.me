@@ -1,6 +1,13 @@
-import { type DataConnection } from "peerjs";
-import type Peer from "peerjs";
+// src/services/peerService.ts
 import { z } from "zod";
+import { usePeersStore } from "@/stores/usePeersStore";
+
+const FileDataSchema = z.object({
+  type: z.literal("file"),
+  fileId: z.string(),
+  name: z.string(),
+  content: z.instanceof(Uint8Array), // PeerJS gère bien les Uint8Array
+});
 
 export interface ReceivedFile {
   id: string;
@@ -8,137 +15,71 @@ export interface ReceivedFile {
   data: Blob;
 }
 
-type FileData = {
-  type: "file";
-  fileId: string;
-  name: string;
-  content: ArrayBuffer | Uint8Array | string; // string au cas où, mais tu peux affiner
-};
-
-const FileDataSchema = z.object({
-  type: z.literal("file"),
-  fileId: z.string(),
-  name: z.string(),
-  content: z.union([
-    z.string(),
-    z.instanceof(ArrayBuffer),
-    z.instanceof(Uint8Array),
-  ]),
-});
-
 type OnFileReceivedCallback = (file: ReceivedFile) => void;
 
-export class PeerService {
-  private peer: Peer;
-  private connections: Record<string, DataConnection> = {};
-  private onFileReceived?: OnFileReceivedCallback;
+class PeerService {
+  private onFileReceivedCallbacks = new Map<string, OnFileReceivedCallback>();
 
-  constructor(peer: Peer) {
-    this.peer = peer;
-
-    this.peer.on("connection", (conn) => {
-      this.setupConnectionHandlers(conn);
-    });
+  public setOnFileReceivedCallback(
+    callback: OnFileReceivedCallback,
+    id = "default",
+  ) {
+    this.onFileReceivedCallbacks.set(id, callback);
   }
 
-  setOnFileReceivedCallback(callback: OnFileReceivedCallback) {
-    this.onFileReceived = callback;
-  }
+  // Méthode appelée par le PeerProvider lorsqu'une donnée est reçue
+  public handleIncomingData(data: unknown, peerId: string): void {
+    console.log(`[PeerService] Donnée reçue de ${peerId}`);
+    const parsed = FileDataSchema.safeParse(data);
 
-  connectToPeer(peerId: string): void {
-    if (this.connections[peerId]) return;
-
-    const conn = this.peer.connect(peerId);
-
-    conn.on("open", () => {
-      console.log("[PeerService] Connexion ouverte avec", peerId);
-    });
-
-    this.setupConnectionHandlers(conn);
-
-    this.connections[peerId] = conn;
-  }
-
-  private setupConnectionHandlers(conn: DataConnection): void {
-    conn.on("data", (data: unknown) => {
-      const parsed = FileDataSchema.safeParse(data);
-      if (!parsed.success) {
-        console.warn("Données reçues non conformes :", data);
-        return;
-      }
-      const fileData = data as FileData;
-
-      let uint8Array: Uint8Array;
-
-      if (fileData.content instanceof ArrayBuffer) {
-        uint8Array = new Uint8Array(fileData.content);
-      } else if (fileData.content instanceof Uint8Array) {
-        uint8Array = fileData.content;
-      } else if (
-        typeof fileData.content === "object" &&
-        fileData.content !== null
-      ) {
-        uint8Array = new Uint8Array(Object.values(fileData.content));
-      } else {
-        console.warn(
-          "[PeerService] Format contenu fichier non reconnu",
-          fileData.content,
-        );
-        return;
-      }
-
-      const blob = new Blob([uint8Array]);
-
-      if (this.onFileReceived) {
-        this.onFileReceived({
-          id: fileData.fileId,
-          name: fileData.name,
-          data: blob,
-        });
-      }
-    });
-
-    conn.on("close", () => {
-      console.log("[PeerService] Connexion fermée avec", conn.peer);
-      delete this.connections[conn.peer];
-    });
-
-    conn.on("error", (err) => {
-      console.error("[PeerService] Erreur connexion avec", conn.peer, err);
-    });
-  }
-
-  sendFileToPeer(peerId: string, file: File): void {
-    if (!this.connections[peerId]) {
-      this.connectToPeer(peerId);
+    if (!parsed.success) {
+      console.warn("[PeerService] Donnée reçue invalide:", parsed.error);
+      return;
     }
 
-    const conn = this.connections[peerId];
-    if (!conn || conn.open === false) return;
+    const { fileId, name, content } = parsed.data;
+    const blob = new Blob([content]);
+    const receivedFile: ReceivedFile = { id: fileId, name, data: blob };
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const arrayBuffer = reader.result;
-      if (arrayBuffer instanceof ArrayBuffer) {
-        void conn.send({
-          type: "file",
-          name: file.name,
-          fileId: `${peerId}-${Date.now()}`,
-          content: arrayBuffer,
-        });
-        console.log(`[PeerService] Envoyé ${file.name} à ${peerId}`);
+    this.onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
+  }
+
+  public async sendFileToTargets(file: File): Promise<void> {
+    const targetPeers = usePeersStore.getState().targetPeers;
+
+    if (targetPeers.length === 0) {
+      console.warn("[PeerService] Aucun peer cible pour l'envoi du fichier.");
+      return;
+    }
+
+    const buffer = new Uint8Array(await file.arrayBuffer());
+
+    for (const target of targetPeers) {
+      if (!target.connection?.open) {
+        console.warn(
+          `[PeerService] La connexion vers ${target.peerId} n'est pas ouverte. État: ${target.state}.`,
+        );
+        continue;
       }
-    };
-    reader.readAsArrayBuffer(file);
-  }
 
-  destroy(): void {
-    Object.values(this.connections).forEach((conn) => conn.close());
-    this.connections = {};
-    this.peer.destroy();
-  }
+      const payload = {
+        type: "file" as const,
+        name: file.name,
+        fileId: `${target.peerId}-${Date.now()}`,
+        content: buffer,
+      };
 
-  getConnectedPeers(): string[] {
-    return Object.keys(this.connections);
+      try {
+        await target.connection.send(payload);
+        console.log(`[PeerService] Fichier envoyé à ${target.peerId}`);
+      } catch (err) {
+        console.error(
+          `[PeerService] Erreur lors de l'envoi du fichier à ${target.peerId}`,
+          err,
+        );
+      }
+    }
   }
 }
+
+export const peerService = new PeerService();

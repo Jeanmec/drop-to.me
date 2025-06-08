@@ -1,101 +1,122 @@
 // src/contexts/PeerProvider.tsx
 "use client";
+
 import React, {
   createContext,
-  useContext,
   useEffect,
-  useRef,
   useState,
   useCallback,
+  type ReactNode,
 } from "react";
 import Peer, { type DataConnection } from "peerjs";
 import { usePeersStore } from "@/stores/usePeersStore";
+import { peerService } from "@/services/peerService";
 
-interface PeerContextValue {
-  peer: Peer | null;
-  peerId: string;
-  connections: Record<string, DataConnection>;
-  connectTo: (peerId: string) => DataConnection | null;
+interface PeerProviderProps {
+  children: ReactNode;
 }
 
-const PeerContext = createContext<PeerContextValue | null>(null);
+export const PeerContext = createContext<Peer | null>(null);
 
-export const PeerProvider = ({ children }: { children: React.ReactNode }) => {
-  const [peerId, setPeerId] = useState("");
-  const [connections, setConnections] = useState<
-    Record<string, DataConnection>
-  >({});
-  const peerRef = useRef<Peer | null>(null);
+export function PeerProvider({ children }: PeerProviderProps) {
+  const [peerInstance, setPeerInstance] = useState<Peer | null>(null);
 
-  const addPeer = usePeersStore((state) => state.addPeer);
-  const removePeer = usePeersStore((state) => state.removePeer);
+  const {
+    targetPeers,
+    addTargetPeer,
+    removeTargetPeer,
+    updateTargetConnection,
+    updatePeerState,
+    setSelfPeer,
+  } = usePeersStore();
 
   useEffect(() => {
-    const peer = new Peer({ secure: true });
-    peerRef.current = peer;
+    const newPeer = new Peer();
 
-    peer.on("open", (id) => {
-      setPeerId(id);
+    newPeer.on("open", (id) => {
+      console.log(
+        `[PeerProvider] Mon instance Peer est ouverte avec l'id : ${id}`,
+      );
+      setSelfPeer(newPeer);
+      setPeerInstance(newPeer);
     });
 
-    peer.on("connection", (conn) => {
-      setConnections((prev) => ({ ...prev, [conn.peer]: conn }));
-      addPeer(conn.peer);
-
-      conn.on("close", () => {
-        setConnections((prev) => {
-          const updated = { ...prev };
-          delete updated[conn.peer];
-          return updated;
-        });
-        removePeer(conn.peer);
-      });
+    newPeer.on("error", (err) => {
+      console.error("[PeerProvider] Erreur de l'instance Peer :", err);
     });
 
     return () => {
-      peer.destroy();
+      newPeer.destroy();
     };
-  }, [addPeer, removePeer]);
+  }, [setSelfPeer]);
 
-  const connectTo = useCallback(
-    (peerId: string): DataConnection | null => {
-      const peer = peerRef.current;
-      if (!peer || connections[peerId]) return connections[peerId] ?? null;
-
-      const conn = peer.connect(peerId);
-      setConnections((prev) => ({ ...prev, [peerId]: conn }));
-      addPeer(peerId);
-
-      conn.on("close", () => {
-        setConnections((prev) => {
-          const updated = { ...prev };
-          delete updated[peerId];
-          return updated;
-        });
-        removePeer(peerId);
+  const setupConnectionListeners = useCallback(
+    (conn: DataConnection) => {
+      conn.on("open", () => {
+        console.log(`[PeerProvider] Connexion établie avec ${conn.peer}`);
+        updateTargetConnection(conn);
       });
 
-      return conn;
+      conn.on("data", (data: unknown) => {
+        peerService.handleIncomingData(data, conn.peer);
+      });
+
+      conn.on("close", () => {
+        console.log(`[PeerProvider] Connexion fermée avec ${conn.peer}`);
+        removeTargetPeer(conn.peer);
+      });
+
+      conn.on("error", (err) => {
+        console.error(
+          `[PeerProvider] Erreur de connexion avec ${conn.peer}:`,
+          err,
+        );
+        removeTargetPeer(conn.peer);
+      });
     },
-    [connections, addPeer, removePeer],
+    [updateTargetConnection, removeTargetPeer],
   );
+
+  useEffect(() => {
+    if (!peerInstance) return;
+
+    const handleIncomingConnection = (conn: DataConnection) => {
+      console.log(`[PeerProvider] Connexion entrante de : ${conn.peer}`);
+      addTargetPeer({ peerId: conn.peer, state: "connecting" });
+      setupConnectionListeners(conn);
+    };
+
+    peerInstance.on("connection", handleIncomingConnection);
+    return () => {
+      peerInstance.off("connection", handleIncomingConnection);
+    };
+  }, [peerInstance, addTargetPeer, setupConnectionListeners]);
+
+  useEffect(() => {
+    if (!peerInstance) return;
+
+    targetPeers.forEach(({ peerId: targetId, connection, state }) => {
+      if (
+        peerInstance.id === targetId ||
+        connection ||
+        state === "connecting" ||
+        state === "open"
+      ) {
+        return;
+      }
+
+      console.log(`[PeerProvider] Tentative de connexion vers ${targetId}`);
+      const newConn = peerInstance.connect(targetId);
+
+      // On met à jour l'état pour ne pas essayer en boucle
+      updatePeerState(targetId, "connecting");
+
+      // On attache les mêmes listeners
+      setupConnectionListeners(newConn);
+    });
+  }, [peerInstance, targetPeers, setupConnectionListeners, updatePeerState]);
 
   return (
-    <PeerContext.Provider
-      value={{
-        peer: peerRef.current,
-        peerId,
-        connections,
-        connectTo,
-      }}
-    >
-      {children}
-    </PeerContext.Provider>
+    <PeerContext.Provider value={peerInstance}>{children}</PeerContext.Provider>
   );
-};
-
-export const usePeer = () => {
-  const ctx = useContext(PeerContext);
-  if (!ctx) throw new Error("usePeer must be used within a PeerProvider");
-  return ctx;
-};
+}

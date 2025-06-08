@@ -1,19 +1,52 @@
+// src/stores/usePeersStore.ts
 import { create } from "zustand";
+import type { DataConnection, Peer } from "peerjs";
+import type { TargetPeer, TargetPeerState } from "@/types/peer"; // Assurez-vous que ce type est bien défini
 
-export interface PeersStore {
-  Peers: string[];
-  addPeer: (peerId: string) => void;
-  removePeer: (peerId: string) => void;
+interface PeersStore {
+  selfPeer: Peer | null;
+  targetPeers: TargetPeer[];
+  setSelfPeer: (peer: Peer) => void;
+  addTargetPeer: (peer: { peerId: string; state?: TargetPeerState }) => void;
+  removeTargetPeer: (peerId: string) => void;
+  updateTargetConnection: (connection: DataConnection) => void;
+  updatePeerState: (peerId: string, stateValue: TargetPeerState) => void;
 }
 
-export const usePeersStore = create<PeersStore>()((set) => ({
-  Peers: [],
-  addPeer: (peerId: string) =>
+export const usePeersStore = create<PeersStore>((set) => ({
+  selfPeer: null,
+  targetPeers: [],
+  setSelfPeer: (peer) => set(() => ({ selfPeer: peer })),
+
+  addTargetPeer: ({ peerId, state = "none" }) =>
+    set((storeState) => {
+      if (storeState.targetPeers.some((p) => p.peerId === peerId)) {
+        return storeState;
+      }
+      return {
+        targetPeers: [
+          ...storeState.targetPeers,
+          { peerId, connection: null, state },
+        ],
+      };
+    }),
+
+  removeTargetPeer: (peerId) =>
     set((state) => ({
-      Peers: [...state.Peers, peerId],
+      targetPeers: state.targetPeers.filter((p) => p.peerId !== peerId),
     })),
-  removePeer: (peerId: string) =>
+
+  updateTargetConnection: (conn) =>
     set((state) => ({
-      Peers: state.Peers.filter((id) => id !== peerId),
+      targetPeers: state.targetPeers.map((p) =>
+        p.peerId === conn.peer ? { ...p, connection: conn, state: "open" } : p,
+      ),
+    })),
+
+  updatePeerState: (peerId, stateValue) =>
+    set((state) => ({
+      targetPeers: state.targetPeers.map((p) =>
+        p.peerId === peerId ? { ...p, state: stateValue } : p,
+      ),
     })),
 }));

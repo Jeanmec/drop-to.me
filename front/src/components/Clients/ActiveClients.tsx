@@ -6,9 +6,9 @@ import { FiUser } from "react-icons/fi";
 
 export default function ActiveClients() {
   const { isLoading } = useLoadingStore();
-  const { Peers } = usePeersStore();
+  const { targetPeers } = usePeersStore();
 
-  const displayedPeers = Peers.slice(0, 5);
+  const displayedPeers = targetPeers.slice(0, 5);
 
   if (!isLoading) {
     onSocket("peers", () => {
@@ -18,7 +18,7 @@ export default function ActiveClients() {
 
   return (
     <div className="p-3">
-      {(Peers.length > 0 && (
+      {(targetPeers.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {displayedPeers.map((_, i) => (
             <div
@@ -31,9 +31,9 @@ export default function ActiveClients() {
             </div>
           ))}
 
-          {Peers.length > 5 && (
+          {targetPeers.length > 5 && (
             <div className="mt-2 w-full text-center text-gray-500">
-              +{Peers.length - 5} more
+              +{targetPeers.length - 5} more
             </div>
           )}
         </div>

@@ -1,61 +1,67 @@
 "use client";
-import { usePeer } from "@/contexts/PeerProvider";
 import { useLoadingStore } from "@/stores/useLoadingStore";
 import { useSocket } from "@/contexts/SocketProvider";
-import { useCallback, useEffect } from "react";
+import { useCallback, useContext, useEffect } from "react";
 import { onSocket } from "@/services/socketService";
 import { roomService } from "@/services/roomService";
 import { usePeersStore } from "@/stores/usePeersStore";
 import ParticleLoader from "@/components/loader/ParticleLoader";
+import Hero from "@/components/LandingPage/Hero";
+import { PeerContext } from "@/contexts/PeerProvider";
+import ConcentricCirclesBackground from "@/components/styles/background";
 import FormsControl from "@/components/Forms/FormsControl";
-import ActiveClients from "@/components/Clients/ActiveClients";
 
 export default function HomePage() {
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
-  const { peerId } = usePeer();
+  const { addTargetPeer, removeTargetPeer } = usePeersStore();
   const { socketId, socket } = useSocket();
-  const { addPeer, removePeer, Peers } = usePeersStore();
+  const peerInstance = useContext(PeerContext);
+
+  const peerId = peerInstance?.id;
 
   const joinRoom = useCallback(async () => {
     if (socketId && peerId) {
       try {
         const res = await roomService.joinRoom(peerId, socketId);
-        if (res && Array.isArray(res.peers) && res.peers.length > 0) {
+        if (res && Array.isArray(res.peers)) {
           res.peers.forEach((peer: string) => {
-            addPeer(peer);
+            if (peer !== peerId) {
+              addTargetPeer({ peerId: peer });
+            }
           });
         }
         console.log("Room joined successfully:", res);
-        console.log("Joined room successfully");
       } catch (error) {
         console.error("Error joining room:", error);
       }
+    } else {
+      console.log("Waiting for socketId and peerId to be defined");
     }
-  }, [socketId, peerId, addPeer]);
+  }, [socketId, peerId, addTargetPeer]);
 
   const initListenersSocket = useCallback(() => {
-    if (!socket) return;
+    if (!socket || !peerId) return;
+
     onSocket("peer-joined", (peer: string) => {
-      addPeer(peer);
-      // if (!connectionsRef.current[peerId]) {
-      //   connectToPeer(peerId);
-      // }
+      if (peer !== peerId) {
+        console.log(`Un nouveau peer a rejoint : ${peer}`);
+        addTargetPeer({ peerId: peer });
+      }
     });
+
     onSocket("peer-left", (peer: string) => {
-      removePeer(peer);
+      console.log(`Un peer est parti : ${peer}`);
+      removeTargetPeer(peer);
     });
-  }, [addPeer, removePeer, socket]);
+  }, [addTargetPeer, removeTargetPeer, socket, peerId]);
 
   useEffect(() => {
-    console.log("Peer ID:", peerId);
-    console.log("Socket ID:", socketId);
     if (!socketId || !peerId) {
       startLoading();
     } else {
       stopLoading();
-
       void joinRoom();
-      void initListenersSocket();
+      initListenersSocket();
     }
   }, [
     initListenersSocket,
@@ -67,27 +73,12 @@ export default function HomePage() {
   ]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <h1 className="text-5xl font-bold">
-        {isLoading ? <ParticleLoader /> : "Welcome"}
-      </h1>
-      <div className="flex flex-col gap-6">
-        <pre>My peer ID : {peerId}</pre>
-        <pre>My socket ID : {socketId}</pre>
-        {Peers && Peers.length > 0 && (
-          <div className="flex flex-col gap-2">
-            {Peers.map((peer) => (
-              <div className="badge badge-soft badge-info p-3" key={peer}>
-                {peer}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <FormsControl />
-
-      <ActiveClients />
-    </main>
+    <>
+      <ConcentricCirclesBackground />
+      <main className="relative flex min-h-screen flex-col text-white">
+        <Hero />
+        {isLoading ? <ParticleLoader /> : <FormsControl />}
+      </main>
+    </>
   );
 }

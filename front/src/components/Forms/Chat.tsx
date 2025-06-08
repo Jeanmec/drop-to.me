@@ -1,16 +1,14 @@
 export default function Chat() {
   return (
-    <div className="flex h-full w-full items-center justify-center">
-      <div className="flex w-full max-w-2xl flex-col items-center justify-center gap-4 p-4">
-        <h1 className="text-2xl font-bold">Chat</h1>
-        <p className="text-center text-gray-500">
-          Use the input below to send a message.
-        </p>
-        <input
-          type="text"
-          placeholder="Type your message here..."
-          className="input input-bordered input-primary w-full max-w-xs"
-        />
+    <div className="bg-base-100 h-full w-full items-center justify-center p-2">
+      <div className="chat chat-start">
+        <div className="chat-bubble">
+          It's over Anakin,
+          <br />I have the high ground.
+        </div>
+      </div>
+      <div className="chat chat-end">
+        <div className="chat-bubble">You underestimate my power!</div>
       </div>
     </div>
   );
