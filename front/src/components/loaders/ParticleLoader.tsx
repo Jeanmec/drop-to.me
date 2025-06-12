@@ -6,6 +6,7 @@ interface ParticleProps {
   x: number;
   y: number;
   size: number;
+  delay: number;
 }
 
 const ParticleLoader = () => {
@@ -19,6 +20,7 @@ const ParticleLoader = () => {
         x: Math.random() * 200 - 100,
         y: Math.random() * 200 - 100,
         size: Math.random() * 4 + 2,
+        delay: Math.random() * 2,
       })),
     );
   }, []);
@@ -43,7 +45,7 @@ const ParticleLoader = () => {
               duration: 3,
               repeat: Infinity,
               ease: "easeInOut",
-              delay: Math.random() * 2,
+              delay: particle.delay,
             }}
           />
         ))}

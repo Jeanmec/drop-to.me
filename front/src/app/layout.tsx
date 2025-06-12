@@ -5,7 +5,7 @@ import { Geist } from "next/font/google";
 
 import { SocketProvider } from "@/contexts/SocketProvider";
 import { PeerProvider } from "@/contexts/PeerProvider";
-import Navbar from "@/components/Navbar";
+import Tabs from "@/components/Navigation/Tabs";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -25,10 +25,7 @@ export default function RootLayout({
     <html lang="en" className={`${geist.variable}`}>
       <body>
         <PeerProvider>
-          <SocketProvider>
-            <Navbar />
-            {children}
-          </SocketProvider>
+          <SocketProvider>{children}</SocketProvider>
         </PeerProvider>
       </body>
     </html>

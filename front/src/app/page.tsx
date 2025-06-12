@@ -5,11 +5,12 @@ import { useCallback, useContext, useEffect } from "react";
 import { onSocket } from "@/services/socketService";
 import { roomService } from "@/services/roomService";
 import { usePeersStore } from "@/stores/usePeersStore";
-import ParticleLoader from "@/components/loader/ParticleLoader";
 import Hero from "@/components/LandingPage/Hero";
 import { PeerContext } from "@/contexts/PeerProvider";
-import ConcentricCirclesBackground from "@/components/styles/background";
 import FormsControl from "@/components/Forms/FormsControl";
+import Tabs from "@/components/Navigation/Tabs";
+import Informations from "@/components/Informations/Informations";
+import BackgroundController from "@/components/Background/BackgroundController";
 
 export default function HomePage() {
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
@@ -74,11 +75,17 @@ export default function HomePage() {
 
   return (
     <>
-      <ConcentricCirclesBackground />
-      <main className="relative flex min-h-screen flex-col text-white">
+      <BackgroundController />
+      <main className="relative flex min-h-screen flex-col items-center text-white">
         <Hero />
-        {isLoading ? <ParticleLoader /> : <FormsControl />}
+        <FormsControl />
+        {!isLoading && (
+          <div className="absolute bottom-0 z-50 flex h-fit justify-center pb-4">
+            <Tabs />
+          </div>
+        )}
       </main>
+      <Informations />
     </>
   );
 }
