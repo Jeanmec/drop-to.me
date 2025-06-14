@@ -5,10 +5,16 @@ export interface SelfPeer {
   connection?: DataConnection;
 }
 
-export type TargetPeerState = "none" | "connecting" | "open" | "closed";
+export type TargetPeerState =
+  | "none"
+  | "connecting"
+  | "open"
+  | "closed"
+  | "sending"
+  | "delivered";
 
 export interface TargetPeer {
   peerId: string;
   connection?: DataConnection | null;
-  state: "connecting" | "open" | "closed" | "none";
+  state: TargetPeerState;
 }

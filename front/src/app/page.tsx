@@ -11,6 +11,8 @@ import FormsControl from "@/components/Forms/FormsControl";
 import Tabs from "@/components/Navigation/Tabs";
 import Informations from "@/components/Informations/Informations";
 import BackgroundController from "@/components/Background/BackgroundController";
+import ActiveClients from "@/components/ActiveClients";
+import Statistics from "@/components/Statistic/Statistics";
 
 export default function HomePage() {
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
@@ -85,6 +87,8 @@ export default function HomePage() {
           </div>
         )}
       </main>
+      <ActiveClients />
+      <Statistics />
       <Informations />
     </>
   );

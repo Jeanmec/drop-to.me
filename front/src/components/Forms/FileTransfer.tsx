@@ -4,9 +4,11 @@ import { peerService } from "@/services/peerService";
 import { HiOutlineUpload } from "react-icons/hi";
 import InputFile from "@/components/FileTransfer/InputFile";
 import ParticleLoader from "@/components/loaders/ParticleLoader";
+import { usePeersStore } from "@/stores/usePeersStore";
 
 export default function FileTransferPanel() {
   const [file, setFile] = useState<File | null>(null);
+  const { targetPeers } = usePeersStore();
 
   const [receivedFiles, setReceivedFiles] = useState<
     { name: string; url: string }[]
@@ -35,6 +37,10 @@ export default function FileTransferPanel() {
       console.log(`[FileTransfer] Fichier reçu : ${file.name}`);
     });
   }, []);
+
+  useEffect(() => {
+    console.log(targetPeers);
+  }, [targetPeers]);
 
   return (
     <div className="absolute top-[67.5vh] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">

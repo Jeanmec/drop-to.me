@@ -3,6 +3,8 @@ import { onSocket } from "@/services/socketService";
 import { useLoadingStore } from "@/stores/useLoadingStore";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { FiUser } from "react-icons/fi";
+import UploadLoader from "@/components/loaders/UploadLoader";
+import Check from "@/components/Icons/Check";
 
 export default function ActiveClients() {
   const { isLoading } = useLoadingStore();
@@ -18,15 +20,26 @@ export default function ActiveClients() {
 
   return (
     <div className="p-3">
+      <div>
+        {targetPeers.map((target) => (
+          <pre key={target.peerId}>{target.state}</pre>
+        ))}
+      </div>
       {(targetPeers.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {displayedPeers.map((_, i) => (
+          {displayedPeers.map((peer, i) => (
             <div
               key={i}
               className="avatar avatar-placeholder ring-offset-base-100 rounded-full ring-2 ring-green-700 ring-offset-2"
             >
               <div className="rounded-full bg-green-950 p-4">
-                <FiUser className="text-4xl text-green-500" />
+                {peer?.state === "sending" ? (
+                  <UploadLoader className="text-4xl text-green-500" />
+                ) : peer?.state === "delivered" ? (
+                  <Check className="text-4xl text-green-500" />
+                ) : (
+                  <FiUser className="text-4xl text-gray-500" />
+                )}
               </div>
             </div>
           ))}

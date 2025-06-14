@@ -29,16 +29,8 @@ export default function Chat() {
     }
   };
 
-  useEffect(() => {
-    if (!isLoading) {
-      peerService.setOnMessageReceivedCallback((message) => {
-        addMessage(message);
-      });
-    }
-  }, [addMessage, isLoading]);
-
   return (
-    <div className="animate-fade-in-left bg-base-100 absolute z-10 container flex h-full flex-1 flex-col items-center justify-end p-2">
+    <div className="animate-fade-in-left absolute z-10 container flex h-full flex-1 flex-col items-center justify-end p-2 backdrop-blur-[1px]">
       {(messages?.length ?? 0) > 0 &&
         (messages ?? []).map((msg, index) => (
           <div

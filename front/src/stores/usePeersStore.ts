@@ -1,7 +1,7 @@
 // src/stores/usePeersStore.ts
 import { create } from "zustand";
 import type { DataConnection, Peer } from "peerjs";
-import type { TargetPeer, TargetPeerState } from "@/types/peer"; // Assurez-vous que ce type est bien défini
+import type { TargetPeer, TargetPeerState } from "@/app/types/peer.t";
 
 interface PeersStore {
   selfPeer: Peer | null;

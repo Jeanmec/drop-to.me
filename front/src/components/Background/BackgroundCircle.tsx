@@ -26,7 +26,7 @@ export const ConcentricCirclesBackground = () => {
   const centerY = dimensions.height * 0.675; // 67.5vh
 
   return (
-    <div className="animate-fade-in pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-t from-black to-gray-950 transition-all duration-1000">
+    <div className="animate-fade-in pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-t from-black to-stone-800 transition-all duration-1000">
       <svg
         className="h-full w-full"
         viewBox={`0 0 ${dimensions.width} ${dimensions.height}`}
@@ -39,6 +39,14 @@ export const ConcentricCirclesBackground = () => {
           ))}
         </g>
       </svg>
+      <div
+        className="absolute bottom-0 h-24 w-full backdrop-blur-md"
+        style={{
+          maskImage: "linear-gradient(to top, black 0%, transparent 100%)",
+          WebkitMaskImage:
+            "linear-gradient(to top, black 0%, transparent 100%)",
+        }}
+      ></div>
     </div>
   );
 };

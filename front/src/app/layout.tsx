@@ -5,7 +5,6 @@ import { Geist } from "next/font/google";
 
 import { SocketProvider } from "@/contexts/SocketProvider";
 import { PeerProvider } from "@/contexts/PeerProvider";
-import Tabs from "@/components/Navigation/Tabs";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
