@@ -22,11 +22,13 @@ const Informations = () => {
   ];
 
   return (
-    <div
-      className="flex flex-col items-center justify-center gap-4"
-      id="informations"
-    >
-      <Accordion items={accordionItems} />
+    <div className="w-full">
+      <div
+        className="container mx-auto flex flex-col items-center justify-center gap-4 px-12"
+        id="informations"
+      >
+        <Accordion items={accordionItems} />
+      </div>
     </div>
   );
 };

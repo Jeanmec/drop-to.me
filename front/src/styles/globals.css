@@ -1,15 +1,55 @@
 @import "tailwindcss";
 @plugin "daisyui";
 @plugin "@midudev/tailwind-animations";
+@tailwind utilities;
 
 @theme {
   --font-sans:
     var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --color-green: #389cde;
+
+  --color-primary-blue: #389cde;
+  --color-secondary-blue: #3caaed;
+  --color-white: #ffffff;
+  --color-description: #b0b0b0;
+  --font-inter: "Inter", sans-serif;
+  --font-poppins: "Poppins", sans-serif;
+}
+
+@layer utilities {
+  @keyframes radar-spin {
+    from {
+      transform: rotate(20deg);
+    }
+    to {
+      transform: rotate(380deg);
+    }
+  }
+
+  .animate-radar-spin {
+    animation: radar-spin 10s linear infinite;
+  }
+
+  .custom-blue-shadow {
+    --tw-shadow-color: theme("colors.primary-blue");
+    box-shadow:
+      inset 0 0 0.5em 0 var(--tw-shadow-color),
+      0 0 0.5em 0 var(--tw-shadow-color);
+    text-shadow:
+      0 0 0.125em hsl(0 0% 100% / 0.3),
+      0 0 0.45em var(--tw-shadow-color);
+  }
+
+  .custom-blue-shadow-hover:hover {
+    box-shadow:
+      inset 0 0 0.5em 0 var(--tw-shadow-color),
+      0 0 0.5em 0 var(--tw-shadow-color),
+      0 0 1em 0 var(--tw-shadow-color);
+  }
 }
 
 html {
   scroll-behavior: smooth;
+  scroll-margin: 200px;
   background-color: black;
 }

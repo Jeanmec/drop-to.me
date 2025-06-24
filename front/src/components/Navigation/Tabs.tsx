@@ -119,18 +119,17 @@ const Tabs = () => {
 
   return (
     <>
-      {/* Sentinel placé en dessous des tabs, pour détecter quand elles sortent de l'écran */}
       <div
         ref={sentinelRef}
         className="animate-fade-in pointer-events-none absolute bottom-[100px] h-[1px] w-full"
       />
 
       <div
-        className={`z-50 gap-2 transition-all duration-300 ${
+        className={`z-10 gap-2 transition-all duration-300 ${
           isSticky ? "fixed top-4" : "bottom-0"
         }`}
       >
-        <div className="flex w-fit flex-wrap items-center rounded-xl border-2 border-slate-600 bg-white/10 bg-gradient-to-r from-gray-700 to-gray-900 px-2 py-2 backdrop-blur-md">
+        <div className="flex w-full flex-wrap items-center rounded-xl border-2 border-slate-600 bg-white/10 bg-gradient-to-r from-gray-700 to-gray-900 px-2 py-2 backdrop-blur-md">
           {tabs.map((tab) => (
             <Tab key={tab.id} {...tab} />
           ))}

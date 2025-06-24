@@ -18,3 +18,5 @@ export interface TargetPeer {
   connection?: DataConnection | null;
   state: TargetPeerState;
 }
+
+export type GlobalPeersState = "connected" | "disconnected";

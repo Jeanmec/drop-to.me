@@ -14,7 +14,7 @@ export class RoomService {
     socketId: string,
     peerId: string,
   ): Promise<boolean> {
-    return await this.redisService.addClient(room, socketId, peerId);
+    return await this.redisService.addPeer(room, socketId, peerId);
   }
 
   async getTargetPeers(room: string, socketId: string): Promise<string[]> {

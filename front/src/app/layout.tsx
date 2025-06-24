@@ -1,10 +1,13 @@
 import "@/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Geist } from "next/font/google";
+import { Inter, Poppins } from "next/font/google";
 
 import { SocketProvider } from "@/contexts/SocketProvider";
 import { PeerProvider } from "@/contexts/PeerProvider";
+import Footer from "@/components/Footer";
+import LoadingPage from "@/components/loaders/LoadingPage";
+import { ToastService } from "@/library/toastService";
 
 export const metadata: Metadata = {
   title: "Create T3 App",
@@ -12,19 +15,32 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.ico" }],
 };
 
-const geist = Geist({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-poppins",
+  display: "swap",
 });
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable}`}>
+    <html lang="en" className={`${inter.variable} ${poppins.variable}`}>
       <body>
         <PeerProvider>
-          <SocketProvider>{children}</SocketProvider>
+          <SocketProvider>
+            <ToastService />
+            <LoadingPage />
+            {children}
+            <Footer />
+          </SocketProvider>
         </PeerProvider>
       </body>
     </html>

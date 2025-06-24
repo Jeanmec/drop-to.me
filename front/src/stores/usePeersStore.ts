@@ -1,11 +1,17 @@
 // src/stores/usePeersStore.ts
 import { create } from "zustand";
 import type { DataConnection, Peer } from "peerjs";
-import type { TargetPeer, TargetPeerState } from "@/app/types/peer.t";
+import type {
+  TargetPeer,
+  TargetPeerState,
+  GlobalPeersState,
+} from "@/types/peer.t";
 
 interface PeersStore {
   selfPeer: Peer | null;
   targetPeers: TargetPeer[];
+  globalPeersState: GlobalPeersState;
+  setGlobalPeersState: (state: GlobalPeersState) => void;
   setSelfPeer: (peer: Peer) => void;
   addTargetPeer: (peer: { peerId: string; state?: TargetPeerState }) => void;
   removeTargetPeer: (peerId: string) => void;
@@ -16,7 +22,10 @@ interface PeersStore {
 export const usePeersStore = create<PeersStore>((set) => ({
   selfPeer: null,
   targetPeers: [],
+  globalPeersState: "disconnected",
   setSelfPeer: (peer) => set(() => ({ selfPeer: peer })),
+
+  setGlobalPeersState: (state) => set(() => ({ globalPeersState: state })),
 
   addTargetPeer: ({ peerId, state = "none" }) =>
     set((storeState) => {

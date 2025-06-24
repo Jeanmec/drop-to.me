@@ -5,13 +5,13 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
-@Entity()
-export class FileTransfer {
+@Entity('file_transfers')
+export class FileTransferEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
-  fileSize: number; // en octets
+  fileSize: number; // octets
 
   @CreateDateColumn()
   createdAt: Date;

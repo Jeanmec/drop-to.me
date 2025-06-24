@@ -1,4 +1,4 @@
-import type { Message } from "@/app/types/message.t";
+import type { Message } from "@/types/message.t";
 import { create } from "zustand";
 
 interface ChatStore {

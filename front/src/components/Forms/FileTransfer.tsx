@@ -5,22 +5,24 @@ import { HiOutlineUpload } from "react-icons/hi";
 import InputFile from "@/components/FileTransfer/InputFile";
 import ParticleLoader from "@/components/loaders/ParticleLoader";
 import { usePeersStore } from "@/stores/usePeersStore";
+import { notify } from "@/library/toastService";
 
 export default function FileTransferPanel() {
   const [file, setFile] = useState<File | null>(null);
-  const { targetPeers } = usePeersStore();
-
-  const [receivedFiles, setReceivedFiles] = useState<
-    { name: string; url: string }[]
-  >([]);
+  const { targetPeers, globalPeersState } = usePeersStore();
+  const [isInTransfer, setIsInTransfer] = useState(false);
 
   const handleFileSelection = async (file: File | null) => {
-    if (file) {
-      setFile(file);
-      await handleSend(file);
-      console.log("Fichier sélectionné :", file.name);
-    } else {
-      console.log("Aucun fichier sélectionné");
+    try {
+      if (file) {
+        setFile(file);
+        await handleSend(file);
+      } else {
+        setFile(null);
+      }
+    } catch (error) {
+      console.log("Error sending file:", error);
+      notify.error("Failed to send file.");
     }
   };
 
@@ -33,48 +35,51 @@ export default function FileTransferPanel() {
   useEffect(() => {
     peerService.setOnFileReceivedCallback((file) => {
       const url = URL.createObjectURL(file.data);
-      setReceivedFiles((prev) => [...prev, { name: file.name, url }]);
-      console.log(`[FileTransfer] Fichier reçu : ${file.name}`);
+      notify.receivedFile({
+        fileUrl: url,
+        fileName: file.name,
+        fileSize: file.size,
+      });
     });
   }, []);
 
   useEffect(() => {
-    console.log(targetPeers);
-  }, [targetPeers]);
+    let timeout: NodeJS.Timeout | null = null;
+
+    const anySending = targetPeers.some((peer) => peer.state === "sending");
+
+    if (anySending) {
+      setIsInTransfer(true);
+
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    } else if (isInTransfer) {
+      timeout = setTimeout(() => {
+        setIsInTransfer(false);
+      }, 2000);
+      // notify.success("File transfer completed successfully!");
+    }
+
+    return () => {
+      if (timeout) clearTimeout(timeout);
+    };
+  }, [isInTransfer, targetPeers]);
 
   return (
-    <div className="absolute top-[67.5vh] left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+    <div className="absolute top-[67.5vh] left-1/2 z-[1] -translate-x-1/2 -translate-y-1/2">
       <div className="animate-fade-in-right flex flex-1 flex-col items-center justify-start overflow-auto">
         <InputFile
           callback={handleFileSelection}
           disabled={false}
           icon={
-            file?.name ? (
+            isInTransfer ? (
               <ParticleLoader />
             ) : (
               <HiOutlineUpload className="text-4xl" />
             )
           }
         ></InputFile>
-
-        {receivedFiles.length > 0 && (
-          <div className="mt-6 w-full max-w-md">
-            <h3 className="font-medium">Fichiers reçus :</h3>
-            <ul className="list-disc space-y-1 pl-4">
-              {receivedFiles.map((f, idx) => (
-                <li key={idx}>
-                  <a
-                    href={f.url}
-                    download={f.name}
-                    className="text-blue-300 underline"
-                  >
-                    {f.name}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     </div>
   );

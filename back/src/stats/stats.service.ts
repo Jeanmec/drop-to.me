@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { FileTransfer } from './stats.entity';
+import { FileTransferEntity } from './entities/file-transfer.entity';
 
 @Injectable()
 export class StatsService {
   constructor(
-    @InjectRepository(FileTransfer)
-    private statsRepository: Repository<FileTransfer>,
+    @InjectRepository(FileTransferEntity)
+    private statsRepository: Repository<FileTransferEntity>,
   ) {}
 
   async addTransfer(fileSize: number) {

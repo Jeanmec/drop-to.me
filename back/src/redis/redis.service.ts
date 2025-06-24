@@ -12,11 +12,15 @@ export class RedisService implements OnModuleInit {
     });
   }
 
-  async addClient(
+  async addPeer(
     room: string,
     socketId: string,
     peerId: string,
   ): Promise<boolean> {
+    const alreadyExists = await this.redis.hexists(room, socketId);
+    if (alreadyExists) {
+      return false;
+    }
     const res = await this.redis.hset(room, socketId, peerId);
     return res === 1;
   }

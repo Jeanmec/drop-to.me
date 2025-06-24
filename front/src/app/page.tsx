@@ -8,15 +8,21 @@ import { usePeersStore } from "@/stores/usePeersStore";
 import Hero from "@/components/LandingPage/Hero";
 import { PeerContext } from "@/contexts/PeerProvider";
 import FormsControl from "@/components/Forms/FormsControl";
-import Tabs from "@/components/Navigation/Tabs";
 import Informations from "@/components/Informations/Informations";
 import BackgroundController from "@/components/Background/BackgroundController";
 import ActiveClients from "@/components/ActiveClients";
 import Statistics from "@/components/Statistic/Statistics";
+import Alone from "@/components/Clients/Alone";
 
 export default function HomePage() {
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
-  const { addTargetPeer, removeTargetPeer } = usePeersStore();
+  const {
+    addTargetPeer,
+    removeTargetPeer,
+    targetPeers,
+    globalPeersState,
+    setGlobalPeersState,
+  } = usePeersStore();
   const { socketId, socket } = useSocket();
   const peerInstance = useContext(PeerContext);
 
@@ -59,6 +65,24 @@ export default function HomePage() {
   }, [addTargetPeer, removeTargetPeer, socket, peerId]);
 
   useEffect(() => {
+    if (!targetPeers || targetPeers.length === 0) {
+      setGlobalPeersState("disconnected");
+      return;
+    }
+    targetPeers.forEach((peer) => {
+      if (
+        peer.state === "open" ||
+        peer.state === "sending" ||
+        peer.state === "delivered"
+      ) {
+        setGlobalPeersState("connected");
+      } else {
+        setGlobalPeersState("disconnected");
+      }
+    });
+  }, [setGlobalPeersState, targetPeers]);
+
+  useEffect(() => {
     if (!socketId || !peerId) {
       startLoading();
     } else {
@@ -78,18 +102,19 @@ export default function HomePage() {
   return (
     <>
       <BackgroundController />
-      <main className="relative flex min-h-screen flex-col items-center text-white">
+      <main className="relative flex min-h-screen flex-col items-center pt-12 pb-24 text-white">
         <Hero />
-        <FormsControl />
-        {!isLoading && (
-          <div className="absolute bottom-0 z-50 flex h-fit justify-center pb-4">
-            <Tabs />
-          </div>
+        {isLoading || globalPeersState === "disconnected" ? (
+          <Alone />
+        ) : (
+          <FormsControl />
         )}
       </main>
-      <ActiveClients />
-      <Statistics />
-      <Informations />
+      <div className="w-full">
+        {/* <ActiveClients /> */}
+        <Statistics />
+        <Informations />
+      </div>
     </>
   );
 }

@@ -9,7 +9,13 @@ interface ParticleProps {
   delay: number;
 }
 
-const ParticleLoader = () => {
+interface ParticleLoaderProps {
+  className?: string;
+}
+
+const ParticleLoader: React.FC<ParticleLoaderProps> = ({
+  className = "w-40 h-40",
+}) => {
   const [particles, setParticles] = useState<ParticleProps[]>([]);
   const particleCount = 50;
 
@@ -26,7 +32,7 @@ const ParticleLoader = () => {
   }, []);
 
   return (
-    <div className="h-40 w-40 overflow-hidden rounded-full bg-transparent">
+    <div className={`overflow-hidden rounded-full bg-transparent ${className}`}>
       <svg width="100%" height="100%" viewBox="-100 -100 200 200">
         {particles.map((particle) => (
           <motion.circle
@@ -34,7 +40,7 @@ const ParticleLoader = () => {
             cx={particle.x}
             cy={particle.y}
             r={particle.size}
-            fill="#3afbb1"
+            fill="var(--color-primary-blue)"
             initial={{ opacity: 0 }}
             animate={{
               opacity: [0, 1, 0],

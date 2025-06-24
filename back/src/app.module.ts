@@ -5,6 +5,8 @@ import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { RoomModule } from './room/room.module';
 import { SignalModule } from './signal/signal.module';
+import { UserService } from './user/user.service';
+import { UserModule } from './user/user.module';
 import * as Joi from 'joi';
 
 @Module({
@@ -24,6 +26,8 @@ import * as Joi from 'joi';
     RedisModule,
     RoomModule,
     SignalModule,
+    UserModule,
   ],
+  providers: [UserService],
 })
 export class AppModule {}

@@ -40,7 +40,7 @@ export const ConcentricCirclesBackground = () => {
         </g>
       </svg>
       <div
-        className="absolute bottom-0 h-24 w-full backdrop-blur-md"
+        className="absolute bottom-0 h-24 w-full backdrop-blur-3xl"
         style={{
           maskImage: "linear-gradient(to top, black 0%, transparent 100%)",
           WebkitMaskImage:

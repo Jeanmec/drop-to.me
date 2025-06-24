@@ -27,6 +27,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
     updateTargetConnection,
     updatePeerState,
     setSelfPeer,
+    setGlobalPeersState,
   } = usePeersStore();
 
   useEffect(() => {
@@ -42,12 +43,17 @@ export function PeerProvider({ children }: PeerProviderProps) {
 
     newPeer.on("error", (err) => {
       console.error("[PeerProvider] Erreur de l'instance Peer :", err);
+
+      if (err.type === "disconnected") {
+        setGlobalPeersState("disconnected");
+        window.location.reload();
+      }
     });
 
     return () => {
       newPeer.destroy();
     };
-  }, [setSelfPeer]);
+  }, [removeTargetPeer, setGlobalPeersState, setSelfPeer]);
 
   const setupConnectionListeners = useCallback(
     (conn: DataConnection) => {
@@ -107,10 +113,8 @@ export function PeerProvider({ children }: PeerProviderProps) {
       console.log(`[PeerProvider] Tentative de connexion vers ${targetId}`);
       const newConn = peerInstance.connect(targetId);
 
-      // On met à jour l'état pour ne pas essayer en boucle
       updatePeerState(targetId, "connecting");
 
-      // On attache les mêmes listeners
       setupConnectionListeners(newConn);
     });
   }, [peerInstance, targetPeers, setupConnectionListeners, updatePeerState]);

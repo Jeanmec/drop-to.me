@@ -2,13 +2,14 @@
 import { z } from "zod";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { useChatStore } from "@/stores/useChatStore";
-import type { Message } from "@/app/types/message.t";
+import type { Message } from "@/types/message.t";
 import type { DataConnection } from "peerjs";
 
 const FileDataSchema = z.object({
   type: z.literal("file"),
   fileId: z.string(),
   name: z.string(),
+  size: z.number(),
   content: z.instanceof(Uint8Array),
 });
 
@@ -27,6 +28,7 @@ const AckSchema = z.object({
 export interface ReceivedFile {
   id: string;
   name: string;
+  size: number;
   data: Blob;
 }
 
@@ -61,8 +63,10 @@ class PeerService {
   }
 
   private getConnectionByPeerId(peerId: string): DataConnection | undefined {
-    return usePeersStore.getState().targetPeers.find((p) => p.peerId === peerId)
-      ?.connection;
+    const peer = usePeersStore
+      .getState()
+      .targetPeers.find((p) => p.peerId === peerId);
+    return peer?.connection ?? undefined;
   }
 
   private generateMessageId(content: string): string {
@@ -75,9 +79,9 @@ class PeerService {
 
     const fileParsed = FileDataSchema.safeParse(data);
     if (fileParsed.success) {
-      const { fileId, name, content } = fileParsed.data;
+      const { fileId, name, content, size } = fileParsed.data;
       const blob = new Blob([content]);
-      const receivedFile: ReceivedFile = { id: fileId, name, data: blob };
+      const receivedFile: ReceivedFile = { id: fileId, name, data: blob, size };
       this.onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
       void conn?.send({ type: "ack", ackId: fileId });
       return;
@@ -139,9 +143,10 @@ class PeerService {
 
       const fileId = `${target.peerId}-${Date.now()}`;
       const payload = {
+        fileId,
         type: "file" as const,
         name: file.name,
-        fileId,
+        size: file.size,
         content: buffer,
       };
 
