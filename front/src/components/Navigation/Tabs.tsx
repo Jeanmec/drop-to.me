@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import FileTransfer from "@/components/Forms/FileTransfer";
 import Chat from "@/components/Forms/Chat";
 import { BackgroundBeams } from "@/components/Background/BackgroundBeams";
-import { ConcentricCirclesBackground } from "@/components/Background/BackgroundCircle";
+import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
 
 interface Tab {
   id: string;
@@ -22,7 +22,7 @@ const tabs: Tab[] = [
     text: "File",
     action: "set",
     content: <FileTransfer />,
-    background: <ConcentricCirclesBackground />,
+    background: <BackgroundCircle />,
   },
   {
     id: "chat",

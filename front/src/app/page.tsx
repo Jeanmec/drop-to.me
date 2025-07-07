@@ -10,9 +10,12 @@ import { PeerContext } from "@/contexts/PeerProvider";
 import FormsControl from "@/components/Forms/FormsControl";
 import Informations from "@/components/Informations/Informations";
 import BackgroundController from "@/components/Background/BackgroundController";
-import ActiveClients from "@/components/ActiveClients";
 import Statistics from "@/components/Statistic/Statistics";
 import Alone from "@/components/Clients/Alone";
+import BeamConnection from "@/components/BeamConnection";
+import ShineBorder from "@/components/ui/shine-border";
+import GlowingGrid from "@/components/LandingPage/GlowingGrid";
+import Sparkles from "@/components/ui/sparkles";
 
 export default function HomePage() {
   const { isLoading, startLoading, stopLoading } = useLoadingStore();
@@ -114,6 +117,16 @@ export default function HomePage() {
         {/* <ActiveClients /> */}
         <Statistics />
         <Informations />
+        {/* <GlowingGrid /> */}
+        {/* <Sparkles
+          density={80}
+          speed={1.2}
+          size={1.2}
+          direction="top"
+          opacitySpeed={2}
+          color="#32A7FF"
+          className="absolute inset-x-0 top-[100vh] bottom-0 h-72 w-full"
+        /> */}
       </div>
     </>
   );

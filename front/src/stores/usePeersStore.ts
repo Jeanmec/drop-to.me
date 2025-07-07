@@ -2,21 +2,21 @@
 import { create } from "zustand";
 import type { DataConnection, Peer } from "peerjs";
 import type {
-  TargetPeer,
-  TargetPeerState,
+  TTargetPeerState,
   GlobalPeersState,
+  TTargetPeer,
 } from "@/types/peer.t";
 
 interface PeersStore {
   selfPeer: Peer | null;
-  targetPeers: TargetPeer[];
+  targetPeers: TTargetPeer[];
   globalPeersState: GlobalPeersState;
   setGlobalPeersState: (state: GlobalPeersState) => void;
   setSelfPeer: (peer: Peer) => void;
-  addTargetPeer: (peer: { peerId: string; state?: TargetPeerState }) => void;
+  addTargetPeer: (peer: { peerId: string; state?: TTargetPeerState }) => void;
   removeTargetPeer: (peerId: string) => void;
   updateTargetConnection: (connection: DataConnection) => void;
-  updatePeerState: (peerId: string, stateValue: TargetPeerState) => void;
+  updatePeerState: (peerId: string, stateValue: TTargetPeerState) => void;
 }
 
 export const usePeersStore = create<PeersStore>((set) => ({

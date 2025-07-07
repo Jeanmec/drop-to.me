@@ -12,7 +12,7 @@ const request = axios.create({
 
 export const postRequest = async <T, R>(
   url: string,
-  data: T,
+  data?: T,
   schema?: ZodSchema,
 ): Promise<R> => {
   if (schema) {

@@ -2,6 +2,7 @@ import { peerService } from "@/services/peerService";
 import { useChatStore } from "@/stores/useChatStore";
 import { useState } from "react";
 import { LuSend } from "react-icons/lu";
+import { statService } from "@/services/statService";
 
 export default function MessageInput() {
   const [message, setMessage] = useState<string>("");
@@ -12,6 +13,8 @@ export default function MessageInput() {
     const trimmed = message.trim();
     if (trimmed) {
       await peerService.sendMessageToTargets(trimmed);
+
+      await statService.sendMessage();
       addMessage({
         received: false,
         content: trimmed,
@@ -39,7 +42,7 @@ export default function MessageInput() {
           onKeyDown={handleKeyDown}
           required
         />
-        <kbd className="kbd kbd-en">enter</kbd>
+        <kbd className="kbd kbd-en hidden md:flex">enter</kbd>
       </label>
       <button
         className="join-item hover:bg-primary-blue border-secondary-blue flex w-12 cursor-pointer items-center justify-center border-2 border-l-0 bg-black text-xl transition-all duration-200"

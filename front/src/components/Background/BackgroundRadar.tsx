@@ -47,6 +47,10 @@ export const Radar = ({ className }: { className: string }) => {
 type CircleProps = React.ComponentProps<typeof motion.div> & { idx: number };
 
 export const Circle = ({ idx, ...rest }: CircleProps) => {
+  const delay = process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION
+    ? Number(process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION) / 1000
+    : 3;
+
   return (
     <motion.div
       {...rest}
@@ -57,7 +61,7 @@ export const Circle = ({ idx, ...rest }: CircleProps) => {
         opacity: 1,
       }}
       transition={{
-        delay: idx * 0.1,
+        delay: delay + idx * 0.1,
         duration: 0.2,
       }}
       className="absolute inset-0 top-1/2 left-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 transform rounded-full border border-neutral-200"

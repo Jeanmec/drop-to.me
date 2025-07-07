@@ -10,6 +10,7 @@ import React, {
 import Peer, { type DataConnection } from "peerjs";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { peerService } from "@/services/peerService";
+import { notify } from "@/library/toastService";
 
 interface PeerProviderProps {
   children: ReactNode;
@@ -34,19 +35,21 @@ export function PeerProvider({ children }: PeerProviderProps) {
     const newPeer = new Peer();
 
     newPeer.on("open", (id) => {
-      console.log(
-        `[PeerProvider] Mon instance Peer est ouverte avec l'id : ${id}`,
-      );
       setSelfPeer(newPeer);
       setPeerInstance(newPeer);
     });
 
     newPeer.on("error", (err) => {
-      console.error("[PeerProvider] Erreur de l'instance Peer :", err);
-
-      if (err.type === "disconnected") {
+      if (err.type === "network") {
         setGlobalPeersState("disconnected");
-        window.location.reload();
+        notify.error("You have been disconnected. Try reloading the page.", {
+          autoClose: false,
+        });
+      } else if (err.type === "server-error") {
+        setGlobalPeersState("disconnected");
+        notify.error("Server error. Check your connection or try later.", {
+          autoClose: false,
+        });
       }
     });
 
@@ -58,7 +61,6 @@ export function PeerProvider({ children }: PeerProviderProps) {
   const setupConnectionListeners = useCallback(
     (conn: DataConnection) => {
       conn.on("open", () => {
-        console.log(`[PeerProvider] Connexion établie avec ${conn.peer}`);
         updateTargetConnection(conn);
       });
 
@@ -67,15 +69,10 @@ export function PeerProvider({ children }: PeerProviderProps) {
       });
 
       conn.on("close", () => {
-        console.log(`[PeerProvider] Connexion fermée avec ${conn.peer}`);
         removeTargetPeer(conn.peer);
       });
 
       conn.on("error", (err) => {
-        console.error(
-          `[PeerProvider] Erreur de connexion avec ${conn.peer}:`,
-          err,
-        );
         removeTargetPeer(conn.peer);
       });
     },
@@ -86,7 +83,6 @@ export function PeerProvider({ children }: PeerProviderProps) {
     if (!peerInstance) return;
 
     const handleIncomingConnection = (conn: DataConnection) => {
-      console.log(`[PeerProvider] Connexion entrante de : ${conn.peer}`);
       addTargetPeer({ peerId: conn.peer, state: "connecting" });
       setupConnectionListeners(conn);
     };
@@ -110,7 +106,6 @@ export function PeerProvider({ children }: PeerProviderProps) {
         return;
       }
 
-      console.log(`[PeerProvider] Tentative de connexion vers ${targetId}`);
       const newConn = peerInstance.connect(targetId);
 
       updatePeerState(targetId, "connecting");

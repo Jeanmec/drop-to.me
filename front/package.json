@@ -17,7 +17,10 @@
   },
   "dependencies": {
     "@midudev/tailwind-animations": "^0.2.0",
+    "@number-flow/react": "^0.5.10",
     "@t3-oss/env-nextjs": "^0.12.0",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.8.1",
     "clsx": "^2.1.1",
     "motion": "^12.17.0",
     "next": "^15.2.3",

@@ -56,7 +56,7 @@ export const BackgroundBeams = React.memo(() => {
     "M-37 -581C-37 -581 31 -176 495 -49C959 78 1027 483 1027 483",
   ];
   return (
-    <div className="animate-fade-in absolute inset-0 flex h-full w-full items-center justify-center [mask-size:40px] [mask-repeat:no-repeat] transition-all duration-1000">
+    <div className="animate-fade-in absolute inset-0 flex h-full w-full items-center justify-center bg-gradient-to-t from-black to-stone-800 [mask-size:40px] [mask-repeat:no-repeat] transition-all duration-1000">
       <svg
         className="pointer-events-none absolute z-0 h-full w-full"
         width="100%"
@@ -100,9 +100,9 @@ export const BackgroundBeams = React.memo(() => {
               }}
               transition={{
                 duration: Math.random() * 10 + 10,
-                ease: "easeInOut",
+                ease: "linear",
                 repeat: Infinity,
-                delay: Math.random() * 10,
+                delay: 0,
               }}
             >
               <stop stopColor="#18CCFC" stopOpacity="0"></stop>

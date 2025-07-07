@@ -6,6 +6,7 @@ import InputFile from "@/components/FileTransfer/InputFile";
 import ParticleLoader from "@/components/loaders/ParticleLoader";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { notify } from "@/library/toastService";
+import { statService } from "@/services/statService";
 
 export default function FileTransferPanel() {
   const [file, setFile] = useState<File | null>(null);
@@ -29,6 +30,7 @@ export default function FileTransferPanel() {
   const handleSend = async (file: File) => {
     if (file) {
       await peerService.sendFileToTargets(file);
+      await statService.sendFile(file.size);
     }
   };
 
@@ -58,7 +60,7 @@ export default function FileTransferPanel() {
       timeout = setTimeout(() => {
         setIsInTransfer(false);
       }, 2000);
-      // notify.success("File transfer completed successfully!");
+      notify.success("File transfer completed successfully");
     }
 
     return () => {
@@ -71,12 +73,12 @@ export default function FileTransferPanel() {
       <div className="animate-fade-in-right flex flex-1 flex-col items-center justify-start overflow-auto">
         <InputFile
           callback={handleFileSelection}
-          disabled={false}
+          disabled={isInTransfer ? true : false}
           icon={
             isInTransfer ? (
               <ParticleLoader />
             ) : (
-              <HiOutlineUpload className="text-4xl" />
+              <HiOutlineUpload className="animate-fade-in text-4xl" />
             )
           }
         ></InputFile>

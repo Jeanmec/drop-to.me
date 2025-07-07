@@ -20,22 +20,30 @@ const defaultOptions: ToastOptions = {
 
 type ToastType = "success" | "error" | "info" | "warning";
 
-const toastMessage = (type: ToastType, message: string) => {
+const toastMessage = (
+  type: ToastType,
+  message: string,
+  options?: ToastOptions,
+) => {
   toast(
     (props: ToastContentProps) => (
       <ToastCustomContainer {...props}>
         <ToastMessage message={message} type={type} />
       </ToastCustomContainer>
     ),
-    { ...defaultOptions },
+    { ...defaultOptions, ...options },
   );
 };
 
 const notify = {
-  success: (message: string) => toastMessage("success", message),
-  error: (message: string) => toastMessage("error", message),
-  info: (message: string) => toastMessage("info", message),
-  warning: (message: string) => toastMessage("warning", message),
+  success: (message: string, options: ToastOptions = {}) =>
+    toastMessage("success", message, options),
+  error: (message: string, options: ToastOptions = {}) =>
+    toastMessage("error", message, options),
+  info: (message: string, options: ToastOptions = {}) =>
+    toastMessage("info", message, options),
+  warning: (message: string, options: ToastOptions = {}) =>
+    toastMessage("warning", message, options),
 
   receivedFile: ({ fileUrl, fileName, fileSize }: ToastFileTransfer) =>
     toast(

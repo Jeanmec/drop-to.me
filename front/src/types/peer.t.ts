@@ -5,7 +5,7 @@ export interface SelfPeer {
   connection?: DataConnection;
 }
 
-export type TargetPeerState =
+export type TTargetPeerState =
   | "none"
   | "connecting"
   | "open"
@@ -13,10 +13,10 @@ export type TargetPeerState =
   | "sending"
   | "delivered";
 
-export interface TargetPeer {
+export type TTargetPeer = {
   peerId: string;
   connection?: DataConnection | null;
-  state: TargetPeerState;
-}
+  state: TTargetPeerState;
+};
 
 export type GlobalPeersState = "connected" | "disconnected";

@@ -2,25 +2,14 @@ import {
   WebSocketGateway,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  SubscribeMessage,
-  MessageBody,
-  ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { Injectable } from '@nestjs/common';
-
 import { StatsService } from '../stats/stats.service';
 import { RedisService } from 'src/redis/redis.service';
-
 import { getHashedIp } from 'src/utils/ip.utils';
+import { Inject, forwardRef } from '@nestjs/common';
 
-interface SignalData {
-  type: 'offer' | 'answer' | 'candidate';
-  sdp?: RTCSessionDescriptionInit;
-  candidate?: RTCIceCandidateInit;
-  room: string;
-  fileSize?: number;
-}
 @Injectable()
 @WebSocketGateway({
   cors: {
@@ -33,6 +22,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private redisService: RedisService,
+    @Inject(forwardRef(() => StatsService))
     private statsService: StatsService,
   ) {}
 
@@ -42,6 +32,8 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(socket: Socket) {
     console.log('Client connecté :', socket.id);
+
+    await this.statsService.addUser();
 
     const hashedIp = getHashedIp(socket.request);
     await socket.join(hashedIp);
@@ -57,18 +49,6 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('peer/send')
-  async handleSignal(
-    @MessageBody() data: SignalData,
-    @ConnectedSocket() socket: Socket,
-  ) {
-    console.log('Signal data received:', data);
-    // this.server.to(data.room).except(socket.id).emit('signal', data);
-
-    if (data.fileSize) {
-      await this.statsService.addTransfer(data.fileSize);
-    }
-  }
   sendClientLeave(room: string, peerId: string): void {
     this.server.to(room).emit('peer-left', peerId);
   }
@@ -84,5 +64,12 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: object | string | number | boolean,
   ): void {
     this.server.in(room).except(socketIdToSkip).emit(event, data);
+  }
+
+  sendSignalToAll(
+    event: string,
+    data: object | string | number | boolean,
+  ): void {
+    this.server.emit(event, data);
   }
 }
