@@ -1,13 +1,7 @@
 type ToastmessageType = "success" | "error" | "info" | "warning";
 
-import {
-  FaCheck,
-  FaExclamation,
-  FaInfo,
-  FaTriangleExclamation,
-} from "react-icons/fa6";
-
 import { cn } from "@/library/utils";
+import { Icon } from "../Icons/Icon";
 
 export default function ToastMessage({
   message,
@@ -30,13 +24,13 @@ export default function ToastMessage({
         )}
       >
         {type === "error" ? (
-          <FaExclamation />
+          <Icon.exclamation />
         ) : type === "success" ? (
-          <FaCheck />
+          <Icon.check />
         ) : type === "info" ? (
-          <FaInfo />
+          <Icon.information />
         ) : type === "warning" ? (
-          <FaTriangleExclamation />
+          <Icon.warning />
         ) : null}
       </div>
       <span className="text-white">{message}</span>

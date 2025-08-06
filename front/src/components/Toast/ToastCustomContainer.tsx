@@ -1,5 +1,5 @@
-import { IoIosClose } from "react-icons/io";
 import type { ToastContentProps } from "react-toastify";
+import { Icon } from "../Icons/Icon";
 
 interface ToastCustomContainerProps extends ToastContentProps {
   children: React.ReactNode;
@@ -17,7 +17,7 @@ export default function ToastCustomContainer({
           className="flex h-fit w-fit items-center justify-center"
           aria-label="Close notification"
         >
-          <IoIosClose className="text-primary-blue cursor-pointer rounded-full bg-stone-700" />
+          <Icon.close className="text-primary-blue cursor-pointer rounded-full bg-stone-700" />
         </button>
       </div>
       {children}

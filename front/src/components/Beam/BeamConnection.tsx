@@ -1,17 +1,15 @@
 "use client";
 
 import React, { useRef } from "react";
-import { AnimatedBeam, Circle } from "@/components/ui/animated-beam";
-import { FiUser } from "react-icons/fi";
+import AnimatedBeam, { Circle } from "@/components/ui/animated-beam";
 import useCSSVariable from "@/library/CSSVariable";
-import Connection from "./Icons/Connection";
-import ShineBorder from "./ui/shine-border";
+import { Icon } from "@/components/Icons/Icon";
 
 export default function BeamConnection() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const div1Ref = useRef<HTMLDivElement>(null);
-  const div2Ref = useRef<HTMLDivElement>(null);
-  const div3Ref = useRef<HTMLDivElement>(null);
+  const user1Ref = useRef<HTMLDivElement>(null);
+  const user2Ref = useRef<HTMLDivElement>(null);
+  const connectionRef = useRef<HTMLDivElement>(null);
 
   const primaryBlue = useCSSVariable("--color-primary-blue");
   const secondaryBlue = useCSSVariable("--color-secondary-blue");
@@ -23,41 +21,36 @@ export default function BeamConnection() {
     >
       <div className="flex h-full w-full flex-col items-stretch justify-between gap-10">
         <div className="flex flex-row justify-between">
-          <Circle ref={div1Ref}>
-            <FiUser />
+          <Circle ref={user1Ref}>
+            <Icon.user className="text-white" />
           </Circle>
           <Circle
             className="custom-blue-shadow text-secondary-blue p-2"
-            ref={div3Ref}
+            ref={connectionRef}
           >
-            <Connection />
+            <Icon.connect />
           </Circle>
-          <Circle className="p-2" ref={div2Ref}>
-            <FiUser />
+          <Circle className="p-2" ref={user2Ref}>
+            <Icon.user className="text-white" />
           </Circle>
         </div>
       </div>
 
       <AnimatedBeam
         containerRef={containerRef}
-        fromRef={div1Ref}
-        toRef={div3Ref}
+        fromRef={user1Ref}
+        toRef={connectionRef}
         gradientStartColor={primaryBlue}
         gradientStopColor={secondaryBlue}
-        duration={1.5}
-        delay={0}
         dotted
       />
       <AnimatedBeam
         containerRef={containerRef}
-        fromRef={div2Ref}
-        toRef={div3Ref}
+        fromRef={user2Ref}
+        toRef={connectionRef}
         gradientStartColor={primaryBlue}
         gradientStopColor={secondaryBlue}
-        duration={1.5}
-        delay={1}
         dotted
-        reverse
       />
     </div>
   );

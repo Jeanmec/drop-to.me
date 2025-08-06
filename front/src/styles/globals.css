@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@plugin "daisyui";
 @plugin "@midudev/tailwind-animations";
 @tailwind utilities;
 
@@ -14,20 +13,55 @@
   --color-description: #b0b0b0;
   --font-inter: "Inter", sans-serif;
   --font-poppins: "Poppins", sans-serif;
+  --font-plus-jakarta-sans: "Plus Jakarta Sans", sans-serif;
+}
+
+.animate-border {
+  animation: rotate-border 4s linear infinite;
+}
+
+@theme inline {
+  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s)
+    infinite;
+
+  @keyframes ripple {
+    0%,
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(0.9);
+    }
+  }
 }
 
 @layer utilities {
-  @keyframes radar-spin {
+  @property --border-angle {
+    syntax: "<angle>";
+    inherits: false;
+    initial-value: 0deg;
+  }
+
+  @keyframes rotate-border {
     from {
-      transform: rotate(20deg);
+      --border-angle: 0deg;
     }
     to {
-      transform: rotate(380deg);
+      --border-angle: 360deg;
+    }
+  }
+
+  @keyframes radar-spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(180deg);
     }
   }
 
   .animate-radar-spin {
-    animation: radar-spin 10s linear infinite;
+    animation: radar-spin 10s linear infinite alternate;
   }
 
   .custom-blue-shadow {
@@ -52,4 +86,17 @@ html {
   scroll-behavior: smooth;
   scroll-margin: 200px;
   background-color: black;
+}
+
+p,
+span {
+  @apply font-plus-jakarta-sans;
+}
+
+h1 {
+  @apply font-poppins text-7xl font-bold text-white;
+}
+
+h2 {
+  @apply font-poppins text-3xl font-semibold text-white md:text-5xl;
 }

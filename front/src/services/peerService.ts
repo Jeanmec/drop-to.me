@@ -1,4 +1,3 @@
-// src/services/peerService.ts
 import { z } from "zod";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -42,7 +41,6 @@ class PeerService {
     OnMessageReceivedCallback
   >();
 
-  // ackId => { peerId, timestamp }
   private pendingAcks = new Map<
     string,
     { peerId: string; timestamp: number }
@@ -96,7 +94,7 @@ class PeerService {
         timestamp: new Date(),
       };
       this.onMessageReceivedCallbacks.forEach((cb) => cb(receivedMessage));
-      void conn?.send({ type: "ack", ackId }); // Envoi de l'ack avec le même ackId reçu
+      void conn?.send({ type: "ack", ackId });
       useChatStore.getState().addMessage(receivedMessage);
       return;
     }
@@ -197,6 +195,7 @@ class PeerService {
           timestamp: Date.now(),
         });
         void conn.send(payload);
+        console.log(`[PeerService] Message envoyé à ${target.peerId}`);
       } catch (err) {
         console.error(
           `[PeerService] Erreur lors de l'envoi à ${target.peerId}`,

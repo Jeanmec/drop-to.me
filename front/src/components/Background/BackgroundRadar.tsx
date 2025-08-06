@@ -2,6 +2,7 @@
 import React from "react";
 import { twMerge } from "tailwind-merge";
 import { motion } from "framer-motion";
+import { useTabStore } from "@/stores/useTabStore";
 
 export default function RadarBackground() {
   return (
@@ -29,7 +30,7 @@ export const Radar = ({ className }: { className: string }) => {
       >
         <div className="via-primary-blue relative z-[1] h-[2px] w-full bg-gradient-to-r from-transparent to-transparent" />
       </div>
-      {circles.map((circle, idx) => (
+      {circles.map((_, idx) => (
         <Circle
           style={{
             height: `${(idx + 1) * 5}rem`,
@@ -47,24 +48,17 @@ export const Radar = ({ className }: { className: string }) => {
 type CircleProps = React.ComponentProps<typeof motion.div> & { idx: number };
 
 export const Circle = ({ idx, ...rest }: CircleProps) => {
-  const delay = process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION
-    ? Number(process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION) / 1000
-    : 3;
-
+  const delay = useTabStore((state) => state.delay);
   return (
     <motion.div
       {...rest}
-      initial={{
-        opacity: 0,
-      }}
-      animate={{
-        opacity: 1,
-      }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
       transition={{
         delay: delay + idx * 0.1,
         duration: 0.2,
       }}
       className="absolute inset-0 top-1/2 left-1/2 h-10 w-10 -translate-x-1/2 -translate-y-1/2 transform rounded-full border border-neutral-200"
-    ></motion.div>
+    />
   );
 };

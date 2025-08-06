@@ -1,8 +1,8 @@
 import { peerService } from "@/services/peerService";
 import { useChatStore } from "@/stores/useChatStore";
 import { useState } from "react";
-import { LuSend } from "react-icons/lu";
 import { statService } from "@/services/statService";
+import { Icon } from "@/components/Icons/Icon";
 
 export default function MessageInput() {
   const [message, setMessage] = useState<string>("");
@@ -32,23 +32,26 @@ export default function MessageInput() {
   };
 
   return (
-    <div className="join mt-2">
-      <label className="input join-item border-primary-blue h-12 border-2 border-r-0 bg-black p-2 text-lg focus:outline-none">
+    <div className="border-primary-blue flex h-12 w-full items-center gap-2 rounded-md border-2 pl-4 sm:w-10/12 md:w-8/12 lg:w-6/12">
+      <div className="relative flex flex-1">
         <input
           type="text"
+          className="w-full border-none focus:border-none focus:shadow-none focus:ring-0 focus:outline-none"
           placeholder="Your message here"
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           required
         />
-        <kbd className="kbd kbd-en hidden md:flex">enter</kbd>
-      </label>
+        <kbd className="kbd kbd-en pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 md:flex">
+          enter
+        </kbd>
+      </div>
       <button
-        className="join-item hover:bg-primary-blue border-secondary-blue flex w-12 cursor-pointer items-center justify-center border-2 border-l-0 bg-black text-xl transition-all duration-200"
+        className="hover:bg-primary-blue flex h-full w-12 cursor-pointer items-center justify-center text-xl transition-all duration-200"
         onClick={handleSendMessage}
       >
-        <LuSend />
+        <Icon.send />
       </button>
     </div>
   );

@@ -59,7 +59,9 @@ export function PeerProvider({ children }: PeerProviderProps) {
   }, [removeTargetPeer, setGlobalPeersState, setSelfPeer]);
 
   const setupConnectionListeners = useCallback(
-    (conn: DataConnection) => {
+    (conn?: DataConnection) => {
+      if (!conn) return;
+
       conn.on("open", () => {
         updateTargetConnection(conn);
       });
@@ -72,7 +74,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
         removeTargetPeer(conn.peer);
       });
 
-      conn.on("error", (err) => {
+      conn.on("error", () => {
         removeTargetPeer(conn.peer);
       });
     },
@@ -83,6 +85,8 @@ export function PeerProvider({ children }: PeerProviderProps) {
     if (!peerInstance) return;
 
     const handleIncomingConnection = (conn: DataConnection) => {
+      if (!conn) return;
+
       addTargetPeer({ peerId: conn.peer, state: "connecting" });
       setupConnectionListeners(conn);
     };
@@ -108,8 +112,12 @@ export function PeerProvider({ children }: PeerProviderProps) {
 
       const newConn = peerInstance.connect(targetId);
 
-      updatePeerState(targetId, "connecting");
+      if (!newConn) {
+        console.warn(`Connection to ${targetId} failed or returned undefined`);
+        return;
+      }
 
+      updatePeerState(targetId, "connecting");
       setupConnectionListeners(newConn);
     });
   }, [peerInstance, targetPeers, setupConnectionListeners, updatePeerState]);

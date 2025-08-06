@@ -13,9 +13,9 @@ interface ParticleLoaderProps {
   className?: string;
 }
 
-const ParticleLoader: React.FC<ParticleLoaderProps> = ({
+export default function ParticleLoader({
   className = "w-40 h-40",
-}) => {
+}: ParticleLoaderProps) {
   const [particles, setParticles] = useState<ParticleProps[]>([]);
   const particleCount = 50;
 
@@ -58,6 +58,4 @@ const ParticleLoader: React.FC<ParticleLoaderProps> = ({
       </svg>
     </div>
   );
-};
-
-export default ParticleLoader;
+}

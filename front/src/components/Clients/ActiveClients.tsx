@@ -2,9 +2,8 @@
 import { onSocket } from "@/services/socketService";
 import { useLoadingStore } from "@/stores/useLoadingStore";
 import { usePeersStore } from "@/stores/usePeersStore";
-import { FiUser } from "react-icons/fi";
 import UploadLoader from "@/components/loaders/UploadLoader";
-import Check from "@/components/Icons/Check";
+import { Icon } from "../Icons/Icon";
 
 export default function ActiveClients() {
   const { isLoading } = useLoadingStore();
@@ -36,9 +35,9 @@ export default function ActiveClients() {
                 {peer?.state === "sending" ? (
                   <UploadLoader className="text-4xl text-green-500" />
                 ) : peer?.state === "delivered" ? (
-                  <Check className="text-4xl text-green-500" />
+                  <Icon.check className="text-4xl text-green-500" />
                 ) : (
-                  <FiUser className="text-4xl text-gray-500" />
+                  <Icon.user className="text-4xl text-gray-500" />
                 )}
               </div>
             </div>

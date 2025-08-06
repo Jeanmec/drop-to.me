@@ -1,14 +1,15 @@
-// components/Statistics.tsx
-import { useEffect, useState, type ReactNode } from "react";
-import { FiDatabase, FiUser } from "react-icons/fi";
-import { TbMessages, TbArrowsTransferUpDown } from "react-icons/tb";
+"use client";
+
+import { useContext, useEffect, useState, type ReactNode } from "react";
 import { statService } from "@/services/statService";
 import type { TStatistics } from "@/types/statistics.t";
 import { onSocket } from "@/services/socketService";
 import { useSocket } from "@/contexts/SocketProvider";
+import { PeerContext } from "@/contexts/PeerProvider";
 import NumberFlow from "@number-flow/react";
+import { Icon } from "../Icons/Icon";
 
-interface StatisticProps {
+interface StatisticItemProps {
   icon: ReactNode;
   title: string;
   value: number;
@@ -22,17 +23,21 @@ const DEFAULT_STATISTICS: TStatistics = {
   messagesSent: 0,
 };
 
-function Statistic({ icon, title, value, suffix }: StatisticProps) {
+function StatisticItem({ icon, title, value, suffix }: StatisticItemProps) {
   return (
-    <div className="stat">
-      <div className="stat-figure text-secondary-blue text-3xl">{icon}</div>
-      <div className="stat-title">{title}</div>
-      <div className="stat-value w-24">
-        <NumberFlow
-          spinTiming={{ duration: 750 }}
-          value={value}
-          suffix={suffix}
-        />
+    <div className="flex flex-col items-center justify-center gap-4 p-4 sm:flex-row">
+      <div className="[&>svg]:text-primary-blue text-3xl">{icon}</div>
+      <div className="flex flex-col items-center sm:items-start">
+        <span className="text-sm text-slate-500 dark:text-slate-400">
+          {title}
+        </span>
+        <div className="font-plus-jakarta-sans w-24 text-center text-3xl font-bold text-white sm:text-left">
+          <NumberFlow
+            spinTiming={{ duration: 750 }}
+            value={value}
+            suffix={suffix}
+          />
+        </div>
       </div>
     </div>
   );
@@ -41,14 +46,21 @@ function Statistic({ icon, title, value, suffix }: StatisticProps) {
 export default function Statistics() {
   const [statistics, setStatistics] = useState<TStatistics>(DEFAULT_STATISTICS);
   const { socket } = useSocket();
+  const peerInstance = useContext(PeerContext);
 
   useEffect(() => {
+    if (!peerInstance?.id) return;
+
     const fetchStatistics = async () => {
-      const data = await statService.getStatistics();
-      setStatistics(data);
+      try {
+        const data = await statService.getStatistics();
+        setStatistics(data);
+      } catch (error) {
+        console.error("Failed to fetch statistics:", error);
+      }
     };
     void fetchStatistics();
-  }, []);
+  }, [peerInstance?.id]);
 
   useEffect(() => {
     if (!socket) return;
@@ -77,26 +89,38 @@ export default function Statistics() {
     statistics.sizeTransferred,
   );
 
+  const statsData: StatisticItemProps[] = [
+    {
+      icon: <Icon.database />,
+      title: "Data Transferred",
+      value: sizeValue,
+      suffix: sizeSuffix,
+    },
+    { icon: <Icon.user />, title: "Users", value: statistics.users },
+    {
+      icon: <Icon.message />,
+      title: "Messages Sent",
+      value: statistics.messagesSent,
+    },
+    {
+      icon: <Icon.exchange />,
+      title: "Files Transferred",
+      value: statistics.totalTransfers,
+    },
+  ];
+
   return (
-    <div className="flex w-full justify-center py-5">
-      <div className="stats stats-vertical sm:stats-horizontal shadow">
-        <Statistic
-          icon={<FiDatabase />}
-          title="Data Files"
-          value={sizeValue}
-          suffix={sizeSuffix}
-        />
-        <Statistic icon={<FiUser />} title="Users" value={statistics.users} />
-        <Statistic
-          icon={<TbMessages />}
-          title="Messages Sent"
-          value={statistics.messagesSent}
-        />
-        <Statistic
-          icon={<TbArrowsTransferUpDown />}
-          title="Files Transferred"
-          value={statistics.totalTransfers}
-        />
+    <div className="w-full px-4 py-5">
+      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-y-0 lg:divide-dashed lg:divide-slate-400">
+        {statsData.map((stat) => (
+          <StatisticItem
+            key={stat.title}
+            icon={stat.icon}
+            title={stat.title}
+            value={stat.value}
+            suffix={stat.suffix}
+          />
+        ))}
       </div>
     </div>
   );

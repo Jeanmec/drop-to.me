@@ -1,4 +1,3 @@
-// src/stores/usePeersStore.ts
 import { create } from "zustand";
 import type { DataConnection, Peer } from "peerjs";
 import type {

@@ -1,11 +1,10 @@
-export default function Check(props) {
+export default function IconCheck() {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       width="1em"
       height="1em"
       viewBox="0 0 24 24"
-      {...props}
     >
       {/* Icon from Material Line Icons by Vjacheslav Trushkin - https://github.com/cyberalien/line-md/blob/master/license.txt */}
       <path

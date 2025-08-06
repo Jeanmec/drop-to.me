@@ -3,8 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import useCSSVariable from "@/library/CSSVariable";
+import { useDragFileStore } from "@/stores/useDragFileStore";
+import { cn } from "@/library/utils";
+import { useLoadingDelay } from "@/hooks/useLoadingDelay";
 
 export const BackgroundCircle = () => {
+  const { isDragFileActive } = useDragFileStore();
   const spacing = 70;
   const radii = Array.from({ length: 20 }, (_, i) => (i + 1) * spacing);
 
@@ -12,32 +16,27 @@ export const BackgroundCircle = () => {
     width: number;
     height: number;
   } | null>(null);
-
   const [mouse, setMouse] = useState<{ x: number; y: number }>({
     x: -9999,
     y: -9999,
   });
 
   const primaryBlue = useCSSVariable("--color-primary-blue");
+  const ready = useLoadingDelay();
 
   useEffect(() => {
     const updateSize = () => {
-      setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      });
+      setDimensions({ width: window.innerWidth, height: window.innerHeight });
     };
 
     updateSize();
     window.addEventListener("resize", updateSize);
-    window.addEventListener("mousemove", handleMouseMove);
 
-    function handleMouseMove(e: MouseEvent) {
-      setMouse({
-        x: e.clientX,
-        y: e.clientY,
-      });
-    }
+    const handleMouseMove = (e: MouseEvent) => {
+      setMouse({ x: e.clientX, y: e.clientY });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       window.removeEventListener("resize", updateSize);
@@ -45,15 +44,11 @@ export const BackgroundCircle = () => {
     };
   }, []);
 
-  if (!dimensions) return null;
+  if (!dimensions || !ready) return null;
 
   const { width, height } = dimensions;
   const centerX = width / 2;
   const centerY = height * 0.675;
-
-  const delay = process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION
-    ? Number(process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION) / 1000
-    : 3;
 
   let activeIndex = -1;
   const dx = mouse.x - centerX;
@@ -61,14 +56,22 @@ export const BackgroundCircle = () => {
   const distance = Math.sqrt(dx * dx + dy * dy);
 
   radii.forEach((r, idx) => {
-    const prevR: number = idx === 0 ? 0 : (radii[idx - 1] ?? 0);
+    const prevR = idx === 0 ? 0 : (radii[idx - 1] ?? 0);
     if (distance <= r && distance >= prevR) {
       activeIndex = idx;
     }
   });
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-t from-black to-stone-800">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className={cn(
+        "pointer-events-none absolute inset-0 z-0 overflow-hidden bg-gradient-to-t from-black to-stone-800",
+        isDragFileActive && "blur-xs",
+      )}
+    >
       <svg
         className="h-full w-full"
         viewBox={`0 0 ${width} ${height}`}
@@ -98,18 +101,12 @@ export const BackgroundCircle = () => {
                 cx={centerX}
                 cy={centerY}
                 r={r}
-                initial={{
-                  opacity: 0,
-                  stroke: "rgba(255,255,255,0.2)",
-                }}
-                animate={{
-                  opacity: 1,
-                  stroke: strokeColor,
-                }}
+                initial={{ opacity: 0, stroke: "rgba(255,255,255,0.2)" }}
+                animate={{ opacity: 1, stroke: strokeColor }}
                 transition={{
                   stroke: { duration: 0.5 },
                   opacity: {
-                    delay: delay + idx * 0.1,
+                    delay: idx * 0.05,
                     duration: 0.1,
                   },
                 }}
@@ -128,6 +125,6 @@ export const BackgroundCircle = () => {
             "linear-gradient(to top, black 0%, transparent 100%)",
         }}
       />
-    </div>
+    </motion.div>
   );
 };

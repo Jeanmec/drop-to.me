@@ -44,21 +44,21 @@ export default function Messages() {
   return (
     <div
       ref={chatContainerRef}
-      className="flex h-auto w-full flex-1 flex-col justify-start space-y-2 overflow-y-auto px-4"
+      className="flex h-auto w-full flex-1 flex-col justify-start gap-2 overflow-y-auto px-4"
     >
       {(messages ?? []).map((msg, index) => (
         <div
           key={index}
-          className={`chat ${msg.received ? "chat-start" : "chat-end"}`}
+          className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
         >
-          <div className="chat-header">
+          <div className="">
             <time className="text-xs opacity-50">
               {msg.timestamp.toLocaleTimeString()}
             </time>
           </div>
           <div
             onClick={() => copyToClipboard(msg.content)}
-            className={`chat-bubble animate-bounce-fade-in cursor-pointer rounded-lg ${
+            className={`animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${
               msg.received ? "bg-primary-blue" : "bg-secondary-blue"
             } `}
           >
