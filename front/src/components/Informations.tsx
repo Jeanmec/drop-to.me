@@ -1,7 +1,7 @@
 import Accordion from "@/components/ui/Accordion";
 import GlowingGrid from "./LandingPage/GlowingGrid";
 
-const Informations = () => {
+export default function Informations() {
   const accordionItems = [
     {
       value: "what-is-it",
@@ -61,6 +61,4 @@ const Informations = () => {
       </div>
     </div>
   );
-};
-
-export default Informations;
+}
