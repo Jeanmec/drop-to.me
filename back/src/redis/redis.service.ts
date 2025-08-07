@@ -6,10 +6,13 @@ export class RedisService implements OnModuleInit {
   private redis: Redis;
 
   onModuleInit() {
-    this.redis = new Redis({
-      host: process.env.REDIS_HOST || 'redis',
-      port: Number(process.env.REDIS_PORT) || 6379,
-    });
+    const redisUrl = process.env.REDIS_URL;
+
+    if (!redisUrl) {
+      throw new Error('REDIS_URL is not defined in environment variables');
+    }
+
+    this.redis = new Redis(redisUrl);
   }
 
   async addPeer(
