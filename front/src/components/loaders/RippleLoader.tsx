@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { motion, easeInOut } from "framer-motion";
 
 export default function RippleLoader() {
   const rippleVariants = {
@@ -14,7 +14,7 @@ export default function RippleLoader() {
 
   const rippleTransition = {
     duration: 2,
-    ease: "easeInOut",
+    ease: easeInOut,
     repeat: Infinity,
     repeatDelay: 1,
   };

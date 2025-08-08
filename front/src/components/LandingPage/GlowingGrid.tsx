@@ -99,7 +99,7 @@ const items = {
   openSource: (
     <a href={process.env.NEXT_PUBLIC_GITHUB_URL} target="_blank">
       <div className="absolute top-0 right-0 z-[1]">
-        <Icon.github className="text-[200px] text-slate-800 opacity-50 drop-shadow-2xl transition-all duration-1000 group-hover:opacity-10 md:opacity-0" />
+        <Icon.github className="text-[200px] text-red-800 opacity-100 drop-shadow-2xl transition-all duration-1000 group-hover:opacity-10 md:opacity-0" />
       </div>
       <p className="text-description z-[2] text-center text-base">
         A complete open-source project
@@ -108,7 +108,6 @@ const items = {
         density={80}
         speed={1.2}
         size={1.2}
-        direction="top"
         opacitySpeed={2}
         color="#32A7FF"
         className="absolute inset-x-0 bottom-0 h-full w-full opacity-0 transition-all duration-1000 md:group-hover:opacity-100"

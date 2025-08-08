@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react"; // Importer useRef
+import { useEffect, useState, useRef } from "react";
 import { peerService } from "@/services/peerService";
 import { statService } from "@/services/statService";
 import { notify } from "@/library/toastService";
@@ -12,7 +12,7 @@ import { useDragFileStore } from "@/stores/useDragFileStore";
 import { Icon } from "../../Icons/Icon";
 
 export default function FileTransferPanel() {
-  const [file, setFile] = useState<File | null>(null);
+  // const [file, setFile] = useState<File | null>(null);
   const { targetPeers } = usePeersStore();
   const [isInTransfer, setIsInTransfer] = useState(false);
   const transferStartTime = useRef<number | null>(null);
@@ -24,12 +24,12 @@ export default function FileTransferPanel() {
     try {
       if (file) {
         console.log(file);
-        setFile(file);
+        // setFile(file);
         transferStartTime.current = Date.now();
         setIsInTransfer(true);
         await handleSend(file);
       } else {
-        setFile(null);
+        // setFile(null);
       }
     } catch (error) {
       console.error("Error sending file:", error);

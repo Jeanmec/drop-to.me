@@ -28,10 +28,18 @@ export default function Accordion({
 }: AccordionProps) {
   const [activeValues, setActiveValues] = useState<string[]>(() => {
     if (!defaultValue) return [];
+
     if (multiple) {
-      return Array.isArray(defaultValue) ? defaultValue : [defaultValue];
+      return Array.isArray(defaultValue)
+        ? defaultValue.filter((v): v is string => typeof v === "string")
+        : [defaultValue];
     }
-    return [Array.isArray(defaultValue) ? defaultValue[0] : defaultValue];
+
+    return Array.isArray(defaultValue)
+      ? defaultValue[0]
+        ? [defaultValue[0]]
+        : []
+      : [defaultValue];
   });
 
   const handleToggle = (value: string) => {

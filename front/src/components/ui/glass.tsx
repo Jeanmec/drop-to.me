@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import React, { useEffect, useRef, useState, useId } from "react";
 
 export interface GlassSurfaceProps {
@@ -95,7 +94,7 @@ export default function GlassSurface({
 
   const isDarkMode = useDarkMode();
 
-  const generateDisplacementMap = () => {
+  const generateDisplacementMap = (): string => {
     const rect = containerRef.current?.getBoundingClientRect();
     const actualWidth = rect?.width ?? 400;
     const actualHeight = rect?.height ?? 200;
@@ -120,11 +119,7 @@ export default function GlassSurface({
       </svg>
     `;
 
-    return (
-      <motion.div>
-        {`data:image/svg+xml,${encodeURIComponent(svgContent)}`}
-      </motion.div>
-    );
+    return `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
   };
 
   const updateDisplacementMap = () => {
@@ -149,6 +144,7 @@ export default function GlassSurface({
     });
 
     gaussianBlurRef.current?.setAttribute("stdDeviation", displace.toString());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     width,
     height,
@@ -193,10 +189,13 @@ export default function GlassSurface({
     return () => {
       resizeObserver.disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     setTimeout(updateDisplacementMap, 0);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [width, height]);
 
   const supportsSVGFilters = () => {

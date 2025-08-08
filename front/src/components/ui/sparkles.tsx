@@ -2,6 +2,8 @@
 
 import { useEffect, useId, useState } from "react";
 import Particles, { initParticlesEngine } from "@tsparticles/react";
+import { CollisionMode, MoveDirection } from "@tsparticles/engine";
+
 import { loadSlim } from "@tsparticles/slim";
 
 interface SparklesProps {
@@ -12,14 +14,13 @@ interface SparklesProps {
   speed?: number;
   minSpeed?: number | null;
   opacity?: number;
-  direction?: string;
+  direction?: MoveDirection.top;
   opacitySpeed?: number;
   minOpacity?: number | null;
   color?: string;
   mousemove?: boolean;
   hover?: boolean;
   background?: string;
-  options?: Record<string, unknown>; // Adjust type as needed based on `options` structure
 }
 
 export default function Sparkles({
@@ -30,14 +31,13 @@ export default function Sparkles({
   speed = 1.5,
   minSpeed = null,
   opacity = 1,
-  direction = "",
+  direction = MoveDirection.top,
   opacitySpeed = 3,
   minOpacity = null,
   color = "#ffffff",
   mousemove = false,
   hover = false,
   background = "transparent",
-  options = {},
 }: SparklesProps) {
   const [isReady, setIsReady] = useState(false);
 
@@ -81,7 +81,9 @@ export default function Sparkles({
             smooth: 10,
           },
         },
-        resize: true,
+        resize: {
+          enable: true,
+        },
       },
       modes: {
         push: {
@@ -120,7 +122,7 @@ export default function Sparkles({
         },
         enable: false,
         maxSpeed: 50,
-        mode: "bounce",
+        mode: CollisionMode.bounce,
         overlap: {
           enable: true,
           retries: 0,
@@ -151,12 +153,7 @@ export default function Sparkles({
   };
   return (
     isReady && (
-      <Particles
-        id={id}
-        // @ts-nocheck
-        options={defaultOptions}
-        className={className}
-      />
+      <Particles id={id} options={defaultOptions} className={className} />
     )
   );
 }

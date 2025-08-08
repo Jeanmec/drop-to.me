@@ -2,7 +2,6 @@
 import { onSocket } from "@/services/socketService";
 import { useLoadingStore } from "@/stores/useLoadingStore";
 import { usePeersStore } from "@/stores/usePeersStore";
-import UploadLoader from "@/components/loaders/UploadLoader";
 import { Icon } from "../Icons/Icon";
 
 export default function ActiveClients() {
@@ -33,7 +32,7 @@ export default function ActiveClients() {
             >
               <div className="rounded-full bg-green-950 p-4">
                 {peer?.state === "sending" ? (
-                  <UploadLoader className="text-4xl text-green-500" />
+                  <Icon.upload className="text-4xl text-green-500" />
                 ) : peer?.state === "delivered" ? (
                   <Icon.check className="text-4xl text-green-500" />
                 ) : (

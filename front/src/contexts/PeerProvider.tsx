@@ -34,7 +34,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
   useEffect(() => {
     const newPeer = new Peer();
 
-    newPeer.on("open", (id) => {
+    newPeer.on("open", () => {
       setSelfPeer(newPeer);
       setPeerInstance(newPeer);
     });

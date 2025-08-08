@@ -80,7 +80,7 @@ export default function Dock({ items }: DockProps) {
           />
 
           <div className="absolute top-1/2 left-0 z-10 flex h-8/12 w-full -translate-y-1/2 items-center justify-evenly gap-8 sm:px-8 md:px-16">
-            {items.map((item, index) => (
+            {items.map((item) => (
               <div
                 key={item.id}
                 className={cn(

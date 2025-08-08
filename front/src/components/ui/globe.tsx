@@ -20,7 +20,9 @@ const GLOBE_CONFIG: COBEOptions = {
   markerColor: [251 / 255, 100 / 255, 21 / 255],
   glowColor: [0, 0, 0],
   markers: [],
-  onRender: () => {},
+  onRender: () => {
+    // No-op: required to satisfy COBEOptions, intentionally left blank
+  },
 };
 
 export function Globe({

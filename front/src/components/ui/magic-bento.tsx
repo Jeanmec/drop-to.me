@@ -122,7 +122,7 @@ const InternalBentoCard: React.FC<{
   const magnetismAnimationRef = useRef<gsap.core.Tween | null>(null);
 
   const initializeParticles = useCallback(() => {
-    if (!enableParticles ?? particlesInitialized.current ?? !cardRef.current)
+    if (!enableParticles || particlesInitialized.current || !cardRef.current)
       return;
 
     const { width, height } = cardRef.current.getBoundingClientRect();
@@ -396,7 +396,7 @@ const GlobalSpotlight: React.FC<{
   const spotlightRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (disableAnimations ?? !gridRef.current ?? !enabled) return;
+    if (disableAnimations || !gridRef.current || !enabled) return;
 
     const spotlight = document.createElement("div");
     spotlight.className = "global-spotlight";
@@ -548,8 +548,12 @@ export const BentoCard: React.FC<BentoCardProps> = ({
     </div>
   );
 };
+interface BentoChildProps {
+  className?: string;
+  textAutoHide?: boolean;
+}
 
-export default function MagicBento({
+const MagicBento: React.FC<MagicBentoProps> = ({
   children,
   textAutoHide = true,
   enableStars = true,
@@ -562,14 +566,14 @@ export default function MagicBento({
   glowColor = DEFAULT_GLOW_COLOR,
   clickEffect = true,
   enableMagnetism = true,
-}: MagicBentoProps) {
+}) => {
   const gridRef = useRef<HTMLDivElement>(null);
   const isMobile = useMobileDetection();
   const shouldDisableAnimations = disableAnimations ?? isMobile;
   const primaryBlue = hexToRgb(useCSSVariable("--color-primary-blue"));
 
   const wrappedChildren = React.Children.map(children, (child) => {
-    if (React.isValidElement(child)) {
+    if (React.isValidElement<BentoChildProps>(child)) {
       const childProps = child.props as {
         className?: string;
         style?: React.CSSProperties;
@@ -581,8 +585,8 @@ export default function MagicBento({
 
       return (
         <InternalBentoCard
-          key={child.key ?? Math.random().toString(36).substring(7)}
-          className={customClassName}
+          key={child.key ?? Math.random().toString(36).substring(7)} // Assurez-vous d'avoir une clé unique
+          className={customClassName} // La className (md:col-span-*) est appliquée ici
           style={customStyle}
           disableAnimations={shouldDisableAnimations}
           particleCount={particleCount}
@@ -615,6 +619,8 @@ export default function MagicBento({
             --white: hsl(0, 0%, 100%);
           }
 
+          /* Supprimez les règles CSS de nth-child car les classes Tailwind gèrent la disposition */
+          /*
           @media (min-width: 1024px) {
             .card-responsive {
               grid-template-columns: repeat(4, 1fr);
@@ -728,4 +734,6 @@ export default function MagicBento({
       </div>
     </>
   );
-}
+};
+
+export default MagicBento;
