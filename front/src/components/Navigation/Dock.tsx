@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { cn } from "@/library/utils";
-import GlassSurface from "@/components/ui/glass";
+import GlassSurface from "@/components/ui/Glass";
 import React from "react";
 
 export type DockItemData = {

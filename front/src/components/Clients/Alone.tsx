@@ -15,10 +15,10 @@ export default function Alone() {
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4">
-      <span className="flex justify-center gap-2 bg-gradient-to-t from-zinc-700 via-white to-white bg-clip-text text-5xl font-bold text-transparent">
+      <span className="flex justify-center gap-2 bg-gradient-to-t from-zinc-700 via-white to-white bg-clip-text text-center text-5xl font-bold text-transparent">
         Your alone
       </span>
-      <span className="text-description">
+      <span className="text-description text-center">
         Waiting for someone to join your network
       </span>
       {ip && (

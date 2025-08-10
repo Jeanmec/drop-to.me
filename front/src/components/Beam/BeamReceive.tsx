@@ -2,7 +2,7 @@
 
 import React, { useRef } from "react";
 
-import AnimatedBeam, { Circle } from "@/components/ui/animated-beam";
+import AnimatedBeam, { Circle } from "@/components/ui/AnimatedBeam";
 import { Icon } from "@/components/Icons/Icon";
 
 export default function BeamReceive() {

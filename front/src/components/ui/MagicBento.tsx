@@ -10,7 +10,6 @@ export interface BentoCardProps {
 
 export interface MagicBentoProps {
   children: React.ReactNode;
-  textAutoHide?: boolean;
   enableStars?: boolean;
   enableSpotlight?: boolean;
   enableBorderGlow?: boolean;
@@ -550,12 +549,10 @@ export const BentoCard: React.FC<BentoCardProps> = ({
 };
 interface BentoChildProps {
   className?: string;
-  textAutoHide?: boolean;
 }
 
 const MagicBento: React.FC<MagicBentoProps> = ({
   children,
-  textAutoHide = true,
   enableStars = true,
   enableSpotlight = true,
   enableBorderGlow = true,
@@ -577,11 +574,9 @@ const MagicBento: React.FC<MagicBentoProps> = ({
       const childProps = child.props as {
         className?: string;
         style?: React.CSSProperties;
-        textAutoHide?: boolean;
       };
       const customClassName = childProps.className ?? "";
       const customStyle = childProps.style ?? {};
-      const childTextAutoHide = childProps.textAutoHide ?? textAutoHide;
 
       return (
         <InternalBentoCard
@@ -597,7 +592,7 @@ const MagicBento: React.FC<MagicBentoProps> = ({
           enableBorderGlow={enableBorderGlow}
           enableParticles={enableStars}
         >
-          {React.cloneElement(child, { textAutoHide: childTextAutoHide })}
+          {React.cloneElement(child)}
         </InternalBentoCard>
       );
     }

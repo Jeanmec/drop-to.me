@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useRef } from "react";
-import AnimatedBeam, { Circle } from "@/components/ui/animated-beam";
+import AnimatedBeam, { Circle } from "@/components/ui/AnimatedBeam";
 import useCSSVariable from "@/library/CSSVariable";
 import { Icon } from "@/components/Icons/Icon";
 

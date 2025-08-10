@@ -10,7 +10,7 @@ export default function LoadingPage() {
 
   return (
     <div
-      className="animate-fade-out fixed inset-0 z-10 flex items-center justify-center overflow-hidden bg-black text-9xl"
+      className="animate-fade-out fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black text-9xl"
       style={{
         animationDelay: `${process.env.NEXT_PUBLIC_LOADING_SCREEN_DURATION}ms`,
         animationDuration: "500ms",

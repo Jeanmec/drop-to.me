@@ -65,7 +65,7 @@ export default function Accordion({
             data-active={isActive || undefined}
             className={cn(
               "overflow-hidden rounded-lg border-2 transition-colors",
-              isActive ? "bg-gray-800" : "",
+              isActive ? "bg-slate-800" : "",
               itemClassName,
             )}
           >
@@ -75,7 +75,7 @@ export default function Accordion({
               onClick={() => handleToggle(item.value)}
               className={cn(
                 "group flex cursor-pointer items-center justify-between p-4 font-semibold text-white transition-colors",
-                isActive ? "bg-gray-800" : "bg-gray-900",
+                isActive ? "bg-slate-800" : "bg-slate-900",
               )}
             >
               <h3>{item.title}</h3>
@@ -96,7 +96,7 @@ export default function Accordion({
                   transition={{ type: "spring", duration: 0.4, bounce: 0 }}
                   className="overflow-hidden"
                 >
-                  <p className="text-description p-4">{item.content}</p>
+                  <div className="text-description p-4">{item.content}</div>
                 </motion.div>
               )}
             </AnimatePresence>

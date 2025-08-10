@@ -19,7 +19,7 @@ export const Circle = forwardRef<HTMLDivElement, CircleProps>(
       <div
         ref={ref}
         className={cn(
-          "z-10 flex h-12 w-12 items-center justify-center rounded-full border-0 bg-slate-800 p-3 text-2xl shadow-[0_0_20px_-12px_rgba(0,0,0,0.8)]",
+          "z-[2] flex h-12 w-12 items-center justify-center rounded-full border-0 bg-slate-800 p-3 text-2xl shadow-[0_0_20px_-12px_rgba(0,0,0,0.8)]",
           className,
         )}
       >

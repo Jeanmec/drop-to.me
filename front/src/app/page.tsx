@@ -99,7 +99,7 @@ export default function HomePage() {
   return (
     <>
       <BackgroundController />
-      <main className="relative flex min-h-screen flex-col items-center pt-12 pb-24 text-white">
+      <main className="relative flex min-h-screen flex-col items-center px-4 pt-12 pb-24 text-white">
         <Hero />
         {isLoading || globalPeersState === "disconnected" ? (
           <Alone />
