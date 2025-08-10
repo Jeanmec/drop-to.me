@@ -94,7 +94,7 @@ span {
 }
 
 h1 {
-  @apply font-poppins text-7xl font-bold text-white;
+  @apply font-poppins text-6xl font-bold text-white sm:text-7xl;
 }
 
 h2 {

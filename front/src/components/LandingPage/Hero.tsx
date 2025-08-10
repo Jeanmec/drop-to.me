@@ -5,7 +5,9 @@ export default function Hero() {
         <h1 className="mb-4 p-2 backdrop-blur-xs">
           {process.env.NEXT_PUBLIC_WEBSITE_NAME}
         </h1>
-        <p className="mb-8 text-lg">Transfer files and messages anonymously</p>
+        <p className="text-description mb-8 text-lg">
+          Transfer files and messages anonymously
+        </p>
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import AnimatedBeam, { Circle } from "@/components/ui/animated-beam";
 
 import { Icon } from "@/components/Icons/Icon";
 import AnimatedBorder from "../ui/animated-border";
+import { cn } from "@/library/utils";
 export default function BeamTransfer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLDivElement>(null);
@@ -40,11 +41,20 @@ export default function BeamTransfer() {
             <Icon.user />
           </Circle>
         </div>
-        <AnimatedBorder className="flex w-full items-center justify-center rounded-2xl p-6">
+        <AnimatedBorder className="flex w-full items-center justify-center rounded-2xl px-2 py-6 sm:px-4 md:px-6">
           <div ref={usersRef} className="w-full">
-            <div className="flex w-full justify-center -space-x-4">
-              {Array.from({ length: 10 }).map((_, idx) => (
-                <UserAvatar key={idx} />
+            <div className="-ml-2 flex w-full justify-center -space-x-4 md:ml-0">
+              {Array.from({ length: 9 }).map((_, idx) => (
+                <UserAvatar
+                  key={idx}
+                  className={
+                    idx >= 5
+                      ? idx < 8
+                        ? "hidden sm:flex"
+                        : "hidden md:flex"
+                      : "flex"
+                  }
+                />
               ))}
             </div>
           </div>
@@ -56,7 +66,6 @@ export default function BeamTransfer() {
         fromRef={imageRef}
         toRef={userRef}
         curvature={-180}
-        // endXOffset={-30}
         gradientStartColor="#004cff"
         gradientStopColor="#119cff"
         dotted
@@ -79,7 +88,6 @@ export default function BeamTransfer() {
         gradientStartColor="#ff9900"
         gradientStopColor="#ff0000"
         curvature={-200}
-        // endYOffset={-30}
       />
       <AnimatedBeam
         className="hidden sm:block"
@@ -105,10 +113,13 @@ export default function BeamTransfer() {
   );
 }
 
-const UserAvatar = () => {
+const UserAvatar = ({ className }: { className?: string }) => {
   return (
-    <div className="-ml-2- border-primary-blue flex h-12 w-12 items-center justify-center rounded-full border-2 bg-black">
-      <Icon.user />
-    </div>
+    <Icon.user
+      className={cn(
+        "-ml-2- border-primary-blue flex h-10 w-10 items-center justify-center rounded-full border-2 bg-black p-2 text-sm",
+        className,
+      )}
+    />
   );
 };

@@ -69,17 +69,16 @@ export default function Accordion({
               itemClassName,
             )}
           >
-            {/* Header */}
             <motion.div
               aria-expanded={isActive}
               role="button"
               onClick={() => handleToggle(item.value)}
               className={cn(
-                "group flex cursor-pointer items-center justify-between p-4 font-semibold text-black transition-colors dark:text-white",
+                "group flex cursor-pointer items-center justify-between p-4 font-semibold text-white transition-colors",
                 isActive ? "bg-gray-800" : "bg-gray-900",
               )}
             >
-              {item.title}
+              <h3>{item.title}</h3>
               <Icon.chevronDown
                 className={cn(
                   "ml-2 shrink-0 transition-transform duration-300",
@@ -88,7 +87,6 @@ export default function Accordion({
               />
             </motion.div>
 
-            {/* Panel */}
             <AnimatePresence initial={false}>
               {isActive && (
                 <motion.div
@@ -98,7 +96,7 @@ export default function Accordion({
                   transition={{ type: "spring", duration: 0.4, bounce: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="text-description p-4">{item.content}</div>
+                  <p className="text-description p-4">{item.content}</p>
                 </motion.div>
               )}
             </AnimatePresence>
