@@ -580,8 +580,8 @@ const MagicBento: React.FC<MagicBentoProps> = ({
 
       return (
         <InternalBentoCard
-          key={child.key ?? Math.random().toString(36).substring(7)} // Assurez-vous d'avoir une clé unique
-          className={customClassName} // La className (md:col-span-*) est appliquée ici
+          key={child.key ?? Math.random().toString(36).substring(7)}
+          className={customClassName}
           style={customStyle}
           disableAnimations={shouldDisableAnimations}
           particleCount={particleCount}

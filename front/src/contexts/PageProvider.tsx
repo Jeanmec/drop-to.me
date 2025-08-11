@@ -3,13 +3,13 @@
 import { useEffect } from "react";
 import { useTabStore } from "@/stores/useTabStore";
 import { pages } from "@/config/pages";
-import { useLoadingDelay } from "@/hooks/useLoadingDelay"; // ⬅️ hook partagé
+import { useLoadingDelay } from "@/hooks/useLoadingDelay";
 
 export type PageId = keyof typeof pages;
 
 export const PageProvider = () => {
   const { pageChange, pageId, setContent, setBackground } = useTabStore();
-  const ready = useLoadingDelay(); // ⬅️ déclenchement unique
+  const ready = useLoadingDelay();
 
   const handlePage = (pageId: PageId) => {
     const page = pages[pageId];
@@ -27,7 +27,6 @@ export const PageProvider = () => {
     }
   };
 
-  // ⬇️ déclenché exactement quand `useLoadingDelay()` passe à `true`
   useEffect(() => {
     if (ready) {
       const initialPageId = Object.keys(pages)[0]!;

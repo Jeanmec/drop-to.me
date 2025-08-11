@@ -1,5 +1,3 @@
-// src/components/FileTransfer/GlobalFileDropzone.tsx
-
 "use client";
 
 import { useCallback } from "react";

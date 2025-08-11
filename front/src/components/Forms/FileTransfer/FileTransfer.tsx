@@ -12,7 +12,6 @@ import { useDragFileStore } from "@/stores/useDragFileStore";
 import { Icon } from "../../Icons/Icon";
 
 export default function FileTransferPanel() {
-  // const [file, setFile] = useState<File | null>(null);
   const { targetPeers } = usePeersStore();
   const [isInTransfer, setIsInTransfer] = useState(false);
   const transferStartTime = useRef<number | null>(null);
@@ -23,13 +22,9 @@ export default function FileTransferPanel() {
     console.trace("handleFileSelection triggered");
     try {
       if (file) {
-        console.log(file);
-        // setFile(file);
         transferStartTime.current = Date.now();
         setIsInTransfer(true);
         await handleSend(file);
-      } else {
-        // setFile(null);
       }
     } catch (error) {
       console.error("Error sending file:", error);

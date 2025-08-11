@@ -40,7 +40,7 @@ export default function ToastDownloadFile({
       return { displayName: name, isTruncated: false };
     }
 
-    const truncatedBase = baseName.slice(0, allowedLength - 1) + "…"; // Add ellipsis
+    const truncatedBase = baseName.slice(0, allowedLength - 1) + "…";
     return {
       displayName: truncatedBase + extension,
       isTruncated: true,
