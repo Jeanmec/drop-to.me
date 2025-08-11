@@ -1,98 +1,124 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 📦 Backend [Drop-to.me](https://drop-to.me/)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This project is developed in **TypeScript** using the **NestJS** framework.  
+It integrates **PostgreSQL** and **Redis** services for persistence and caching.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🚀 Prerequisites
 
-## Description
+- Node.js (version 18+ recommended)
+- npm or yarn
+- PostgreSQL
+- Redis
+- or Docker
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## ⚙️ Installation
 
-## Project setup
 
-```bash
-$ yarn install
+Install dependencies:
+
+```
+npm install
 ```
 
-## Compile and run the project
+## 🛠 Environment Variables Configuration
 
-```bash
-# development
-$ yarn run start
+An `.env.example` file is provided. Copy it to create your `.env` file:
 
-# watch mode
-$ yarn run start:dev
-
-# production mode
-$ yarn run start:prod
+```
+cp .env.example .env
 ```
 
-## Run tests
+Fill in the environment variables with your values:
 
-```bash
-# unit tests
-$ yarn run test
+```
+DATABASE_URL=postgres://user:postgres@xxx:5432/xxx
+REDIS_URL=redis://user:password@xxx:6379/0
 
-# e2e tests
-$ yarn run test:e2e
+IP_HASH_SECRET=xxx
 
-# test coverage
-$ yarn run test:cov
+CORS_ACCEPTED_ORIGINS=http://localhost:3001
+CORS_WEB_SOCKET_ORIGINS=http://localhost:3001
 ```
 
-## Deployment
+### Environment Variables Explanation
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- **DATABASE_URL**  
+  Configures the PostgreSQL database connection.  
+  The stored data includes:
+  - Number of connections
+  - Number of file transfers
+  - Total size of transferred files
+  - Number of messages sent  
+  Note: The actual content of the messages or files is NOT stored in the database.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+- **REDIS_URL**  
+  Configures the Redis connection.  
+  Redis is used to temporarily store message data.
 
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
+- **IP_HASH_SECRET**  
+  Secret key used to generate private rooms between users on the same network.
+
+- **CORS_ACCEPTED_ORIGINS**  
+  Defines the accepted origins for standard HTTP CORS requests.
+
+- **CORS_WEB_SOCKET_ORIGINS**  
+  Defines the accepted origins for WebSocket connections.
+
+## ▶️ Run the Project
+
+Development mode:
+
+```
+npm run dev
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Production mode:
 
-## Resources
+```
+npm run build
+npm run start
+```
 
-Check out a few resources that may come in handy when working with NestJS:
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 🐳 Running with Docker
 
-## Support
+This project includes two Dockerfiles and two docker-compose files for flexibility between development and production:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- `Dockerfile` for production image
+- `Dockerfile.dev` for development image (with live reload, etc.)
+- `docker-compose.yml` for production containers orchestration
+- `docker-compose.dev.yml` for development environment overrides
 
-## Stay in touch
+### Using Docker Compose for Development
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+To start the project in development mode with Docker, run:
 
-## License
+```
+docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+This command merges the base `docker-compose.yml` configuration with the overrides in `docker-compose.dev.yml`. It builds the images if needed and starts the containers with development settings such as mounting source files for live reload, exposing debug ports, and using `.env.dev` environment variables.
+
+### Using Docker Compose for Production
+
+To start the project in production mode, simply run:
+
+```
+docker-compose up --build -d
+```
+
+This will use the default `docker-compose.yml` file and the `.env` environment variables.
+
+## 🗂 Project Structure
+
+- src/ : Main source code (modules, services, controllers)
+- .env : Local environment variables
+- .env.example : Example configuration
+
+## 🧩 Services Used
+
+- NestJS : TypeScript backend framework
+- PostgreSQL : Relational database
+- Redis : Cache and key-value store
+- TypeORM : ORM for PostgreSQL

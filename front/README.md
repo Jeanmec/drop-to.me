@@ -1,29 +1,90 @@
-# Create T3 App
+# 🌐 Frontend [Drop-to.me](https://drop-to.me/)
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+This project is built with **Next.js** (React framework) in **TypeScript**.  
+It is designed to work with the NestJS backend and uses environment variables for configuration.
 
-## What's next? How do I make an app with this?
+## 🚀 Prerequisites
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+- Node.js (version 18+ recommended, 22.04 if using Nixpacks)
+- npm or yarn
+- Backend URL (NestJS API)
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+## ⚙️ Installation
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Install dependencies:
 
-## Learn More
+```
+npm install
+```
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+## 🛠 Environment Variables Configuration
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+An `.env.example` file is provided. Copy it to create your `.env` file:
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+```
+cp .env.example .env
+```
 
-## How do I deploy this?
+Fill in the environment variables with your values:
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+NEXT_PUBLIC_BACKEND_URL=https://your-backend-url.com
+NEXT_PUBLIC_LOADING_SCREEN_DURATION=3000
+NEXT_PUBLIC_WEBSITE_NAME=My Website
+NEXT_PUBLIC_GITHUB_URL=https://github.com/your-username/your-project
+NIXPACKS_NODE_VERSION=22.04
+
+### Environment Variables Explanation
+
+- **NEXT_PUBLIC_BACKEND_URL**  
+  URL of the NestJS backend API that the frontend will communicate with.
+
+- **NEXT_PUBLIC_LOADING_SCREEN_DURATION**  
+  Time in milliseconds that the loading animation will be displayed before triggering the rest of the animations.
+
+- **NEXT_PUBLIC_WEBSITE_NAME**  
+  Name of the website (used in titles, metadata, and branding).
+
+- **NEXT_PUBLIC_GITHUB_URL**  
+  GitHub repository URL of the project.
+
+- **NIXPACKS_NODE_VERSION** (optional)  
+  Node.js version to use when deploying with Nixpacks (e.g., `22.04`).
+
+## ▶️ Running the Project
+
+Development mode:
+
+```
+npm run dev
+```
+
+Production mode:
+
+```
+npm run build
+npm run start
+```
+
+### Running with Docker:
+
+A `Dockerfile` is included to run the frontend in a container.
+
+Build the Docker image:
+
+```
+docker build -t droptome-frontend .
+```
+
+Run the container:
+
+```
+docker run -p 3000:3000 --env-file .env droptome-frontend
+```
+
+## 🗂 Project Structure
+
+- pages/ : Next.js pages and routes
+- components/ : Reusable UI components
+- styles/ : Global and component-specific styles
+- .env : Local environment variables
+- .env.example : Example configuration
