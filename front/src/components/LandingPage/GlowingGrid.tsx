@@ -7,8 +7,8 @@ import BeamConnection from "@/components/Beam/BeamConnection";
 import BeamTransfer from "@/components/Beam/BeamTransfer";
 import { Icon } from "@/components/Icons/Icon";
 import DivAppear from "@/components/ui/DivAppear";
-import { Globe } from "@/components/ui/globe";
-import Ripple from "@/components/ui/ripple";
+import { Globe } from "@/components/ui/Globe";
+import Ripple from "@/components/ui/Ripple";
 import Sparkles from "@/components/ui/Sparkles";
 
 type GlowingCardProps = {
