@@ -2,7 +2,7 @@
 import { onSocket } from "@/services/socketService";
 import { useLoadingStore } from "@/stores/useLoadingStore";
 import { usePeersStore } from "@/stores/usePeersStore";
-import { Icon } from "../Icons/Icon";
+import { Icon } from "@/components/Icons/Icon";
 
 export default function ActiveClients() {
   const { isLoading } = useLoadingStore();

@@ -3,13 +3,13 @@
 import MagicBento, { BentoCard } from "../ui/MagicBento";
 import useCSSVariable from "@/library/CSSVariable";
 import { cn, hexToRgbObject } from "@/library/utils";
-import BeamConnection from "../Beam/BeamConnection";
-import BeamTransfer from "../Beam/BeamTransfer";
-import { Icon } from "../Icons/Icon";
-import DivAppear from "../ui/DivAppear";
-import { Globe } from "../ui/Globe";
-import Ripple from "../ui/Ripple";
-import Sparkles from "../ui/Sparkles";
+import BeamConnection from "@/components/Beam/BeamConnection";
+import BeamTransfer from "@/components/Beam/BeamTransfer";
+import { Icon } from "@/components/Icons/Icon";
+import DivAppear from "@/components/ui/DivAppear";
+import { Globe } from "@/components/ui/globe";
+import Ripple from "@/components/ui/ripple";
+import Sparkles from "@/components/ui/Sparkles";
 
 type GlowingCardProps = {
   className?: string;

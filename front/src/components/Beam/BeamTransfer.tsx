@@ -4,7 +4,7 @@ import React, { useRef } from "react";
 import AnimatedBeam, { Circle } from "@/components/ui/AnimatedBeam";
 
 import { Icon } from "@/components/Icons/Icon";
-import AnimatedBorder from "../ui/AnimatedBorder";
+import AnimatedBorder from "@/components/ui/AnimatedBorder";
 import { cn } from "@/library/utils";
 export default function BeamTransfer() {
   const containerRef = useRef<HTMLDivElement>(null);

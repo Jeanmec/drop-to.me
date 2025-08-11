@@ -1,4 +1,4 @@
-import { Icon } from "../Icons/Icon";
+import { Icon } from "@/components/Icons/Icon";
 
 interface ToastDownloadFileProps {
   fileUrl: string;

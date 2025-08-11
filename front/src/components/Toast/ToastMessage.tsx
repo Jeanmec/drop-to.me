@@ -1,7 +1,7 @@
 type ToastmessageType = "success" | "error" | "info" | "warning";
 
 import { cn } from "@/library/utils";
-import { Icon } from "../Icons/Icon";
+import { Icon } from "@/components/Icons/Icon";
 
 export default function ToastMessage({
   message,

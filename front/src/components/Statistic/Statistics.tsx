@@ -7,7 +7,7 @@ import { onSocket } from "@/services/socketService";
 import { useSocket } from "@/contexts/SocketProvider";
 import { PeerContext } from "@/contexts/PeerProvider";
 import NumberFlow from "@number-flow/react";
-import { Icon } from "../Icons/Icon";
+import { Icon } from "@/components/Icons/Icon";
 
 interface StatisticItemProps {
   icon: ReactNode;

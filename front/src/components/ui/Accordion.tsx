@@ -3,7 +3,7 @@
 import React, { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/library/utils";
-import { Icon } from "../Icons/Icon";
+import { Icon } from "@/components/Icons/Icon";
 
 interface AccordionItemData {
   value: string;
