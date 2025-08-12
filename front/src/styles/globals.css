@@ -100,3 +100,11 @@ h1 {
 h2 {
   @apply font-poppins text-3xl font-semibold text-white md:text-5xl;
 }
+
+.Toastify__toast[id] > div {
+  @apply pt-4;
+}
+
+.Toastify__toast[id="1"] > div {
+  @apply pt-8;
+}

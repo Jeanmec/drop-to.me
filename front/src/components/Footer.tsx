@@ -2,7 +2,7 @@ import { Icon } from "./Icons/Icon";
 
 export default function Footer() {
   return (
-    <footer className="container mx-auto">
+    <footer className="container mx-auto mb-[100px]">
       <div className="top-0 left-0 z-[-1] h-[25px] w-full bg-gradient-to-t from-gray-800 to-black" />
 
       <div className="flex h-full w-full flex-col items-center justify-between gap-2 border-t-[1] border-white py-4 text-white md:flex-row">
@@ -10,7 +10,7 @@ export default function Footer() {
           Made by
           <span className="text-primary-blue font-bold">CLAVERIE Jean</span>
         </span>
-        <div className="flex flex-col items-center md:items-end">
+        <div className="flex flex-col items-center gap-2 md:items-end md:gap-0">
           <a
             href="https://github.com/Jeanmec"
             target="_blank"

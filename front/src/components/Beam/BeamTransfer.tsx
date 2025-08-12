@@ -17,12 +17,12 @@ export default function BeamTransfer() {
 
   return (
     <div
-      className="bg-background relative mx-auto flex h-full w-full max-w-[32rem] items-center justify-center overflow-hidden rounded-lg p-10 md:shadow-xl"
+      className="bg-background relative mx-auto flex h-full w-full max-w-[32rem] items-center justify-center overflow-hidden rounded-lg md:shadow-xl"
       ref={containerRef}
     >
       <div className="flex h-full w-full flex-col items-center justify-between gap-24">
         <div className="flex w-full justify-between sm:justify-center sm:gap-12">
-          <Circle ref={imageRef} className="hidden sm:block">
+          <Circle ref={imageRef}>
             <Icon.image />
           </Circle>
           <Circle ref={messageRef}>
@@ -61,7 +61,6 @@ export default function BeamTransfer() {
         </AnimatedBorder>
       </div>
       <AnimatedBeam
-        className="hidden sm:block"
         containerRef={containerRef}
         fromRef={imageRef}
         toRef={userRef}

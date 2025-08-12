@@ -67,7 +67,7 @@ export default function Dock({ items }: DockProps) {
       >
         <div
           className={cn(
-            "relative flex h-full w-[400px] items-end",
+            "relative flex h-full w-[300px] items-end sm:w-[400px]",
             isSticky ? "items-start" : "items-end",
           )}
         >
@@ -79,7 +79,7 @@ export default function Dock({ items }: DockProps) {
             className="absolute bottom-0 left-0 z-0 w-full"
           />
 
-          <div className="absolute top-1/2 left-0 z-10 flex h-8/12 w-full -translate-y-1/2 items-center justify-evenly gap-8 sm:px-8 md:px-16">
+          <div className="absolute top-1/2 left-0 z-10 flex h-8/12 w-full -translate-y-1/2 justify-center gap-6 sm:gap-8 sm:px-8 md:px-16">
             {items.map((item) => (
               <div
                 key={item.id}

@@ -36,7 +36,7 @@ const CardAppear = ({
   appearAnimation?: boolean;
 }) => {
   const commonClasses = cn(
-    "border-primary-blue/50 hover:border-primary-blue flex h-full w-full flex-col rounded-xl border-2 transition-all duration-300",
+    "border-primary-blue/50 hover:border-primary-blue flex h-full w-full flex-col rounded-xl border-2 transition-all duration-300 relative",
     className,
   );
 
@@ -105,15 +105,15 @@ const items = {
         {process.env.NEXT_PUBLIC_WEBSITE_NAME} allows you to transfer files and
         messages securely and efficiently to all connected users.
       </p>
-      <div className="flex h-full w-full flex-1 items-center">
+      <div className="mt-5 flex h-full w-full flex-1 items-center px-4">
         <BeamTransfer />
       </div>
     </>
   ),
   openSource: (
     <a href={process.env.NEXT_PUBLIC_GITHUB_URL} target="_blank">
-      <div className="absolute top-0 right-0 z-[1]">
-        <Icon.github className="text-[200px] text-slate-950 opacity-0 drop-shadow-2xl transition-all duration-1000 group-hover:opacity-100" />
+      <div className="absolute right-0 bottom-0 z-[1]">
+        <Icon.github className="h-48 w-48 text-slate-950 transition-all duration-1000 md:group-hover:opacity-100 lg:h-36 lg:w-36 lg:opacity-0" />
       </div>
       <p className="text-description relative z-[2] text-center text-base">
         A complete open-source project

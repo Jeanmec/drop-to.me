@@ -29,9 +29,7 @@ export default function BackgroundController() {
     onDropAccepted: () => setIsDragFileActive(false),
   });
 
-  useEffect(() => {
-    console.log("Drag file state changed:", setIsDragFileActive);
-  }, [setIsDragFileActive]);
+  useEffect(() => {}, [setIsDragFileActive]);
 
   return (
     <div {...getRootProps()}>
