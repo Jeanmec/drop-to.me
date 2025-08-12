@@ -38,7 +38,6 @@ export default function HomePage() {
             }
           });
         }
-        console.log("Room joined successfully:", res);
       } catch (error) {
         console.error("Error joining room:", error);
       }

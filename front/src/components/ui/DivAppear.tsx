@@ -1,4 +1,6 @@
-import { motion } from "framer-motion";
+"use client";
+
+import React, { useEffect, useRef, useState } from "react";
 
 type DivAppearProps = {
   className?: string;
@@ -6,30 +8,48 @@ type DivAppearProps = {
   once?: boolean;
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 50, filter: "blur(10px)" },
-  visible: {
-    opacity: 1,
-    y: 0,
-    filter: "blur(0px)",
-    transition: { duration: 0.8 },
-  },
-};
-
 export default function DivAppear({
   className,
   children,
-  once,
+  once = true,
 }: DivAppearProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          if (once) {
+            observer.unobserve(element);
+          }
+        }
+      },
+      { threshold: 0.5 },
+    );
+
+    observer.observe(element);
+
+    return () => {
+      if (element) {
+        observer.unobserve(element);
+      }
+    };
+  }, [once]);
+
+  const combinedClassName = `
+    ${className || ""}
+    transition-all duration-1000 ease-out
+    ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}
+  `.trim();
+
   return (
-    <motion.div
-      variants={cardVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: once ?? true }}
-      className={className}
-    >
+    <div ref={ref} className={combinedClassName}>
       {children}
-    </motion.div>
+    </div>
   );
 }

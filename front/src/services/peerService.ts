@@ -154,12 +154,8 @@ class PeerService {
           timestamp: Date.now(),
         });
         void conn.send(payload);
-        console.log(`[PeerService] Fichier envoyé à ${target.peerId}`);
       } catch (err) {
-        console.error(
-          `[PeerService] Erreur lors de l'envoi à ${target.peerId}`,
-          err,
-        );
+        console.error(`[PeerService]`, err);
       }
     }
   }
