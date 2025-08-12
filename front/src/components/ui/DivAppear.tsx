@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+import { cn } from "@/library/utils";
 
 type DivAppearProps = {
   className?: string;
@@ -41,14 +42,17 @@ export default function DivAppear({
     };
   }, [once]);
 
-  const combinedClassName = `
-    ${className || ""}
-    transition-all duration-1000 ease-out
-    ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"}
-  `.trim();
-
   return (
-    <div ref={ref} className={combinedClassName}>
+    <div
+      ref={ref}
+      className={cn(
+        "transition-all duration-1000 ease-out",
+
+        isVisible ? "translate-y-0 opacity-100" : "translate-y-5 opacity-0",
+
+        className,
+      )}
+    >
       {children}
     </div>
   );

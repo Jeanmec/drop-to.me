@@ -10,6 +10,7 @@ import DivAppear from "@/components/ui/DivAppear";
 import { Globe } from "@/components/ui/Globe";
 import Ripple from "@/components/ui/Ripple";
 import Sparkles from "@/components/ui/Sparkles";
+import Image from "next/image";
 
 type GlowingCardProps = {
   className?: string;
@@ -28,20 +29,23 @@ const GlowingCard = ({ className, children, compact }: GlowingCardProps) => {
 const CardAppear = ({
   children,
   className,
+  appearAnimation,
 }: {
   children: React.ReactNode;
   className?: string;
+  appearAnimation?: boolean;
 }) => {
-  return (
-    <DivAppear
-      once={true}
-      className={cn(
-        "border-primary-blue/50 hover:border-primary-blue flex h-full w-full flex-col rounded-xl border-2 transition-all duration-300",
-        className,
-      )}
-    >
+  const commonClasses = cn(
+    "border-primary-blue/50 hover:border-primary-blue flex h-full w-full flex-col rounded-xl border-2 transition-all duration-300",
+    className,
+  );
+
+  return appearAnimation ? (
+    <DivAppear once={true} className={commonClasses}>
       {children}
     </DivAppear>
+  ) : (
+    <div className={commonClasses}>{children}</div>
   );
 };
 
@@ -82,7 +86,17 @@ const items = {
       <p className="text-description z-[2] rounded-xl p-1 text-center text-base backdrop-blur-xl">
         Create a direct connection with another users around the world
       </p>
-      <Globe className="top-1/4 md:top-2/4" />
+      <Globe className="top-1/4 hidden md:top-2/4 lg:block" />
+
+      <div className="absolute bottom-0 block h-full w-full animate-spin overflow-hidden opacity-15 lg:hidden">
+        <Image
+          src="/assets/globe.svg"
+          alt="image"
+          sizes="100vw"
+          objectFit="contain"
+          fill
+        />
+      </div>
     </>
   ),
   transfer: (
@@ -125,15 +139,17 @@ export default function GlowingGrid() {
     <div className="flex h-full w-full flex-col">
       <h2 className="mb-4 text-center md:text-left">How does it work?</h2>
       <div className="flex flex-col items-center gap-3 lg:hidden">
-        <div className="gap-3 p-5">{items.beamConnection}</div>
-        <div>{items.connectionRipple}</div>
-        <div className="gap-3 p-5 text-center">{items.transfer}</div>
-        <div className="relative flex h-[400px] items-center justify-center overflow-hidden">
+        <CardAppear className="gap-3 p-5">{items.beamConnection}</CardAppear>
+        <CardAppear>{items.connectionRipple}</CardAppear>
+        <CardAppear className="gap-3 p-5 text-center">
+          {items.transfer}
+        </CardAppear>
+        <CardAppear className="relative flex h-[400px] items-center justify-center overflow-hidden">
           {items.globe}
-        </div>
-        <div className="flex h-[200px] items-center justify-center">
+        </CardAppear>
+        <CardAppear className="flex h-[200px] items-center justify-center">
           {items.openSource}
-        </div>
+        </CardAppear>
       </div>
       <div className="hidden lg:block">
         <MagicBento
@@ -151,31 +167,31 @@ export default function GlowingGrid() {
             "255, 255, 255"
           }
         >
-          <CardAppear className="col-span-6 row-span-3 h-full">
+          <CardAppear className="col-span-6 row-span-3 h-full" appearAnimation>
             <GlowingCard className="flex-col justify-center gap-3">
               {items.beamConnection}
             </GlowingCard>
           </CardAppear>
 
-          <CardAppear className="col-span-6 row-span-4 h-full">
+          <CardAppear className="col-span-6 row-span-4 h-full" appearAnimation>
             <GlowingCard className="flex-col gap-3" compact={true}>
               {items.connectionRipple}
             </GlowingCard>
           </CardAppear>
 
-          <CardAppear className="col-span-6 row-span-5 h-full">
+          <CardAppear className="col-span-6 row-span-5 h-full" appearAnimation>
             <GlowingCard className="items-center justify-center">
               {items.globe}
             </GlowingCard>
           </CardAppear>
 
-          <CardAppear className="col-span-6 row-span-6 h-full">
+          <CardAppear className="col-span-6 row-span-6 h-full" appearAnimation>
             <GlowingCard className="flex-col items-center gap-2">
               {items.transfer}
             </GlowingCard>
           </CardAppear>
 
-          <CardAppear className="col-span-6 row-span-2 h-full">
+          <CardAppear className="col-span-6 row-span-2 h-full" appearAnimation>
             <GlowingCard className="group flex-col justify-center gap-3">
               {items.openSource}
             </GlowingCard>
