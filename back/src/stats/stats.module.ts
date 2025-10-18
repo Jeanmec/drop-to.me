@@ -1,5 +1,4 @@
 import { StatsService } from './stats.service';
-import { StatsController } from './stats.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { FileTransferEntity } from './entities/file-transfer.entity';
 import { UserEntity } from './entities/user.entity';
@@ -13,7 +12,6 @@ import { SignalModule } from 'src/signal/signal.module';
     forwardRef(() => SignalModule),
   ],
   providers: [StatsService],
-  controllers: [StatsController],
   exports: [StatsService],
 })
 export class StatsModule {}

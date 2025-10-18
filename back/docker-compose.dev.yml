@@ -5,7 +5,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    env_file:
+      - ./.env
     volumes:
       - .:/app
       - /app/node_modules
     command: yarn start:dev
+    ports:
+      - '3000:3000'
+      - '9000:9000'

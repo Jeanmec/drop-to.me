@@ -1,34 +1,30 @@
-import { userService } from "@/services/userService";
-import { useEffect, useState } from "react";
+import { useSocket } from "@/contexts/SocketProvider";
+import RadarBackground from "../Background/BackgroundRadar";
+import GradientTitle from "../ui/GradientTitle";
 
 export default function Alone() {
-  const [ip, setIp] = useState("");
-
-  useEffect(() => {
-    const getIp = async () => {
-      const { ip } = await userService.getClientIP();
-      setIp(ip);
-    };
-
-    void getIp();
-  }, []);
+  const { userIp } = useSocket();
+  const ip = userIp || "";
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4">
-      <span className="flex justify-center gap-2 bg-gradient-to-t from-zinc-700 via-white to-white bg-clip-text text-center text-5xl font-bold text-transparent">
-        Your alone
-      </span>
-      <span className="text-description text-center">
-        Waiting for someone to join your network
-      </span>
-      {ip && (
-        <span className="flex items-center gap-2">
-          Your IP:
-          <span className="rounded-md bg-emerald-950 p-1 px-2 text-emerald-400">
-            {ip ? ip : <div className="skeleton h-4 w-32"></div>}
-          </span>
+    <>
+      <RadarBackground />
+      <div className="absolute top-[67.5vh] left-1/2 z-[1] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4">
+        <GradientTitle className="flex justify-center gap-2">
+          You are alone
+        </GradientTitle>
+        <span className="text-description text-center">
+          Waiting for someone to join your network
         </span>
-      )}
-    </div>
+        {ip && (
+          <span className="flex items-center gap-2">
+            Your IP:
+            <span className="rounded-md bg-emerald-950 p-1 px-2 text-emerald-400">
+              {ip ? ip : <div className="skeleton h-4 w-32"></div>}
+            </span>
+          </span>
+        )}
+      </div>
+    </>
   );
 }

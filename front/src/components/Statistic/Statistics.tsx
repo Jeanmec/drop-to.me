@@ -1,11 +1,9 @@
 "use client";
 
-import { useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { useStatsStore } from "@/stores/useStatsStore";
 import { statService } from "@/services/statService";
-import type { TStatistics } from "@/types/statistics.t";
-import { onSocket } from "@/services/socketService";
 import { useSocket } from "@/contexts/SocketProvider";
-import { PeerContext } from "@/contexts/PeerProvider";
 import NumberFlow from "@number-flow/react";
 import { Icon } from "@/components/Icons/Icon";
 
@@ -15,13 +13,6 @@ interface StatisticItemProps {
   value: number;
   suffix?: string;
 }
-
-const DEFAULT_STATISTICS: TStatistics = {
-  totalTransfers: 0,
-  sizeTransferred: 0,
-  users: 0,
-  messagesSent: 0,
-};
 
 function StatisticItem({ icon, title, value, suffix }: StatisticItemProps) {
   return (
@@ -44,46 +35,22 @@ function StatisticItem({ icon, title, value, suffix }: StatisticItemProps) {
 }
 
 export default function Statistics() {
-  const [statistics, setStatistics] = useState<TStatistics>(DEFAULT_STATISTICS);
+  const { statistics, setStatistics } = useStatsStore();
   const { socket } = useSocket();
-  const peerInstance = useContext(PeerContext);
-
-  useEffect(() => {
-    if (!peerInstance?.id) return;
-
-    const fetchStatistics = async () => {
-      try {
-        const data = await statService.getStatistics();
-        setStatistics(data);
-      } catch (error) {
-        console.error("Failed to fetch statistics:", error);
-      }
-    };
-    void fetchStatistics();
-  }, [peerInstance?.id]);
 
   useEffect(() => {
     if (!socket) return;
 
-    onSocket("statistics-messages-sent-updated", (messages: number) => {
-      setStatistics((prev) => ({ ...prev, messagesSent: messages }));
-    });
-
-    onSocket("statistics-users-updated", (users: number) => {
-      setStatistics((prev) => ({ ...prev, users }));
-    });
-
-    onSocket(
-      "statistics-file-transfers-updated",
-      ({ count, size }: { count: number; size: number }) => {
-        setStatistics((prev) => ({
-          ...prev,
-          totalTransfers: count,
-          sizeTransferred: size,
-        }));
-      },
-    );
-  }, [socket]);
+    const loadStatistics = async () => {
+      try {
+        const stats = await statService.fetchStatistics();
+        setStatistics(stats);
+      } catch (error) {
+        console.error("Failed to fetch statistics:", error);
+      }
+    };
+    void loadStatistics();
+  }, [socket, setStatistics]);
 
   const { value: sizeValue, suffix: sizeSuffix } = statService.formatSize(
     statistics.sizeTransferred,

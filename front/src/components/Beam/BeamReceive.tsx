@@ -33,7 +33,7 @@ export default function BeamReceive() {
           <Circle ref={div2Ref} className="p-2">
             <Icon.user />
           </Circle>
-          <Circle ref={div4Ref} className="custom-blue-shadow h-16 w-16 p-3">
+          <Circle ref={div4Ref} className="custom-primary-shadow h-16 w-16 p-3">
             <Icon.user />
           </Circle>
           <Circle ref={div6Ref} className="p-2">

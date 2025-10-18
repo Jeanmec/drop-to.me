@@ -1,28 +1,7 @@
-import { z } from "zod";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Message } from "@/types/message.t";
-import type { DataConnection } from "peerjs";
-
-const FileDataSchema = z.object({
-  type: z.literal("file"),
-  fileId: z.string(),
-  name: z.string(),
-  size: z.number(),
-  content: z.instanceof(Uint8Array),
-});
-
-const MessageDataSchema = z.object({
-  type: z.literal("message"),
-  ackId: z.string(),
-  received: z.boolean(),
-  content: z.string(),
-});
-
-const AckSchema = z.object({
-  type: z.literal("ack"),
-  ackId: z.string(),
-});
+import Peer, { type DataConnection } from "peerjs";
 
 export interface ReceivedFile {
   id: string;
@@ -34,172 +13,240 @@ export interface ReceivedFile {
 type OnFileReceivedCallback = (file: ReceivedFile) => void;
 type OnMessageReceivedCallback = (message: Message) => void;
 
-class PeerService {
-  private onFileReceivedCallbacks = new Map<string, OnFileReceivedCallback>();
-  private onMessageReceivedCallbacks = new Map<
-    string,
-    OnMessageReceivedCallback
-  >();
+let peerInstance: Peer | null = null;
 
-  private pendingAcks = new Map<
-    string,
-    { peerId: string; timestamp: number }
-  >();
+const onFileReceivedCallbacks = new Map<string, OnFileReceivedCallback>();
+const onMessageReceivedCallbacks = new Map<string, OnMessageReceivedCallback>();
+const pendingAcks = new Map<string, { peerId: string; timestamp: number }>();
 
-  public setOnFileReceivedCallback(
-    callback: OnFileReceivedCallback,
-    id = "default",
-  ) {
-    this.onFileReceivedCallbacks.set(id, callback);
+export const createPeerInstance = (): Peer => {
+  if (peerInstance && !peerInstance.destroyed) {
+    return peerInstance;
   }
 
-  public setOnMessageReceivedCallback(
-    callback: OnMessageReceivedCallback,
-    id = "default",
-  ) {
-    this.onMessageReceivedCallbacks.set(id, callback);
+  const peerUrl = new URL(process.env.NEXT_PUBLIC_PEERJS_URL!);
+  const isSecure = peerUrl.protocol === "https:";
+
+  const port = peerUrl.port ? Number(peerUrl.port) : isSecure ? 443 : 9000;
+
+  const newPeer = new Peer({
+    host: peerUrl.hostname,
+    port: port,
+    path: "/",
+    secure: isSecure,
+    config: {
+      iceServers: [
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:global.stun.twilio.com:3478" },
+      ],
+    },
+  });
+
+  peerInstance = newPeer;
+  return newPeer;
+};
+
+export const setPeerInstance = (peer: Peer) => {
+  peerInstance = peer;
+};
+
+export const getPeerInstance = () => peerInstance;
+
+export const getPeerId = () => peerInstance?.id;
+
+export const isPeerOpen = () => !!peerInstance?.open;
+
+export const connectToPeer = (peerId: string): DataConnection | null => {
+  if (!peerInstance || !peerInstance.open) {
+    return null;
+  }
+  return peerInstance.connect(peerId);
+};
+
+export const destroyPeerInstance = () => {
+  if (peerInstance && !peerInstance.destroyed) {
+    peerInstance.destroy();
+    peerInstance = null;
+  }
+};
+
+// === Callbacks ===
+
+export const setOnFileReceivedCallback = (
+  callback: OnFileReceivedCallback,
+  id = "default",
+) => {
+  onFileReceivedCallbacks.set(id, callback);
+};
+
+export const setOnMessageReceivedCallback = (
+  callback: OnMessageReceivedCallback,
+  id = "default",
+) => {
+  onMessageReceivedCallbacks.set(id, callback);
+};
+
+// === Helper functions ===
+
+const getConnectionByPeerId = (peerId: string): DataConnection | undefined => {
+  const peer = usePeersStore
+    .getState()
+    .targetPeers.find((p) => p.peerId === peerId);
+  return peer?.connection ?? undefined;
+};
+
+const generateMessageId = (content: string): string => {
+  return `${content}-${Date.now()}`;
+};
+
+// === Data handling ===
+
+export const handleIncomingData = (data: unknown, peerId: string): void => {
+  const conn = getConnectionByPeerId(peerId);
+
+  if (!data || typeof data !== "object") {
+    return;
   }
 
-  private getConnectionByPeerId(peerId: string): DataConnection | undefined {
-    const peer = usePeersStore
-      .getState()
-      .targetPeers.find((p) => p.peerId === peerId);
-    return peer?.connection ?? undefined;
-  }
+  const typedData = data as { type?: string };
 
-  private generateMessageId(content: string): string {
-    return `${content}-${Date.now()}`;
-  }
+  // Gestion des fichiers
+  if (typedData.type === "file") {
+    const fileData = data as {
+      type: "file";
+      fileId: string;
+      name: string;
+      size: number;
+      content: Uint8Array | ArrayBuffer;
+    };
 
-  public handleIncomingData(data: unknown, peerId: string): void {
-    const conn = this.getConnectionByPeerId(peerId);
-    console.log(`[PeerService] Donnée reçue de ${peerId}`);
+    if (
+      fileData.fileId &&
+      fileData.name &&
+      fileData.size &&
+      (fileData.content instanceof Uint8Array ||
+        fileData.content instanceof ArrayBuffer)
+    ) {
+      const blob = new Blob([fileData.content as BlobPart]);
 
-    const fileParsed = FileDataSchema.safeParse(data);
-    if (fileParsed.success) {
-      const { fileId, name, content, size } = fileParsed.data;
-      const blob = new Blob([content]);
-      const receivedFile: ReceivedFile = { id: fileId, name, data: blob, size };
-      this.onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
-      void conn?.send({ type: "ack", ackId: fileId });
+      const receivedFile: ReceivedFile = {
+        id: fileData.fileId,
+        name: fileData.name,
+        data: blob,
+        size: fileData.size,
+      };
+      onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
+      void conn?.send({ type: "ack", ackId: fileData.fileId });
       return;
     }
+  }
 
-    const messageParsed = MessageDataSchema.safeParse(data);
-    if (messageParsed.success) {
-      const { received, content, ackId } = messageParsed.data;
+  if (typedData.type === "message") {
+    const messageData = data as {
+      type: "message";
+      ackId: string;
+      received: boolean;
+      content: string;
+    };
+
+    if (messageData.ackId && messageData.content) {
       const receivedMessage: Message = {
-        received,
-        content,
+        received: true,
+        content: messageData.content,
         timestamp: new Date(),
       };
-      this.onMessageReceivedCallbacks.forEach((cb) => cb(receivedMessage));
-      void conn?.send({ type: "ack", ackId });
+      onMessageReceivedCallbacks.forEach((cb) => cb(receivedMessage));
+      void conn?.send({ type: "ack", ackId: messageData.ackId });
       useChatStore.getState().addMessage(receivedMessage);
       return;
     }
+  }
 
-    const ackParsed = AckSchema.safeParse(data);
-    if (ackParsed.success) {
-      const { ackId } = ackParsed.data;
-      const ackInfo = this.pendingAcks.get(ackId);
+  // Gestion des ACKs
+  if (typedData.type === "ack") {
+    const ackData = data as { type: "ack"; ackId: string };
+
+    if (ackData.ackId) {
+      const ackInfo = pendingAcks.get(ackData.ackId);
       if (ackInfo) {
-        usePeersStore.getState().updatePeerState(ackInfo.peerId, "delivered");
-        console.log(
-          `[PeerService] ACK reçu de ${ackInfo.peerId} pour ${ackId}`,
-        );
-        this.pendingAcks.delete(ackId);
-      } else {
-        console.warn(`[PeerService] ACK inconnu ou déjà traité : ${ackId}`);
+        usePeersStore
+          .getState()
+          .updatePeer(ackInfo.peerId, { state: "connected" });
+
+        pendingAcks.delete(ackData.ackId);
       }
       return;
     }
+  }
+};
 
-    console.warn("[PeerService] Donnée reçue invalide:", data);
+export const sendFileToTargets = async (file: File): Promise<void> => {
+  const { targetPeers } = usePeersStore.getState();
+
+  if (targetPeers.length === 0) {
+    return;
   }
 
-  public async sendFileToTargets(file: File): Promise<void> {
-    const { targetPeers } = usePeersStore.getState();
+  const buffer = new Uint8Array(await file.arrayBuffer());
 
-    if (targetPeers.length === 0) {
-      console.warn("[PeerService] Aucun peer cible pour l'envoi du fichier.");
-      return;
+  for (const target of targetPeers) {
+    const conn = target.connection;
+    if (!conn?.open) {
+      continue;
     }
 
-    const buffer = new Uint8Array(await file.arrayBuffer());
+    usePeersStore.getState().updatePeer(target.peerId, { state: "sending" });
 
-    for (const target of targetPeers) {
-      const conn = target.connection;
-      if (!conn?.open) {
-        console.warn(
-          `[PeerService] Connexion vers ${target.peerId} fermée (état: ${target.state})`,
-        );
-        continue;
-      }
+    const fileId = `${target.peerId}-${Date.now()}`;
+    const payload = {
+      fileId,
+      type: "file" as const,
+      name: file.name,
+      size: file.size,
+      content: buffer,
+    };
 
-      usePeersStore.getState().updatePeerState(target.peerId, "sending");
-
-      const fileId = `${target.peerId}-${Date.now()}`;
-      const payload = {
-        fileId,
-        type: "file" as const,
-        name: file.name,
-        size: file.size,
-        content: buffer,
-      };
-
-      try {
-        this.pendingAcks.set(fileId, {
-          peerId: target.peerId,
-          timestamp: Date.now(),
-        });
-        void conn.send(payload);
-      } catch (err) {
-        console.error(`[PeerService]`, err);
-      }
+    try {
+      pendingAcks.set(fileId, {
+        peerId: target.peerId,
+        timestamp: Date.now(),
+      });
+      void conn.send(payload);
+    } catch (err) {
+      console.error(err);
     }
   }
+};
 
-  public async sendMessageToTargets(content: string): Promise<void> {
-    const { targetPeers } = usePeersStore.getState();
+export const sendMessageToTargets = async (content: string): Promise<void> => {
+  const { targetPeers } = usePeersStore.getState();
 
-    if (targetPeers.length === 0) {
-      console.warn("[PeerService] Aucun peer cible pour l'envoi du message.");
-      return;
+  if (targetPeers.length === 0) {
+    return;
+  }
+
+  for (const target of targetPeers) {
+    const conn = target.connection;
+    if (!conn?.open) {
+      continue;
     }
 
-    for (const target of targetPeers) {
-      const conn = target.connection;
-      if (!conn?.open) {
-        console.warn(
-          `[PeerService] Connexion vers ${target.peerId} fermée (état: ${target.state})`,
-        );
-        continue;
-      }
+    const ackId = generateMessageId(content);
+    const payload = {
+      type: "message" as const,
+      ackId,
+      received: false,
+      content,
+    };
 
-      const ackId = this.generateMessageId(content);
-      const payload = {
-        type: "message" as const,
-        ackId,
-        received: true,
-        content,
-      };
-
-      try {
-        this.pendingAcks.set(ackId, {
-          peerId: target.peerId,
-          timestamp: Date.now(),
-        });
-        void conn.send(payload);
-        console.log(`[PeerService] Message envoyé à ${target.peerId}`);
-      } catch (err) {
-        console.error(
-          `[PeerService] Erreur lors de l'envoi à ${target.peerId}`,
-          err,
-        );
-      }
+    try {
+      pendingAcks.set(ackId, {
+        peerId: target.peerId,
+        timestamp: Date.now(),
+      });
+      void conn.send(payload);
+    } catch (err) {
+      console.error(err);
     }
   }
-}
-
-export const peerService = new PeerService();
+};

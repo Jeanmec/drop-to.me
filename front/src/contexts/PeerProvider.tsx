@@ -2,127 +2,145 @@
 
 import React, {
   createContext,
+  useContext,
   useEffect,
   useState,
-  useCallback,
   type ReactNode,
 } from "react";
 import Peer, { type DataConnection } from "peerjs";
 import { usePeersStore } from "@/stores/usePeersStore";
-import { peerService } from "@/services/peerService";
+import {
+  createPeerInstance,
+  setPeerInstance,
+  getPeerInstance,
+  handleIncomingData,
+} from "@/services/peerService";
 import { notify } from "@/library/toastService";
 
 interface PeerProviderProps {
   children: ReactNode;
 }
 
-export const PeerContext = createContext<Peer | null>(null);
+interface PeerContextValue {
+  peer: Peer | null;
+}
+
+const PeerContext = createContext<PeerContextValue | null>(null);
 
 export function PeerProvider({ children }: PeerProviderProps) {
-  const [peerInstance, setPeerInstance] = useState<Peer | null>(null);
-
+  const [localPeerInstance, setLocalPeerInstance] = useState<Peer | null>(null);
   const {
-    targetPeers,
-    addTargetPeer,
-    removeTargetPeer,
-    updateTargetConnection,
-    updatePeerState,
     setSelfPeer,
-    setGlobalPeersState,
+    targetPeers,
+    updatePeer,
+    clearTargetPeers,
+    setIsPeerDisconnected,
+    isPeerDisconnected,
   } = usePeersStore();
 
   useEffect(() => {
-    const newPeer = new Peer();
+    if (isPeerDisconnected) return;
+
+    clearTargetPeers();
+
+    let peer = getPeerInstance();
+    if (!peer || peer.destroyed) {
+      peer = createPeerInstance();
+      setPeerInstance(peer);
+    }
+
+    const newPeer = peer;
 
     newPeer.on("open", () => {
       setSelfPeer(newPeer);
-      setPeerInstance(newPeer);
+      setLocalPeerInstance(newPeer);
     });
-
     newPeer.on("error", (err) => {
-      if (err.type === "network") {
-        setGlobalPeersState("disconnected");
-        notify.error("You have been disconnected. Try reloading the page.", {
-          autoClose: false,
-        });
-      } else if (err.type === "server-error") {
-        setGlobalPeersState("disconnected");
-        notify.error("Server error. Check your connection or try later.", {
-          autoClose: false,
-        });
-      }
-    });
+      console.error("[PeerProvider] Error:", err);
 
+      if (err.type === "disconnected" || err.type === "network") {
+        setIsPeerDisconnected(true);
+        setSelfPeer(null);
+        notify.error(
+          "Connection lost to PeerJS server. Please refresh your browser.",
+          { autoClose: false },
+        );
+        return;
+      }
+
+      if (err.type === "peer-unavailable") {
+        return;
+      }
+
+      setSelfPeer(null);
+      notify.error("PeerJS error: " + err.type, { autoClose: false });
+    });
+    newPeer.on("connection", (conn: DataConnection) => {
+      if (!conn) return;
+      conn.on("open", () => {
+        usePeersStore.getState().addTargetPeer(conn.peer, conn);
+      });
+      conn.on("data", (data: unknown) => {
+        handleIncomingData(data, conn.peer);
+      });
+      conn.on("close", () => {
+        usePeersStore.getState().removeTargetPeer(conn.peer);
+      });
+      conn.on("error", () => {
+        usePeersStore.getState().removeTargetPeer(conn.peer);
+      });
+    });
     return () => {
       newPeer.destroy();
     };
-  }, [removeTargetPeer, setGlobalPeersState, setSelfPeer]);
-
-  const setupConnectionListeners = useCallback(
-    (conn?: DataConnection) => {
-      if (!conn) return;
-
-      conn.on("open", () => {
-        updateTargetConnection(conn);
-      });
-
-      conn.on("data", (data: unknown) => {
-        peerService.handleIncomingData(data, conn.peer);
-      });
-
-      conn.on("close", () => {
-        removeTargetPeer(conn.peer);
-      });
-
-      conn.on("error", () => {
-        removeTargetPeer(conn.peer);
-      });
-    },
-    [updateTargetConnection, removeTargetPeer],
-  );
+  }, [
+    setSelfPeer,
+    clearTargetPeers,
+    setIsPeerDisconnected,
+    isPeerDisconnected,
+  ]);
 
   useEffect(() => {
-    if (!peerInstance) return;
+    if (!localPeerInstance || isPeerDisconnected) return;
 
-    const handleIncomingConnection = (conn: DataConnection) => {
-      if (!conn) return;
+    targetPeers.forEach((peer) => {
+      if (!peer.connection && localPeerInstance.id !== peer.peerId) {
+        const conn = localPeerInstance.connect(peer.peerId);
 
-      addTargetPeer({ peerId: conn.peer, state: "connecting" });
-      setupConnectionListeners(conn);
-    };
+        if (!conn) {
+          return;
+        }
 
-    peerInstance.on("connection", handleIncomingConnection);
-    return () => {
-      peerInstance.off("connection", handleIncomingConnection);
-    };
-  }, [peerInstance, addTargetPeer, setupConnectionListeners]);
+        conn.on("open", () => {
+          updatePeer(peer.peerId, { connection: conn });
+        });
 
-  useEffect(() => {
-    if (!peerInstance) return;
+        conn.on("data", (data: unknown) => {
+          handleIncomingData(data, conn.peer);
+        });
 
-    targetPeers.forEach(({ peerId: targetId, connection, state }) => {
-      if (
-        peerInstance.id === targetId ||
-        connection ||
-        state === "connecting" ||
-        state === "open"
-      ) {
-        return;
+        conn.on("close", () => {
+          usePeersStore.getState().removeTargetPeer(conn.peer);
+        });
+
+        conn.on("error", () => {
+          usePeersStore.getState().removeTargetPeer(conn.peer);
+        });
       }
-
-      const newConn = peerInstance.connect(targetId);
-
-      if (!newConn) {
-        console.warn(`Connection to ${targetId} failed or returned undefined`);
-        return;
-      }
-
-      updatePeerState(targetId, "connecting");
-      setupConnectionListeners(newConn);
     });
-  }, [peerInstance, targetPeers, setupConnectionListeners, updatePeerState]);
+  }, [localPeerInstance, targetPeers, updatePeer, isPeerDisconnected]);
 
   return (
-    <PeerContext.Provider value={peerInstance}>{children}</PeerContext.Provider>
+    <PeerContext.Provider value={{ peer: localPeerInstance }}>
+      {children}
+    </PeerContext.Provider>
   );
+}
+
+export function usePeer() {
+  const context = useContext(PeerContext);
+  if (!context) {
+    throw new Error("usePeer must be used within a PeerProvider");
+  }
+  return context;
 }

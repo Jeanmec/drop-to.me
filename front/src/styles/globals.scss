@@ -64,7 +64,7 @@
     animation: radar-spin 10s linear infinite alternate;
   }
 
-  .custom-blue-shadow {
+  .custom-primary-shadow {
     --tw-shadow-color: theme("colors.primary-blue");
     box-shadow:
       inset 0 0 0.5em 0 var(--tw-shadow-color),
@@ -74,11 +74,17 @@
       0 0 0.45em var(--tw-shadow-color);
   }
 
-  .custom-blue-shadow-hover:hover {
+  .custom-primary-shadow-hover:hover {
     box-shadow:
       inset 0 0 0.5em 0 var(--tw-shadow-color),
       0 0 0.5em 0 var(--tw-shadow-color),
       0 0 1em 0 var(--tw-shadow-color);
+  }
+
+  .text-primary-shadow {
+    --tw-shadow-color: theme("colors.primary-blue");
+    filter: drop-shadow(0 0 0.5em var(--tw-shadow-color))
+      drop-shadow(0 0 0.125em var(--tw-shadow-color));
   }
 }
 
@@ -107,4 +113,25 @@ h2 {
 
 .Toastify__toast[id="1"] > div {
   @apply pt-8;
+}
+
+.Toastify__toast-container {
+  padding: 0 !important;
+  margin: 0 15px !important;
+  @media (max-width: 768px) {
+    display: flex;
+    justify-content: center;
+    width: 100% !important;
+    margin-top: 15px !important;
+  }
+}
+.Toastify__toast {
+  padding: 0 !important;
+  margin: 0 !important;
+
+  @media (max-width: 768px) {
+    width: 75vw !important;
+    margin: 0px 25px !important;
+    justify-content: center !important;
+  }
 }

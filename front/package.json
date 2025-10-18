@@ -29,6 +29,7 @@
     "cobe": "^0.6.4",
     "dotted-map": "^2.2.3",
     "gsap": "^3.13.0",
+    "lottie-react": "^2.4.1",
     "meshline": "^3.3.1",
     "motion": "^12.23.6",
     "next": "^15.2.3",

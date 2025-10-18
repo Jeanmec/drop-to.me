@@ -1,13 +1,14 @@
 # 🌐 Frontend [Drop-to.me](https://drop-to.me/)
 
 This project is built with **Next.js** (React framework) in **TypeScript**.  
-It is designed to work with the NestJS backend and uses environment variables for configuration.
+It communicates with the NestJS backend via **WebSocket** and uses **PeerJS** for peer-to-peer connections.
 
 ## 🚀 Prerequisites
 
 - Node.js (version 18+ recommended, 22.04 if using Nixpacks)
 - npm or yarn
-- Backend URL (NestJS API)
+- Backend URL (NestJS WebSocket server)
+- PeerJS server URL
 
 ## ⚙️ Installation
 
@@ -27,16 +28,18 @@ cp .env.example .env
 
 Fill in the environment variables with your values:
 
-NEXT_PUBLIC_BACKEND_URL=https://your-backend-url.com
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
 NEXT_PUBLIC_LOADING_SCREEN_DURATION=3000
-NEXT_PUBLIC_WEBSITE_NAME=My Website
-NEXT_PUBLIC_GITHUB_URL=https://github.com/your-username/your-project
+NEXT_PUBLIC_WEBSITE_NAME=
+NEXT_PUBLIC_GITHUB_URL=https://github.com/Jeanmec
 NIXPACKS_NODE_VERSION=22.04
+```
 
 ### Environment Variables Explanation
 
 - **NEXT_PUBLIC_BACKEND_URL**  
-  URL of the NestJS backend API that the frontend will communicate with.
+  URL of the NestJS backend server (WebSocket and PeerJS are integrated on the same server).
 
 - **NEXT_PUBLIC_LOADING_SCREEN_DURATION**  
   Time in milliseconds that the loading animation will be displayed before triggering the rest of the animations.
@@ -83,8 +86,11 @@ docker run -p 3000:3000 --env-file .env droptome-frontend
 
 ## 🗂 Project Structure
 
-- pages/ : Next.js pages and routes
-- components/ : Reusable UI components
-- styles/ : Global and component-specific styles
+- src/app/ : Next.js app router pages and routes
+- src/components/ : Reusable UI components
+- src/contexts/ : React contexts (WebSocket, PeerJS providers)
+- src/services/ : Service layer for WebSocket and peer communication
+- src/stores/ : State management stores
+- src/styles/ : Global and component-specific styles
 - .env : Local environment variables
 - .env.example : Example configuration

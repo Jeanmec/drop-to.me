@@ -7,10 +7,11 @@ import BeamConnection from "@/components/Beam/BeamConnection";
 import BeamTransfer from "@/components/Beam/BeamTransfer";
 import { Icon } from "@/components/Icons/Icon";
 import DivAppear from "@/components/ui/DivAppear";
-import { Globe } from "@/components/ui/Globe";
-import Ripple from "@/components/ui/Ripple";
 import Sparkles from "@/components/ui/Sparkles";
 import Image from "next/image";
+import Lottie from "lottie-react";
+import GlobeLottie from "@/app/lottie/globe.json";
+import Ripple from "../ui/Ripple";
 
 type GlowingCardProps = {
   className?: string;
@@ -86,7 +87,11 @@ const items = {
       <p className="text-description z-[2] rounded-xl p-1 text-center text-base backdrop-blur-xl">
         Create a direct connection with another users around the world
       </p>
-      <Globe className="top-1/4 hidden md:top-2/4 lg:block" />
+      <Lottie
+        className="absolute top-1/4 hidden text-white md:top-2/4 lg:block"
+        animationData={GlobeLottie}
+        loop={true}
+      />
 
       <div className="absolute bottom-0 block h-full w-full animate-spin overflow-hidden opacity-15 lg:hidden">
         <Image

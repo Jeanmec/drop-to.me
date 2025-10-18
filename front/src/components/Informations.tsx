@@ -10,8 +10,7 @@ export default function Informations() {
         <>
           <p>
             This is a peer-to-peer file transfer application that allows you to
-            send files or messages directly between devices on the same network
-            without using a server.
+            send files or messages directly between devices on the same network.
           </p>
           <p>It is designed to be fast, secure, and easy to use.</p>
         </>
@@ -45,8 +44,8 @@ export default function Informations() {
             between devices on the same network without a central server.
           </p>
           <p>
-            However, it is not limited to Apple devices and can be used on any
-            platform that supports WebRTC.
+            However, it is not limited to Apple devices and works across
+            different platforms and operating systems.
           </p>
         </>
       ),

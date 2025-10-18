@@ -1,7 +1,7 @@
 export default function Hero() {
   return (
-    <div className="flex w-full items-center justify-center pt-5 text-white">
-      <div className="my-4 text-center">
+    <div className="absolute z-2 flex w-full items-center justify-center pt-5 text-white">
+      <div className="my-4 px-4 text-center">
         <h1 className="mb-4 p-2 backdrop-blur-xs">
           {process.env.NEXT_PUBLIC_WEBSITE_NAME}
         </h1>

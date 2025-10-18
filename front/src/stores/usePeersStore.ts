@@ -1,60 +1,62 @@
 import { create } from "zustand";
-import type { DataConnection, Peer } from "peerjs";
-import type {
-  TTargetPeerState,
-  GlobalPeersState,
-  TTargetPeer,
-} from "@/types/peer.t";
+import type { Peer, DataConnection } from "peerjs";
+import type { TPeer } from "@/types/peer.t";
 
 interface PeersStore {
+  // Self peer
   selfPeer: Peer | null;
-  targetPeers: TTargetPeer[];
-  globalPeersState: GlobalPeersState;
-  setGlobalPeersState: (state: GlobalPeersState) => void;
-  setSelfPeer: (peer: Peer) => void;
-  addTargetPeer: (peer: { peerId: string; state?: TTargetPeerState }) => void;
+  setSelfPeer: (peer: Peer | null) => void;
+
+  isPeerDisconnected: boolean;
+  setIsPeerDisconnected: (disconnected: boolean) => void;
+
+  // Target peers
+  targetPeers: TPeer[];
+  addTargetPeer: (peerId: string, connection?: DataConnection) => void;
   removeTargetPeer: (peerId: string) => void;
-  updateTargetConnection: (connection: DataConnection) => void;
-  updatePeerState: (peerId: string, stateValue: TTargetPeerState) => void;
+  clearTargetPeers: () => void;
+  updatePeer: (
+    peerId: string,
+    updates: Partial<Pick<TPeer, "state" | "connection">>,
+  ) => void;
 }
 
 export const usePeersStore = create<PeersStore>((set) => ({
   selfPeer: null,
+
+  setSelfPeer: (peer) => set({ selfPeer: peer }),
+
+  isPeerDisconnected: false,
+
+  setIsPeerDisconnected: (disconnected) =>
+    set({ isPeerDisconnected: disconnected }),
+
   targetPeers: [],
-  globalPeersState: "disconnected",
-  setSelfPeer: (peer) => set(() => ({ selfPeer: peer })),
 
-  setGlobalPeersState: (state) => set(() => ({ globalPeersState: state })),
-
-  addTargetPeer: ({ peerId, state = "none" }) =>
-    set((storeState) => {
-      if (storeState.targetPeers.some((p) => p.peerId === peerId)) {
-        return storeState;
+  addTargetPeer: (peerId, connection) =>
+    set((state) => {
+      if (state.targetPeers.some((peer) => peer.peerId === peerId)) {
+        return state;
       }
       return {
         targetPeers: [
-          ...storeState.targetPeers,
-          { peerId, connection: null, state },
+          ...state.targetPeers,
+          { peerId, connection: connection ?? null, state: "connected" },
         ],
       };
     }),
 
   removeTargetPeer: (peerId) =>
     set((state) => ({
-      targetPeers: state.targetPeers.filter((p) => p.peerId !== peerId),
+      targetPeers: state.targetPeers.filter((peer) => peer.peerId !== peerId),
     })),
 
-  updateTargetConnection: (conn) =>
-    set((state) => ({
-      targetPeers: state.targetPeers.map((p) =>
-        p.peerId === conn.peer ? { ...p, connection: conn, state: "open" } : p,
-      ),
-    })),
+  clearTargetPeers: () => set({ targetPeers: [] }),
 
-  updatePeerState: (peerId, stateValue) =>
+  updatePeer: (peerId, updates) =>
     set((state) => ({
-      targetPeers: state.targetPeers.map((p) =>
-        p.peerId === peerId ? { ...p, state: stateValue } : p,
+      targetPeers: state.targetPeers.map((peer) =>
+        peer.peerId === peerId ? { ...peer, ...updates } : peer,
       ),
     })),
 }));

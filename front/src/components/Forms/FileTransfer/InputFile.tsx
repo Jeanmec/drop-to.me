@@ -36,7 +36,7 @@ export default function InputFile({
         type="button"
         disabled={disabled}
         className={cn(
-          "text-shadow border-primary-blue text-primary-blue custom-blue-shadow-hover custom-blue-shadow relative m-8 flex h-36 w-36 cursor-pointer items-center justify-center rounded-full border-[0.125em] border-solid bg-black px-4 py-2 text-base no-underline transition-all duration-200 hover:scale-110",
+          "text-shadow border-primary-blue text-primary-blue custom-primary-shadow-hover custom-primary-shadow relative m-8 flex h-36 w-36 cursor-pointer items-center justify-center rounded-full border-[0.125em] border-solid bg-black px-4 py-2 text-base no-underline transition-all duration-200 hover:scale-110",
           className,
         )}
       >

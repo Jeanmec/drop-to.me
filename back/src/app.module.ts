@@ -6,6 +6,7 @@ import { RoomModule } from './room/room.module';
 import { SignalModule } from './signal/signal.module';
 import { UserService } from './user/user.service';
 import { UserModule } from './user/user.module';
+import { PeerModule } from './peer/peer.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UserModule } from './user/user.module';
     RoomModule,
     SignalModule,
     UserModule,
+    PeerModule,
   ],
   providers: [UserService],
 })

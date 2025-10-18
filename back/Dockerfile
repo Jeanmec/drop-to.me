@@ -1,15 +1,16 @@
 FROM node:22
 
-WORKDIR /usr/src/app
+WORKDIR /app
 
 COPY package.json yarn.lock ./
 
-RUN yarn install --production
+RUN yarn install --frozen-lockfile
 
 COPY . .
 
 RUN yarn build
 
 EXPOSE 3000
+EXPOSE 9000
 
-CMD [ "node", "dist/main.js" ]
+CMD ["yarn", "start:prod"]

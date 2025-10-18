@@ -8,7 +8,6 @@ export const setSocketInstance = (socket: Socket) => {
 
 export const emitSocket = <T = unknown>(event: string, payload?: T) => {
   if (!socketInstance) {
-    console.warn("[Socket] emit attempted before socket was ready");
     return;
   }
   socketInstance.emit(event, payload);
@@ -19,7 +18,6 @@ export const onSocket = <T = unknown>(
   callback: (payload: T) => void,
 ) => {
   if (!socketInstance) {
-    console.warn("[Socket] on attempted before socket was ready");
     return;
   }
   socketInstance.on(event, callback);
@@ -34,6 +32,12 @@ export const offSocket = (
     socketInstance.off(event, callback);
   } else {
     socketInstance.off(event);
+  }
+};
+
+export const disconnectSocket = () => {
+  if (socketInstance) {
+    socketInstance.disconnect();
   }
 };
 

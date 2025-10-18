@@ -1,14 +1,13 @@
-import "@/styles/globals.css";
+import "@/styles/globals.scss";
 
 import { type Metadata } from "next";
 import { Inter, Poppins, Plus_Jakarta_Sans } from "next/font/google";
 
 import { SocketProvider } from "@/contexts/SocketProvider";
 import { PeerProvider } from "@/contexts/PeerProvider";
+import { ConnectionProvider } from "@/contexts/ConnectionProvider";
 import Footer from "@/components/Footer";
-import LoadingPage from "@/components/loaders/LoadingPage";
 import { ToastService } from "@/library/toastService";
-import { PageProvider } from "@/contexts/PageProvider";
 import { StrictMode } from "react";
 
 export const metadata: Metadata = {
@@ -50,11 +49,11 @@ export default function RootLayout({
         <body>
           <PeerProvider>
             <SocketProvider>
-              <ToastService />
-              <LoadingPage />
-              <PageProvider />
-              {children}
-              <Footer />
+              <ConnectionProvider>
+                <ToastService />
+                {children}
+                <Footer />
+              </ConnectionProvider>
             </SocketProvider>
           </PeerProvider>
         </body>

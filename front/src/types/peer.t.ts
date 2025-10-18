@@ -1,22 +1,9 @@
 import type { DataConnection } from "peerjs";
 
-export interface SelfPeer {
-  peerId: string;
-  connection?: DataConnection;
-}
+export type PeerState = "connected" | "disconnected" | "sending";
 
-export type TTargetPeerState =
-  | "none"
-  | "connecting"
-  | "open"
-  | "closed"
-  | "sending"
-  | "delivered";
-
-export type TTargetPeer = {
+export type TPeer = {
   peerId: string;
-  connection?: DataConnection | null;
-  state: TTargetPeerState;
+  connection: DataConnection | null;
+  state: "connected" | "sending";
 };
-
-export type GlobalPeersState = "connected" | "disconnected";

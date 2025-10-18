@@ -4,7 +4,11 @@ import { Repository } from 'typeorm';
 import { FileTransferEntity } from './entities/file-transfer.entity';
 import { UserEntity } from './entities/user.entity';
 import { MessageEntity } from './entities/message.entity';
-import { TStatistics } from 'src/types/statistics.t';
+import {
+  TStatistics,
+  TStatType,
+  TUpdateStatPayload,
+} from 'src/types/statistics.t';
 import { SignalService } from 'src/signal/signal.service';
 
 @Injectable()
@@ -29,8 +33,6 @@ export class StatsService {
     try {
       const user = this.userRepository.create();
       await this.userRepository.save(user);
-      const totalUsers = await this.getNumberUsers();
-      this.signalService.notifyStatisticsUsersUpdated(totalUsers);
       return true;
     } catch (error) {
       this.logger.error('Error adding user', error);
@@ -97,5 +99,49 @@ export class StatsService {
       users,
       messagesSent,
     };
+  }
+
+  async updateStats(
+    type: TStatType,
+    fileSize?: number,
+  ): Promise<TUpdateStatPayload | null> {
+    let success = false;
+
+    switch (type) {
+      case 'user':
+        success = await this.addUser();
+        if (success) {
+          const count = await this.getNumberUsers();
+          return { type: 'users', count };
+        }
+        break;
+
+      case 'message':
+        success = await this.addMessage();
+        if (success) {
+          const count = await this.getNumberMessagesSent();
+          return { type: 'messages', count };
+        }
+        break;
+
+      case 'file':
+        if (fileSize === undefined) {
+          this.logger.error('File size is required for file type');
+          return null;
+        }
+        success = await this.addTransfer(fileSize);
+        if (success) {
+          const count = await this.getNumberFileTransfers();
+          const size = await this.getSizeTransferred();
+          return { type: 'files', count, size };
+        }
+        break;
+
+      default:
+        this.logger.error(`Unknown stat type: ${String(type)}`);
+        return null;
+    }
+
+    return null;
   }
 }

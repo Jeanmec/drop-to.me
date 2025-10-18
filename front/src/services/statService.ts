@@ -1,27 +1,7 @@
-import { getRequest, postRequest } from "@/library/request";
-import type { TStatistics } from "@/types/statistics.t";
+import { emitSocket, getSocket } from "./socketService";
+import type { TStatistics, TAddStatPayload } from "@/types/statistics.t";
 
 class StatService {
-  async getStatistics(): Promise<TStatistics> {
-    return await getRequest<TStatistics>("/stats");
-  }
-
-  async sendMessage(): Promise<void> {
-    try {
-      await postRequest("/stats/message");
-    } catch (error) {
-      console.error("[StatService] Erreur lors de l'envoi du message", error);
-    }
-  }
-
-  async sendFile(fileSize: number): Promise<void> {
-    try {
-      await postRequest("/stats/file", { fileSize });
-    } catch (error) {
-      console.error("[StatService] Erreur lors de l'envoi du fichier", error);
-    }
-  }
-
   formatSize(size: number): { value: number; suffix: string } {
     const units = ["B", "KB", "MB", "GB", "TB"];
     let unitIndex = 0;
@@ -44,6 +24,33 @@ class StatService {
     }
 
     return { value, suffix };
+  }
+
+  async fetchStatistics(): Promise<TStatistics> {
+    const socket = getSocket();
+    if (!socket) {
+      throw new Error("Socket not connected");
+    }
+
+    return new Promise((resolve, reject) => {
+      socket.emit("get-stat", null, (response: TStatistics) => {
+        if (response) {
+          resolve(response);
+        } else {
+          reject(new Error("Failed to fetch statistics"));
+        }
+      });
+    });
+  }
+
+  addMessageStat(): void {
+    const payload: TAddStatPayload = { type: "message" };
+    emitSocket("add-stat", payload);
+  }
+
+  addFileStat(fileSize: number): void {
+    const payload: TAddStatPayload = { type: "file", fileSize };
+    emitSocket("add-stat", payload);
   }
 }
 

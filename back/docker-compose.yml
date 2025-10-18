@@ -1,50 +1,32 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15
-    container_name: transfer_postgres
-    restart: always
-    env_file:
-      - .env
-    ports:
-      - '5432:5432'
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    networks:
-      - app_network
-
-  redis:
-    image: redis:latest
-    container_name: transfer_redis
-    restart: always
-    ports:
-      - '6379:6379'
-    networks:
-      - app_network
-
   nest:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: transfer_nest
-    restart: always
-    depends_on:
-      - postgres
-      - redis
     env_file:
-      - .env
+      - ./.env
     ports:
       - '3000:3000'
-    volumes:
-      - .:/app
-      - /app/node_modules
-    networks:
-      - app_network
+      - '9000:9000'
+    labels:
+      # Désactiver le router par défaut de Coolify en utilisant des noms de routers personnalisés
 
-volumes:
-  db_data:
+      # Router Socket.IO (priorité très élevée pour être traité avant le router Coolify)
+      - 'traefik.http.routers.custom-socketio.rule=Host(`back.drop-to.me`) && PathPrefix(`/socket.io`)'
+      - 'traefik.http.routers.custom-socketio.entrypoints=https'
+      - 'traefik.http.routers.custom-socketio.tls=true'
+      - 'traefik.http.routers.custom-socketio.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.custom-socketio.service=custom-socketio-svc'
+      - 'traefik.http.routers.custom-socketio.priority=200'
+      - 'traefik.http.services.custom-socketio-svc.loadbalancer.server.port=3000'
 
-networks:
-  app_network:
-    driver: bridge
+      # Router PeerJS (priorité très basse - catch-all pour tout le reste)
+      - 'traefik.http.routers.custom-peerjs.rule=Host(`back.drop-to.me`) && PathPrefix(`/`)'
+      - 'traefik.http.routers.custom-peerjs.entrypoints=https'
+      - 'traefik.http.routers.custom-peerjs.tls=true'
+      - 'traefik.http.routers.custom-peerjs.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.custom-peerjs.service=custom-peerjs-svc'
+      - 'traefik.http.routers.custom-peerjs.priority=1'
+      - 'traefik.http.services.custom-peerjs-svc.loadbalancer.server.port=9000'

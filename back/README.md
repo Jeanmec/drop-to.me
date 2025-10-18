@@ -1,7 +1,8 @@
 # 📦 Backend [Drop-to.me](https://drop-to.me/)
 
-This project is developed in **TypeScript** using the **NestJS** framework.  
-It integrates **PostgreSQL** and **Redis** services for persistence and caching.
+This project is developed in **TypeScript** using the **NestJS** framework with an integrated **PeerJS server**.  
+It integrates **PostgreSQL** and **Redis** services for persistence and caching.  
+All client communication is handled via **WebSocket**.
 
 ## 🚀 Prerequisites
 
@@ -12,7 +13,6 @@ It integrates **PostgreSQL** and **Redis** services for persistence and caching.
 - or Docker
 
 ## ⚙️ Installation
-
 
 Install dependencies:
 
@@ -30,7 +30,7 @@ cp .env.example .env
 
 Fill in the environment variables with your values:
 
-```
+```env
 DATABASE_URL=postgres://user:postgres@xxx:5432/xxx
 REDIS_URL=redis://user:password@xxx:6379/0
 
@@ -45,11 +45,12 @@ CORS_WEB_SOCKET_ORIGINS=http://localhost:3001
 - **DATABASE_URL**  
   Configures the PostgreSQL database connection.  
   The stored data includes:
+
   - Number of connections
   - Number of file transfers
   - Total size of transferred files
   - Number of messages sent  
-  Note: The actual content of the messages or files is NOT stored in the database.
+    Note: The actual content of the messages or files is NOT stored in the database.
 
 - **REDIS_URL**  
   Configures the Redis connection.  
@@ -79,36 +80,31 @@ npm run build
 npm run start
 ```
 
-
 ## 🐳 Running with Docker
 
-This project includes two Dockerfiles and two docker-compose files for flexibility between development and production:
+This project includes Docker support for easy deployment.
 
-- `Dockerfile` for production image
-- `Dockerfile.dev` for development image (with live reload, etc.)
-- `docker-compose.yml` for production containers orchestration
-- `docker-compose.dev.yml` for development environment overrides
+### Using Docker Compose
 
-### Using Docker Compose for Development
+To start the project with Docker Compose:
 
-To start the project in development mode with Docker, run:
-
-```
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```bash
+docker-compose -f docker-compose.yml up
 ```
 
+This will start all services (backend, PostgreSQL, Redis, and PeerJS server) with the configuration from your `.env` file.
 
-This command merges the base `docker-compose.yml` configuration with the overrides in `docker-compose.dev.yml`. It builds the images if needed and starts the containers with development settings such as mounting source files for live reload, exposing debug ports, and using `.env.dev` environment variables.
+### Using Docker directly
 
-### Using Docker Compose for Production
+To run only the backend with Docker:
 
-To start the project in production mode, simply run:
-
+```bash
+docker run --env-file .env -p 3000:3000 droptome-back
 ```
-docker-compose up --build -d
-```
 
-This will use the default `docker-compose.yml` file and the `.env` environment variables.
+**Note:**
+
+- Port 3000 is used for the NestJS backend (WebSocket communication and integrated PeerJS server on /peerjs path)
 
 ## 🗂 Project Structure
 
@@ -119,6 +115,8 @@ This will use the default `docker-compose.yml` file and the `.env` environment v
 ## 🧩 Services Used
 
 - NestJS : TypeScript backend framework
+- PeerJS : Integrated peer-to-peer server
+- WebSocket : Real-time communication protocol
 - PostgreSQL : Relational database
 - Redis : Cache and key-value store
 - TypeORM : ORM for PostgreSQL

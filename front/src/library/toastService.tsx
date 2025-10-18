@@ -48,20 +48,18 @@ const notify = {
   receivedFile: ({ fileUrl, fileName, fileSize }: ToastFileTransfer) =>
     toast(
       (props: ToastContentProps) => (
-        <div className="w-full px-4">
-          <ToastCustomContainer {...props}>
-            <DownloadFileToast
-              fileUrl={fileUrl}
-              fileName={fileName}
-              fileSize={fileSize}
-            />
-          </ToastCustomContainer>
-        </div>
+        <ToastCustomContainer {...props}>
+          <DownloadFileToast
+            fileUrl={fileUrl}
+            fileName={fileName}
+            fileSize={fileSize}
+          />
+        </ToastCustomContainer>
       ),
       { ...defaultOptions, autoClose: false },
     ),
 };
 
-const ToastService = () => <ToastContainer />;
+const ToastService = () => <ToastContainer stacked />;
 
 export { notify, ToastService };

@@ -37,7 +37,7 @@ export default function BeamTransfer() {
         </div>
 
         <div className="flex flex-col justify-center">
-          <Circle ref={userRef} className="custom-blue-shadow h-16 w-16">
+          <Circle ref={userRef} className="custom-primary-shadow h-16 w-16">
             <Icon.user />
           </Circle>
         </div>

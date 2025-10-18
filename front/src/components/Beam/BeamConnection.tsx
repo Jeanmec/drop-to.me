@@ -25,7 +25,7 @@ export default function BeamConnection() {
             <Icon.user className="text-white" />
           </Circle>
           <Circle
-            className="custom-blue-shadow text-secondary-blue p-2"
+            className="custom-primary-shadow text-secondary-blue p-2"
             ref={connectionRef}
           >
             <Icon.connect />

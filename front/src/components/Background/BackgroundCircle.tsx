@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import useCSSVariable from "@/library/CSSVariable";
 import { useDragFileStore } from "@/stores/useDragFileStore";
 import { cn } from "@/library/utils";
-import { useLoadingDelay } from "@/hooks/useLoadingDelay";
 
 export const BackgroundCircle = () => {
   const { isDragFileActive } = useDragFileStore();
@@ -22,7 +21,6 @@ export const BackgroundCircle = () => {
   });
 
   const primaryBlue = useCSSVariable("--color-primary-blue");
-  const ready = useLoadingDelay();
 
   useEffect(() => {
     const updateSize = () => {
@@ -44,7 +42,7 @@ export const BackgroundCircle = () => {
     };
   }, []);
 
-  if (!dimensions || !ready) return null;
+  if (!dimensions) return null;
 
   const { width, height } = dimensions;
   const centerX = width / 2;

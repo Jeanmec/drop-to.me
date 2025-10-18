@@ -3,6 +3,8 @@
 import { notify } from "@/library/toastService";
 import { useChatStore } from "@/stores/useChatStore";
 import { useEffect, useRef } from "react";
+import FileAttachment from "./FileAttachment";
+import { cn } from "@/library/utils";
 
 export default function Messages() {
   const { messages } = useChatStore();
@@ -46,26 +48,36 @@ export default function Messages() {
       ref={chatContainerRef}
       className="flex h-auto w-full flex-1 flex-col justify-start gap-2 overflow-y-auto px-4"
     >
-      {(messages ?? []).map((msg, index) => (
-        <div
-          key={index}
-          className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
-        >
-          <div className="">
-            <time className="text-xs opacity-50">
-              {msg.timestamp.toLocaleTimeString()}
-            </time>
-          </div>
-          <div
-            onClick={() => copyToClipboard(msg.content)}
-            className={`animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${
-              msg.received ? "bg-primary-blue" : "bg-secondary-blue"
-            } `}
-          >
-            {msg.content}
-          </div>
+      {(messages ?? []).length === 0 ? (
+        <div className="m-auto text-center text-sm opacity-60">
+          Retrieve messages and files received here.
         </div>
-      ))}
+      ) : (
+        (messages ?? []).map((msg, index) => (
+          <div
+            key={index}
+            className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
+          >
+            <div className="">
+              <time className="text-xs opacity-50">
+                {msg.timestamp.toLocaleTimeString()}
+              </time>
+            </div>
+            {msg.file ? (
+              <FileAttachment file={msg.file} received={msg.received} />
+            ) : (
+              <div
+                onClick={() => copyToClipboard(msg.content)}
+                className={cn(
+                  `animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${msg.received ? "bg-primary-blue" : "bg-secondary-blue"}`,
+                )}
+              >
+                {msg.content}
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }

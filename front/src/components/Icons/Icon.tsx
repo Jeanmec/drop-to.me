@@ -19,6 +19,7 @@ import { IoIosClose, IoIosInformationCircleOutline } from "react-icons/io";
 import { IoChevronDown } from "react-icons/io5";
 import { CiTrash } from "react-icons/ci";
 import { LuSend } from "react-icons/lu";
+import { TbReload } from "react-icons/tb";
 
 type IconProps = {
   className?: string;
@@ -56,4 +57,5 @@ export const Icon = {
   send: createIcon(LuSend),
   close: createIcon(IoIosClose),
   code: createIcon(FaCode),
+  reload: createIcon(TbReload),
 };

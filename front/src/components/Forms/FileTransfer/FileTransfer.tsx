@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { peerService } from "@/services/peerService";
+import {
+  sendFileToTargets,
+  setOnFileReceivedCallback,
+} from "@/services/peerService";
 import { statService } from "@/services/statService";
 import { notify } from "@/library/toastService";
 import { usePeersStore } from "@/stores/usePeersStore";
@@ -10,6 +13,8 @@ import ParticleLoader from "@/components/loaders/ParticleLoader";
 import GlobalFileDropzone from "@/components/Forms/FileTransfer/GlobalFileDropzone";
 import { useDragFileStore } from "@/stores/useDragFileStore";
 import { Icon } from "../../Icons/Icon";
+import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
+import { useChatStore } from "@/stores/useChatStore";
 
 export default function FileTransferPanel() {
   const { targetPeers } = usePeersStore();
@@ -17,17 +22,27 @@ export default function FileTransferPanel() {
   const transferStartTime = useRef<number | null>(null);
 
   const { isDragFileActive, setIsDragFileActive } = useDragFileStore();
+  const { addMessage } = useChatStore();
 
   const handleFileSelection = async (file: File | null) => {
-    console.trace("handleFileSelection triggered");
     try {
       if (file) {
         transferStartTime.current = Date.now();
         setIsInTransfer(true);
         await handleSend(file);
+
+        addMessage({
+          received: false,
+          content: "",
+          timestamp: new Date(),
+          file: {
+            fileName: file.name,
+            fileSize: file.size,
+          },
+        });
       }
     } catch (error) {
-      console.error("Error sending file:", error);
+      console.log(error);
       notify.error("Failed to send file.");
       setIsInTransfer(false);
       transferStartTime.current = null;
@@ -35,21 +50,31 @@ export default function FileTransferPanel() {
   };
 
   const handleSend = async (file: File) => {
-    await peerService.sendFileToTargets(file);
-    await statService.sendFile(file.size);
+    await sendFileToTargets(file);
+    statService.addFileStat(file.size);
   };
 
   useEffect(() => {
-    peerService.setOnFileReceivedCallback((file) => {
-      console.log("File received:", file.name);
+    setOnFileReceivedCallback((file) => {
       const url = URL.createObjectURL(file.data);
       notify.receivedFile({
         fileUrl: url,
         fileName: file.name,
         fileSize: file.size,
       });
+
+      addMessage({
+        received: true,
+        content: "",
+        timestamp: new Date(),
+        file: {
+          fileName: file.name,
+          fileSize: file.size,
+          fileUrl: url,
+        },
+      });
     });
-  }, []);
+  }, [addMessage]);
 
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
@@ -124,6 +149,7 @@ export default function FileTransferPanel() {
 
   return (
     <>
+      <BackgroundCircle />
       <GlobalFileDropzone
         onFileSelected={handleFileSelection}
         disabled={isInTransfer}
