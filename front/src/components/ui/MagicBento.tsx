@@ -74,15 +74,16 @@ const updateCardGlowProperties = (
 const useMobileDetection = () => {
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
-    const checkMobile = () =>
-      setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+  const checkMobile = useCallback(() => {
+    setIsMobile(window.innerWidth <= MOBILE_BREAKPOINT);
+  }, []);
 
+  useEffect(() => {
     checkMobile();
     window.addEventListener("resize", checkMobile);
 
     return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  }, [checkMobile]);
 
   return isMobile;
 };

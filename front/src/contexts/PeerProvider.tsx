@@ -14,6 +14,7 @@ import {
   setPeerInstance,
   getPeerInstance,
   handleIncomingData,
+  cancelTransfersForPeer,
 } from "@/services/peerService";
 import { notify } from "@/library/toastService";
 
@@ -26,6 +27,40 @@ interface PeerContextValue {
 }
 
 const PeerContext = createContext<PeerContextValue | null>(null);
+
+const setupConnectionListeners = (
+  conn: DataConnection,
+  onOpen?: () => void,
+) => {
+  conn.on("open", () => {
+    if (onOpen) onOpen();
+    usePeersStore.getState().addTargetPeer(conn.peer, conn);
+  });
+
+  conn.on("data", (data: unknown) => {
+    handleIncomingData(data, conn.peer, conn);
+  });
+
+  conn.on("close", () => {
+    cancelTransfersForPeer(conn.peer);
+    usePeersStore.getState().removeTargetPeer(conn.peer);
+  });
+
+  conn.on("error", () => {
+    cancelTransfersForPeer(conn.peer);
+    usePeersStore.getState().removeTargetPeer(conn.peer);
+  });
+};
+
+const attemptPeerReconnect = (peer: Peer) => {
+  if (!peer.destroyed) {
+    try {
+      peer.reconnect();
+    } catch (reconnectError) {
+      console.error("[PeerProvider] Reconnect error:", reconnectError);
+    }
+  }
+};
 
 export function PeerProvider({ children }: PeerProviderProps) {
   const [localPeerInstance, setLocalPeerInstance] = useState<Peer | null>(null);
@@ -59,12 +94,9 @@ export function PeerProvider({ children }: PeerProviderProps) {
       console.error("[PeerProvider] Error:", err);
 
       if (err.type === "disconnected" || err.type === "network") {
-        setIsPeerDisconnected(true);
-        setSelfPeer(null);
-        notify.error(
-          "Connection lost to PeerJS server. Please refresh your browser.",
-          { autoClose: false },
-        );
+        if (newPeer.disconnected) {
+          attemptPeerReconnect(newPeer);
+        }
         return;
       }
 
@@ -72,23 +104,18 @@ export function PeerProvider({ children }: PeerProviderProps) {
         return;
       }
 
+      setIsPeerDisconnected(true);
       setSelfPeer(null);
-      notify.error("PeerJS error: " + err.type, { autoClose: false });
+      notify.error("PeerJS error: " + err.type, false);
     });
+
+    newPeer.on("disconnected", () => {
+      attemptPeerReconnect(newPeer);
+    });
+
     newPeer.on("connection", (conn: DataConnection) => {
       if (!conn) return;
-      conn.on("open", () => {
-        usePeersStore.getState().addTargetPeer(conn.peer, conn);
-      });
-      conn.on("data", (data: unknown) => {
-        handleIncomingData(data, conn.peer);
-      });
-      conn.on("close", () => {
-        usePeersStore.getState().removeTargetPeer(conn.peer);
-      });
-      conn.on("error", () => {
-        usePeersStore.getState().removeTargetPeer(conn.peer);
-      });
+      setupConnectionListeners(conn);
     });
     return () => {
       newPeer.destroy();
@@ -111,20 +138,8 @@ export function PeerProvider({ children }: PeerProviderProps) {
           return;
         }
 
-        conn.on("open", () => {
+        setupConnectionListeners(conn, () => {
           updatePeer(peer.peerId, { connection: conn });
-        });
-
-        conn.on("data", (data: unknown) => {
-          handleIncomingData(data, conn.peer);
-        });
-
-        conn.on("close", () => {
-          usePeersStore.getState().removeTargetPeer(conn.peer);
-        });
-
-        conn.on("error", () => {
-          usePeersStore.getState().removeTargetPeer(conn.peer);
         });
       }
     });

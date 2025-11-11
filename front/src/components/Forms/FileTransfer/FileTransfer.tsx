@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   sendFileToTargets,
   setOnFileReceivedCallback,
@@ -16,43 +16,105 @@ import { Icon } from "../../Icons/Icon";
 import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
 import { useChatStore } from "@/stores/useChatStore";
 
+const WAITING_TOAST_ID = "file-transfer-awaiting-connection";
+
 export default function FileTransferPanel() {
   const { targetPeers } = usePeersStore();
   const [isInTransfer, setIsInTransfer] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [isAwaitingConnection, setIsAwaitingConnection] = useState(false);
+  const [isProcessingFile, setIsProcessingFile] = useState(false);
   const transferStartTime = useRef<number | null>(null);
+  const sendInProgressRef = useRef(false);
 
   const { isDragFileActive, setIsDragFileActive } = useDragFileStore();
   const { addMessage } = useChatStore();
 
-  const handleFileSelection = async (file: File | null) => {
-    try {
-      if (file) {
-        transferStartTime.current = Date.now();
-        setIsInTransfer(true);
-        await handleSend(file);
+  const hasReadyConnection = useMemo(
+    () => targetPeers.some((peer) => peer.connection?.open),
+    [targetPeers],
+  );
 
-        addMessage({
-          received: false,
-          content: "",
-          timestamp: new Date(),
-          file: {
-            fileName: file.name,
-            fileSize: file.size,
-          },
-        });
-      }
-    } catch (error) {
-      console.log(error);
-      notify.error("Failed to send file.");
-      setIsInTransfer(false);
-      transferStartTime.current = null;
+  const resetTransferState = () => {
+    setIsInTransfer(false);
+    setPendingFile(null);
+    setIsAwaitingConnection(false);
+    setIsProcessingFile(false);
+    sendInProgressRef.current = false;
+    transferStartTime.current = null;
+    notify.dismiss(WAITING_TOAST_ID);
+  };
+
+  const handleSend = useCallback(async (file: File) => {
+    const success = await sendFileToTargets(file);
+    if (success) {
+      statService.addFileStat(file.size);
+    }
+    return success;
+  }, []);
+
+  const handleFileSelection = (file: File | null) => {
+    if (!file) return;
+
+    if (targetPeers.length === 0) {
+      notify.error("No connected peers available to receive the file.");
+      return;
+    }
+
+    setPendingFile(file);
+
+    if (!hasReadyConnection) {
+      setIsAwaitingConnection(true);
+      notify.info("Reconnecting...", false, WAITING_TOAST_ID);
     }
   };
+  useEffect(() => {
+    if (!pendingFile || !hasReadyConnection || sendInProgressRef.current) {
+      return;
+    }
 
-  const handleSend = async (file: File) => {
-    await sendFileToTargets(file);
-    statService.addFileStat(file.size);
-  };
+    sendInProgressRef.current = true;
+    setIsAwaitingConnection(false);
+    notify.dismiss(WAITING_TOAST_ID);
+
+    const startTransfer = async () => {
+      try {
+        setIsProcessingFile(true);
+        const fileToSend = pendingFile;
+        const success = await handleSend(fileToSend);
+
+        if (success) {
+          addMessage({
+            received: false,
+            content: "",
+            timestamp: new Date(),
+            file: {
+              fileName: fileToSend.name,
+              fileSize: fileToSend.size,
+            },
+          });
+        } else {
+          resetTransferState();
+        }
+      } catch (error) {
+        console.log(error);
+        notify.error("Failed to send file.");
+        resetTransferState();
+      } finally {
+        setPendingFile(null);
+        setIsProcessingFile(false);
+        sendInProgressRef.current = false;
+      }
+    };
+
+    void startTransfer();
+  }, [pendingFile, hasReadyConnection, handleSend, addMessage]);
+
+  useEffect(() => {
+    return () => {
+      notify.dismiss(WAITING_TOAST_ID);
+    };
+  }, []);
 
   useEffect(() => {
     setOnFileReceivedCallback((file) => {
@@ -90,16 +152,15 @@ export default function FileTransferPanel() {
         const elapsedTime = Date.now() - (transferStartTime.current ?? 0);
         const remainingTime = 3000 - elapsedTime;
 
-        if (remainingTime > 0) {
-          timeout = setTimeout(() => {
-            setIsInTransfer(false);
-            notify.success("File transfer completed successfully");
-            transferStartTime.current = null;
-          }, remainingTime);
-        } else {
-          setIsInTransfer(false);
+        const completeTransfer = () => {
+          resetTransferState();
           notify.success("File transfer completed successfully");
-          transferStartTime.current = null;
+        };
+
+        if (remainingTime > 0) {
+          timeout = setTimeout(completeTransfer, remainingTime);
+        } else {
+          completeTransfer();
         }
       }
     }
@@ -147,12 +208,18 @@ export default function FileTransferPanel() {
     };
   }, [setIsDragFileActive]);
 
+  const isTransferLocked =
+    isInTransfer ||
+    isAwaitingConnection ||
+    pendingFile !== null ||
+    isProcessingFile;
+
   return (
     <>
       <BackgroundCircle />
       <GlobalFileDropzone
         onFileSelected={handleFileSelection}
-        disabled={isInTransfer}
+        disabled={isTransferLocked}
         isDragging={isDragFileActive}
       />
 
@@ -161,14 +228,14 @@ export default function FileTransferPanel() {
           <InputFile
             className={isDragFileActive ? "scale-110" : ""}
             callback={handleFileSelection}
-            disabled={isInTransfer}
+            disabled={isTransferLocked}
             icon={
               isDragFileActive ? (
                 <Icon.downloadAnimated className="text-5xl" />
-              ) : isInTransfer ? (
+              ) : isTransferLocked ? (
                 <ParticleLoader />
               ) : (
-                <Icon.upload className="animate-fade-in text-primary-blue text-4xl" />
+                <Icon.upload className="animate-fade-in text-primary-blue text-primary-shadow text-4xl" />
               )
             }
           />

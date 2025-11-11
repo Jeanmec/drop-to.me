@@ -9,7 +9,7 @@ export default function Alone() {
   return (
     <>
       <RadarBackground />
-      <div className="absolute top-[67.5vh] left-1/2 z-[1] flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4">
+      <div className="absolute top-[67.5vh] left-1/2 z-[1] flex w-full -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 px-6">
         <GradientTitle className="flex justify-center gap-2">
           You are alone
         </GradientTitle>

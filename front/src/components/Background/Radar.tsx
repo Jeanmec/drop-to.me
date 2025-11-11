@@ -49,9 +49,9 @@ export const Radar = ({
           style={{
             backgroundImage: "url(/assets/noise.gif)",
             maskImage:
-              "radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 75%)",
+              "radial-gradient(circle, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 75%)",
             WebkitMaskImage:
-              "radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0) 75%)",
+              "radial-gradient(circle, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0) 75%)",
           }}
         />
       )}

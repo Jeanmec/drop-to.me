@@ -14,7 +14,7 @@ export default function HomePage() {
 
   return (
     <>
-      <main className="relative flex min-h-screen flex-col items-center px-4 pt-12 pb-24 text-white">
+      <main className="relative flex min-h-screen flex-col items-center px-4 pt-8 pb-24 text-white md:pt-12">
         <Hero />
         {isPeerDisconnected ? (
           <Disconnected />

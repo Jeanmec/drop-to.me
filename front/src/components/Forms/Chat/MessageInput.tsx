@@ -39,7 +39,7 @@ export default function MessageInput() {
   if (isAlone) {
     return (
       <div className="flex h-12 w-full items-center justify-center px-4 text-sm text-gray-500 italic">
-        Impossible d&apos;envoyer des messages seul
+        Can&apos;t send messages while alone.
       </div>
     );
   }

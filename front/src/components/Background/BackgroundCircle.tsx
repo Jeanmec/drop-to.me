@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import useCSSVariable from "@/library/CSSVariable";
 import { useDragFileStore } from "@/stores/useDragFileStore";
 import { cn } from "@/library/utils";
+import { useWindowResize } from "@/hooks/useWindowResize";
 
 export const BackgroundCircle = () => {
   const { isDragFileActive } = useDragFileStore();
@@ -22,14 +23,13 @@ export const BackgroundCircle = () => {
 
   const primaryBlue = useCSSVariable("--color-primary-blue");
 
+  const updateSize = useCallback(() => {
+    setDimensions({ width: window.innerWidth, height: window.innerHeight });
+  }, []);
+
+  useWindowResize(updateSize);
+
   useEffect(() => {
-    const updateSize = () => {
-      setDimensions({ width: window.innerWidth, height: window.innerHeight });
-    };
-
-    updateSize();
-    window.addEventListener("resize", updateSize);
-
     const handleMouseMove = (e: MouseEvent) => {
       setMouse({ x: e.clientX, y: e.clientY });
     };
@@ -37,7 +37,6 @@ export const BackgroundCircle = () => {
     window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
-      window.removeEventListener("resize", updateSize);
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, []);

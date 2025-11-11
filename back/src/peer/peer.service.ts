@@ -15,6 +15,7 @@ export class PeerService {
         origin: allowedOrigin,
         credentials: true,
       },
+      key: 'peerjs',
     });
 
     peerServer.on('connection', (client: { getId: () => string }): void => {

@@ -12,6 +12,10 @@ import {
   initializeStatsListeners,
   cleanupStatsListeners,
 } from "@/listeners/statsListeners";
+import {
+  cancelTransfersForPeer,
+  cancelAllSendTransfers,
+} from "@/services/peerService";
 import React, {
   createContext,
   useContext,
@@ -59,7 +63,6 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     socket.on("connect", () => {});
 
     onSocket("disconnect", () => {
-      console.log("❌ Socket.IO disconnected");
       setIsRoomJoined(false);
     });
 
@@ -78,9 +81,6 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!peer || !peer.id) return;
 
-    // Emit join-room event with peer ID
-    emitSocket("join-room", { peerId: peer.id });
-
     // Initialize peer listeners
     initializePeerListeners({
       onJoinSuccess: (data) => {
@@ -93,7 +93,13 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
         });
       },
       onPeerLeft: (peerId) => {
+        cancelTransfersForPeer(peerId);
         removeTargetPeer(peerId);
+
+        const remainingPeers = usePeersStore.getState().targetPeers;
+        if (remainingPeers.length === 0) {
+          cancelAllSendTransfers();
+        }
       },
       onPeerJoined: (targetPeerId) => {
         if (peer && peer.id !== targetPeerId) {
@@ -126,6 +132,27 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     updateMessageCount,
     updateUserCount,
   ]);
+
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !peer?.id) {
+      return;
+    }
+
+    const joinRoom = () => {
+      emitSocket("join-room", { peerId: peer.id });
+    };
+
+    if (socket.connected) {
+      joinRoom();
+    }
+
+    socket.on("connect", joinRoom);
+
+    return () => {
+      socket.off("connect", joinRoom);
+    };
+  }, [peer?.id]);
 
   const value = {
     socket: socketRef.current,

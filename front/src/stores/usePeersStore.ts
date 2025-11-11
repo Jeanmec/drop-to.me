@@ -17,7 +17,7 @@ interface PeersStore {
   clearTargetPeers: () => void;
   updatePeer: (
     peerId: string,
-    updates: Partial<Pick<TPeer, "state" | "connection">>,
+    updates: Partial<Pick<TPeer, "state" | "connection" | "receivingFile">>,
   ) => void;
 }
 
@@ -35,9 +35,22 @@ export const usePeersStore = create<PeersStore>((set) => ({
 
   addTargetPeer: (peerId, connection) =>
     set((state) => {
-      if (state.targetPeers.some((peer) => peer.peerId === peerId)) {
-        return state;
+      const existingPeer = state.targetPeers.find(
+        (peer) => peer.peerId === peerId,
+      );
+
+      if (existingPeer) {
+        if (!connection || existingPeer.connection === connection) {
+          return state;
+        }
+
+        return {
+          targetPeers: state.targetPeers.map((peer) =>
+            peer.peerId === peerId ? { ...peer, connection } : peer,
+          ),
+        };
       }
+
       return {
         targetPeers: [
           ...state.targetPeers,

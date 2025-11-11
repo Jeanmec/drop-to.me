@@ -1,65 +1,127 @@
-import {
-  toast,
-  ToastContainer,
-  type ToastOptions,
-  type ToastContentProps,
-} from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-import DownloadFileToast from "@/components/Toast/ToastDownloadFile";
-import ToastCustomContainer from "@/components/Toast/ToastCustomContainer";
-import ToastMessage from "@/components/Toast/ToastMessage";
-import { type ToastFileTransfer } from "@/types/file.t";
+"use client";
+import { type ToastFileTransfer as ToastFileTransferType } from "@/types/file.t";
 
-const defaultOptions: ToastOptions = {
-  closeButton: false,
-  className: "!p-0 !bg-transparent border-none",
-  ariaLabel: "File received",
-  autoClose: 5000,
-  hideProgressBar: true,
+export type ToastId = string;
+export type ToastType = "success" | "error" | "info" | "warning";
+
+type MessageToastOptions = {
+  message: string;
+  autoClose?: number | false;
+  customId?: string;
 };
 
-type ToastType = "success" | "error" | "info" | "warning";
+// Event bus for non-React code to trigger toasts
+const toastEventBus = typeof window !== "undefined" ? new EventTarget() : null;
 
-const toastMessage = (
-  type: ToastType,
-  message: string,
-  options?: ToastOptions,
+const emit = (
+  type: "add" | "update" | "remove",
+  payload: Record<string, unknown>,
 ) => {
-  toast(
-    (props: ToastContentProps) => (
-      <ToastCustomContainer {...props}>
-        <ToastMessage message={message} type={type} />
-      </ToastCustomContainer>
-    ),
-    { ...defaultOptions, ...options },
+  toastEventBus?.dispatchEvent(
+    new CustomEvent("toast", { detail: { type, payload } }),
   );
 };
 
-const notify = {
-  success: (message: string, options: ToastOptions = {}) =>
-    toastMessage("success", message, options),
-  error: (message: string, options: ToastOptions = {}) =>
-    toastMessage("error", message, options),
-  info: (message: string, options: ToastOptions = {}) =>
-    toastMessage("info", message, options),
-  warning: (message: string, options: ToastOptions = {}) =>
-    toastMessage("warning", message, options),
-
-  receivedFile: ({ fileUrl, fileName, fileSize }: ToastFileTransfer) =>
-    toast(
-      (props: ToastContentProps) => (
-        <ToastCustomContainer {...props}>
-          <DownloadFileToast
-            fileUrl={fileUrl}
-            fileName={fileName}
-            fileSize={fileSize}
-          />
-        </ToastCustomContainer>
-      ),
-      { ...defaultOptions, autoClose: false },
-    ),
+const generateId = (customId?: string): ToastId => {
+  return customId || `toast-${Date.now()}-${Math.random()}`;
 };
 
-const ToastService = () => <ToastContainer stacked />;
+const createMessageToast = (
+  messageType: ToastType,
+  { message, autoClose = 5000, customId }: MessageToastOptions,
+): ToastId => {
+  const id = generateId(customId);
+  emit("add", {
+    id,
+    data: { type: "message", messageType, message },
+    autoClose,
+  });
+  return id;
+};
 
-export { notify, ToastService };
+const createFileTransferToast = (
+  fileName: string,
+  isUploading: boolean,
+): ToastId => {
+  const id = generateId();
+  emit("add", {
+    id,
+    data: { type: "file-transfer", fileName, progress: 0, isUploading },
+    autoClose: false,
+  });
+  return id;
+};
+
+type MessageToastParams = [
+  message: string,
+  autoClose?: number | false,
+  customId?: string,
+];
+
+export const notify = {
+  success: (
+    ...[message, autoClose = 5000, customId]: MessageToastParams
+  ): ToastId => createMessageToast("success", { message, autoClose, customId }),
+
+  error: (
+    ...[message, autoClose = 5000, customId]: MessageToastParams
+  ): ToastId => createMessageToast("error", { message, autoClose, customId }),
+
+  info: (
+    ...[message, autoClose = 5000, customId]: MessageToastParams
+  ): ToastId => createMessageToast("info", { message, autoClose, customId }),
+
+  warning: (
+    ...[message, autoClose = 5000, customId]: MessageToastParams
+  ): ToastId => createMessageToast("warning", { message, autoClose, customId }),
+
+  receivedFile: ({
+    fileUrl,
+    fileName,
+    fileSize,
+  }: ToastFileTransferType): ToastId => {
+    const id = generateId();
+    emit("add", {
+      id,
+      data: { type: "file-received", fileUrl, fileName, fileSize },
+      autoClose: false,
+    });
+    return id;
+  },
+
+  sendingFile: (fileName: string): ToastId =>
+    createFileTransferToast(fileName, true),
+
+  receivingFile: (fileName: string): ToastId =>
+    createFileTransferToast(fileName, false),
+
+  updateProgress: (
+    toastId: ToastId,
+    fileName: string,
+    progress: number,
+    isUploading: boolean,
+  ): void => {
+    emit("update", { id: toastId, data: { fileName, progress, isUploading } });
+  },
+
+  updateToFailed: (
+    toastId: ToastId,
+    fileName: string,
+    isUploading: boolean,
+  ): void => {
+    emit("update", {
+      id: toastId,
+      data: { fileName, progress: 0, isUploading, isFailed: true },
+    });
+    setTimeout(() => {
+      emit("remove", { id: toastId });
+    }, 5000);
+  },
+
+  dismiss: (toastId: ToastId): void => {
+    emit("remove", { id: toastId });
+  },
+};
+
+// Hook for ToastProvider to listen to events
+export const useToastEvents = () => toastEventBus;

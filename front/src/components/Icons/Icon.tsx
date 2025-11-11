@@ -20,6 +20,7 @@ import { IoChevronDown } from "react-icons/io5";
 import { CiTrash } from "react-icons/ci";
 import { LuSend } from "react-icons/lu";
 import { TbReload } from "react-icons/tb";
+import { LineMdUploadOutlineLoop } from "./UploadLoopIcon";
 
 type IconProps = {
   className?: string;
@@ -58,4 +59,5 @@ export const Icon = {
   close: createIcon(IoIosClose),
   code: createIcon(FaCode),
   reload: createIcon(TbReload),
+  uploadAnimated: createIcon(LineMdUploadOutlineLoop),
 };

@@ -1,4 +1,5 @@
 import { Icon } from "@/components/Icons/Icon";
+import { formatFileSize, getTruncatedFileName } from "@/utils/file.utils";
 
 interface ToastDownloadFileProps {
   fileUrl: string;
@@ -11,42 +12,6 @@ export default function ToastDownloadFile({
   fileName,
   fileSize,
 }: ToastDownloadFileProps) {
-  function formatFileSize(size: number): string {
-    const formatter = new Intl.NumberFormat("fr-FR", {
-      maximumSignificantDigits: 3,
-    });
-
-    if (size >= 1024 ** 3) {
-      return `${formatter.format(size / 1024 ** 3)} Go`;
-    } else if (size >= 1024 ** 2) {
-      return `${formatter.format(size / 1024 ** 2)} Mo`;
-    } else if (size >= 1024) {
-      return `${formatter.format(size / 1024)} Ko`;
-    }
-    return `${formatter.format(size)} o`;
-  }
-
-  function getTruncatedFileName(
-    name: string,
-    maxLength: number,
-  ): { displayName: string; isTruncated: boolean } {
-    const lastDotIndex = name.lastIndexOf(".");
-    const extension = lastDotIndex !== -1 ? name.slice(lastDotIndex) : "";
-    const baseName = lastDotIndex !== -1 ? name.slice(0, lastDotIndex) : name;
-
-    const allowedLength = maxLength - extension.length;
-
-    if (name.length <= maxLength || allowedLength <= 0) {
-      return { displayName: name, isTruncated: false };
-    }
-
-    const truncatedBase = baseName.slice(0, allowedLength - 1) + "…";
-    return {
-      displayName: truncatedBase + extension,
-      isTruncated: true,
-    };
-  }
-
   const formattedFileSize = formatFileSize(fileSize);
   const { displayName, isTruncated } = getTruncatedFileName(fileName, 25);
 
@@ -78,7 +43,7 @@ export default function ToastDownloadFile({
           <Icon.downloadAnimated />
         </span>
 
-        <span className="text-xs">{formattedFileSize}</span>
+        <span className="text-primary-blue text-xs">{formattedFileSize}</span>
       </a>
     </div>
   );

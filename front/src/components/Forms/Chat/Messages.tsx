@@ -20,28 +20,10 @@ export default function Messages() {
       });
   };
 
-  const setContainerHeight = () => {
-    const el = chatContainerRef.current;
-    if (el) {
-      const chatContainerHeight = el.clientHeight;
-      el.style.setProperty("max-height", `${chatContainerHeight}px`);
-    }
-  };
-
   useEffect(() => {
     const el = chatContainerRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
-
-  useEffect(() => {
-    setContainerHeight();
-
-    window.addEventListener("resize", setContainerHeight);
-
-    return () => {
-      window.removeEventListener("resize", setContainerHeight);
-    };
-  }, []);
 
   return (
     <div
