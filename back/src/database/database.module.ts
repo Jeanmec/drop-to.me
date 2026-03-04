@@ -24,7 +24,7 @@ import { parse } from 'pg-connection-string';
           password: parsed.password,
           database: parsed.database,
           entities: [__dirname + '/../**/*.entity.{js,ts}'],
-          synchronize: true,
+          synchronize: configService.get<string>('NODE_ENV') !== 'production',
         };
       },
     }),

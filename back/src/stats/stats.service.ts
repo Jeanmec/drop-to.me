@@ -8,7 +8,7 @@ import {
   TStatistics,
   TStatType,
   TUpdateStatPayload,
-} from 'src/types/statistics.t';
+} from '../types/statistics.t';
 import { SignalService } from 'src/signal/signal.service';
 
 @Injectable()
@@ -52,6 +52,11 @@ export class StatsService {
   }
 
   async addTransfer(fileSize: number): Promise<boolean> {
+    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+      this.logger.warn(`Invalid fileSize rejected: ${fileSize}`);
+      return false;
+    }
+
     try {
       const transfer = this.fileTransferRepository.create({ fileSize });
       await this.fileTransferRepository.save(transfer);

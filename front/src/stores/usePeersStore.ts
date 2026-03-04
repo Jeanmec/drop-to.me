@@ -3,14 +3,12 @@ import type { Peer, DataConnection } from "peerjs";
 import type { TPeer } from "@/types/peer.t";
 
 interface PeersStore {
-  // Self peer
   selfPeer: Peer | null;
   setSelfPeer: (peer: Peer | null) => void;
 
   isPeerDisconnected: boolean;
   setIsPeerDisconnected: (disconnected: boolean) => void;
 
-  // Target peers
   targetPeers: TPeer[];
   addTargetPeer: (peerId: string, connection?: DataConnection) => void;
   removeTargetPeer: (peerId: string) => void;
@@ -60,11 +58,25 @@ export const usePeersStore = create<PeersStore>((set) => ({
     }),
 
   removeTargetPeer: (peerId) =>
-    set((state) => ({
-      targetPeers: state.targetPeers.filter((peer) => peer.peerId !== peerId),
-    })),
+    set((state) => {
+      const peer = state.targetPeers.find((p) => p.peerId === peerId);
+      if (peer?.connection?.open) {
+        peer.connection.close();
+      }
+      return {
+        targetPeers: state.targetPeers.filter((p) => p.peerId !== peerId),
+      };
+    }),
 
-  clearTargetPeers: () => set({ targetPeers: [] }),
+  clearTargetPeers: () =>
+    set((state) => {
+      state.targetPeers.forEach((peer) => {
+        if (peer.connection?.open) {
+          peer.connection.close();
+        }
+      });
+      return { targetPeers: [] };
+    }),
 
   updatePeer: (peerId, updates) =>
     set((state) => ({

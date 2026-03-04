@@ -7,12 +7,15 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { StatsService } from '../stats/stats.service';
 import { RedisService } from 'src/redis/redis.service';
 import { getHashedIp, extractIp } from 'src/utils/ip.utils';
-import { Inject, forwardRef } from '@nestjs/common';
-import { TAddStatPayload } from 'src/types/statistics.t';
+import { TAddStatPayload } from '../types/statistics.t';
+
+interface SocketData {
+  roomId?: string;
+}
 
 @Injectable()
 @WebSocketGateway({
@@ -20,6 +23,7 @@ import { TAddStatPayload } from 'src/types/statistics.t';
   transports: ['websocket'],
 })
 export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  private readonly logger = new Logger(SignalGateway.name);
   private server: Server;
 
   constructor(
@@ -32,63 +36,128 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.server = server;
   }
 
-  async handleConnection() {
-    const result = await this.statsService.updateStats('user');
-    if (result) {
-      this.server.emit('update-stat', result);
+  async handleConnection(client: Socket) {
+    try {
+      const result = await this.statsService.updateStats('user');
+      if (result) {
+        this.server.emit('update-stat', result);
+      }
+    } catch (error) {
+      this.logger.error(
+        `handleConnection failed for ${client.id}`,
+        error instanceof Error ? error.stack : error,
+      );
     }
+  }
+
+  private getRoomId(socket: Socket, roomCode?: string): string {
+    if (roomCode && roomCode.trim().length > 0) {
+      return `room:${roomCode.trim().toUpperCase()}`;
+    }
+    return getHashedIp(socket.request);
   }
 
   @SubscribeMessage('join-room')
   async handleJoinRoom(
-    @MessageBody() data: { peerId: string },
+    @MessageBody() data: { peerId: string; roomCode?: string },
     @ConnectedSocket() socket: Socket,
   ) {
-    const { peerId } = data;
-    const hashedIp = getHashedIp(socket.request);
+    try {
+      if (!data?.peerId || typeof data.peerId !== 'string') {
+        this.logger.warn(`Invalid join-room payload from ${socket.id}`);
+        return;
+      }
 
-    await socket.join(hashedIp);
+      const peerId = data.peerId.slice(0, 64);
+      const roomCode = data.roomCode;
+      const roomId = this.getRoomId(socket, roomCode);
 
-    await this.redisService.addPeer(hashedIp, socket.id, peerId);
+      (socket.data as SocketData).roomId = roomId;
+      await socket.join(roomId);
 
-    const peersObj = await this.redisService.getClients(hashedIp);
+      await this.redisService.addPeer(roomId, socket.id, peerId);
 
-    const activePeers = await this.cleanDeadPeers(hashedIp, peersObj);
-    const targetPeers = activePeers.filter((p) => p !== peerId);
+      const peersObj = await this.redisService.getClients(roomId);
 
-    this.alertPeerJoined(hashedIp, peerId);
+      const activePeers = await this.cleanDeadPeers(roomId, peersObj);
+      const targetPeers = activePeers.filter((p) => p !== peerId);
 
-    socket.emit('join-success', {
-      peers: targetPeers,
-      ip: extractIp(socket.request),
-    });
+      this.alertPeerJoined(roomId, peerId);
+
+      socket.emit('join-success', {
+        peers: targetPeers,
+        ip: extractIp(socket.request),
+        roomCode: roomCode?.trim().toUpperCase() ?? null,
+      });
+    } catch (error) {
+      this.logger.error(
+        `handleJoinRoom failed for ${socket.id}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
+  }
+
+  @SubscribeMessage('leave-room')
+  async handleLeaveRoom(@ConnectedSocket() socket: Socket) {
+    try {
+      const data = socket.data as SocketData;
+      const roomId = data.roomId;
+      if (!roomId) return;
+
+      const peerId = await this.redisService.getClient(roomId, socket.id);
+      await this.redisService.removeClient(roomId, socket.id);
+      await socket.leave(roomId);
+      data.roomId = undefined;
+
+      if (peerId) {
+        this.sendClientLeave(roomId, peerId);
+      }
+    } catch (error) {
+      this.logger.error(
+        `handleLeaveRoom failed for ${socket.id}`,
+        error instanceof Error ? error.stack : error,
+      );
+    }
   }
 
   private async cleanDeadPeers(
-    hashedIp: string,
+    roomId: string,
     peersObj: Record<string, string>,
   ): Promise<string[]> {
     const activePeerIds: string[] = [];
-    const socketsInRoom = await this.server.in(hashedIp).fetchSockets();
+    const socketsInRoom = await this.server.in(roomId).fetchSockets();
     const activeSocketIds = new Set(socketsInRoom.map((s) => s.id));
 
+    const deadSocketIds: string[] = [];
     for (const [socketId, peerId] of Object.entries(peersObj)) {
       if (activeSocketIds.has(socketId)) {
         activePeerIds.push(peerId);
       } else {
-        await this.redisService.removeClient(hashedIp, socketId);
+        deadSocketIds.push(socketId);
       }
     }
+
+    await Promise.all(
+      deadSocketIds.map((id) => this.redisService.removeClient(roomId, id)),
+    );
 
     return activePeerIds;
   }
 
   async handleDisconnect(socket: Socket) {
-    const hashedIp = getHashedIp(socket.request);
-    const peerId = await this.redisService.getClient(hashedIp, socket.id);
-    await this.redisService.removeClient(hashedIp, socket.id);
-    if (peerId) {
-      this.sendClientLeave(hashedIp, peerId);
+    try {
+      const roomId =
+        (socket.data as SocketData).roomId ?? getHashedIp(socket.request);
+      const peerId = await this.redisService.getClient(roomId, socket.id);
+      await this.redisService.removeClient(roomId, socket.id);
+      if (peerId) {
+        this.sendClientLeave(roomId, peerId);
+      }
+    } catch (error) {
+      this.logger.error(
+        `handleDisconnect failed for ${socket.id}`,
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 
@@ -102,17 +171,44 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('get-stat')
   async handleGetStat() {
-    const stats = await this.statsService.getStats();
-    return stats;
+    try {
+      return await this.statsService.getStats();
+    } catch (error) {
+      this.logger.error(
+        'handleGetStat failed',
+        error instanceof Error ? error.stack : error,
+      );
+      return null;
+    }
   }
 
   @SubscribeMessage('add-stat')
   async handleAddStat(@MessageBody() data: TAddStatPayload) {
-    const { type, fileSize } = data;
-    const result = await this.statsService.updateStats(type, fileSize);
+    try {
+      if (!data?.type) return;
 
-    if (result) {
-      this.server.emit('update-stat', result);
+      const { type, fileSize } = data;
+
+      if (
+        type === 'file' &&
+        (typeof fileSize !== 'number' ||
+          fileSize <= 0 ||
+          !Number.isFinite(fileSize))
+      ) {
+        this.logger.warn(`Invalid fileSize in add-stat: ${fileSize}`);
+        return;
+      }
+
+      const result = await this.statsService.updateStats(type, fileSize);
+
+      if (result) {
+        this.server.emit('update-stat', result);
+      }
+    } catch (error) {
+      this.logger.error(
+        'handleAddStat failed',
+        error instanceof Error ? error.stack : error,
+      );
     }
   }
 

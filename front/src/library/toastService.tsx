@@ -10,7 +10,6 @@ type MessageToastOptions = {
   customId?: string;
 };
 
-// Event bus for non-React code to trigger toasts
 const toastEventBus = typeof window !== "undefined" ? new EventTarget() : null;
 
 const emit = (
@@ -123,5 +122,4 @@ export const notify = {
   },
 };
 
-// Hook for ToastProvider to listen to events
 export const useToastEvents = () => toastEventBus;

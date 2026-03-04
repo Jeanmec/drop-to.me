@@ -1,7 +1,13 @@
 import * as crypto from 'crypto';
 import { IncomingMessage } from 'http';
 
-const secret = process.env.IP_HASH_SECRET || 'default_salt';
+const secret = process.env.IP_HASH_SECRET;
+if (!secret) {
+  console.warn(
+    'IP_HASH_SECRET is not set — using a random secret (will change on restart)',
+  );
+}
+const resolvedSecret = secret || crypto.randomBytes(32).toString('hex');
 
 export function getHashedIp(req: IncomingMessage): string {
   const ip = extractIp(req);
@@ -23,5 +29,5 @@ export function extractIp(req: IncomingMessage): string {
 }
 
 export function hashIp(ip: string): string {
-  return crypto.createHmac('sha256', secret).update(ip).digest('hex');
+  return crypto.createHmac('sha256', resolvedSecret).update(ip).digest('hex');
 }

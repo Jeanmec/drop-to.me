@@ -7,35 +7,46 @@ import React, {
   useState,
   type ReactNode,
 } from "react";
-import { useSocket } from "@/contexts/SocketProvider";
 import { usePeer } from "@/contexts/PeerProvider";
 import LoadingPage from "@/components/loaders/LoadingPage";
 
 interface ConnectionContextValue {
   isReady: boolean;
   peerId: string | undefined;
+  hasTimedOut: boolean;
 }
 
 const ConnectionContext = createContext<ConnectionContextValue>({
   isReady: false,
   peerId: undefined,
+  hasTimedOut: false,
 });
 
 const MINIMUM_LOADING_TIME = 2500;
+const CONNECTION_TIMEOUT = 15_000;
 
 export function ConnectionProvider({ children }: { children: ReactNode }) {
-  const { isRoomJoined } = useSocket();
   const { peer } = usePeer();
   const peerId = peer?.id;
 
   const [isReady, setIsReady] = useState(false);
+  const [hasTimedOut, setHasTimedOut] = useState(false);
   const [startTime] = useState(() => Date.now());
 
   useEffect(() => {
-    const allReady = !!peerId && isRoomJoined;
+    if (peerId) return;
 
-    if (!allReady) return;
+    const timer = setTimeout(() => {
+      setHasTimedOut(true);
+    }, CONNECTION_TIMEOUT);
 
+    return () => clearTimeout(timer);
+  }, [peerId]);
+
+  useEffect(() => {
+    if (!peerId) return;
+
+    setHasTimedOut(false);
     const elapsed = Date.now() - startTime;
     const remainingTime = Math.max(0, MINIMUM_LOADING_TIME - elapsed);
 
@@ -46,11 +57,11 @@ export function ConnectionProvider({ children }: { children: ReactNode }) {
     return () => {
       clearTimeout(timer);
     };
-  }, [peerId, isRoomJoined, startTime]);
+  }, [peerId, startTime]);
 
   return (
-    <ConnectionContext.Provider value={{ isReady, peerId }}>
-      {!isReady ? <LoadingPage /> : children}
+    <ConnectionContext.Provider value={{ isReady, peerId, hasTimedOut }}>
+      {!isReady ? <LoadingPage timedOut={hasTimedOut} /> : children}
     </ConnectionContext.Provider>
   );
 }

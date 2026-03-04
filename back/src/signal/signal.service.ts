@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SignalGateway } from './signal.gateway';
-import { TUpdateStatPayload } from 'src/types/statistics.t';
+import { TUpdateStatPayload } from '../types/statistics.t';
 
 @Injectable()
 export class SignalService {

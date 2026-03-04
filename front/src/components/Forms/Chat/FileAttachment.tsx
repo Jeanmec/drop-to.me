@@ -1,11 +1,11 @@
 "use client";
 
 import { Icon } from "@/components/Icons/Icon";
-import type { MessageFile } from "@/types/message.t";
+import type { File } from "@/types/message.t";
 import { formatFileSize, getTruncatedFileName } from "@/utils/file.utils";
 
 interface FileAttachmentProps {
-  file: MessageFile;
+  file: File;
   received: boolean;
 }
 

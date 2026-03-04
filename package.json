@@ -1,0 +1,24 @@
+{
+  "name": "droptome",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "front",
+    "back",
+    "libs/*"
+  ],
+  "scripts": {
+    "dev": "nx run-many --target=dev --projects=back,front --parallel",
+    "dev:front": "nx dev front",
+    "dev:back": "nx dev back",
+    "build": "nx run-many --target=build --projects=back,front --parallel",
+    "build:front": "nx build front",
+    "build:back": "nx build back",
+    "lint": "nx run-many --target=lint --all",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json}\""
+  },
+  "devDependencies": {
+    "nx": "^20.0.0",
+    "prettier": "^3.5.3"
+  }
+}

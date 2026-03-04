@@ -1,5 +1,5 @@
 import { emitSocket, getSocket } from "./socketService";
-import type { TStatistics, TAddStatPayload } from "@/types/statistics.t";
+import type { TStatistics, TAddStatPayload } from "@droptome/shared";
 
 class StatService {
   formatSize(size: number): { value: number; suffix: string } {
@@ -33,7 +33,12 @@ class StatService {
     }
 
     return new Promise((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error("Statistics request timed out"));
+      }, 10_000);
+
       socket.emit("get-stat", null, (response: TStatistics) => {
+        clearTimeout(timeoutId);
         if (response) {
           resolve(response);
         } else {

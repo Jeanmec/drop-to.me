@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { RedisModule } from 'src/redis/redis.module';
-import { SignalModule } from 'src/signal/signal.module';
+
 @Module({
-  imports: [RedisModule, SignalModule],
+  imports: [RedisModule],
   providers: [RoomService],
   exports: [RoomService],
 })

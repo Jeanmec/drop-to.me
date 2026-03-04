@@ -4,6 +4,7 @@ import React, {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -28,6 +29,9 @@ interface PeerContextValue {
 
 const PeerContext = createContext<PeerContextValue | null>(null);
 
+const RECONNECT_TOAST_ID = "peer-reconnect";
+const RECONNECT_DELAY_MS = 3000;
+
 const setupConnectionListeners = (
   conn: DataConnection,
   onOpen?: () => void,
@@ -43,12 +47,21 @@ const setupConnectionListeners = (
 
   conn.on("close", () => {
     cancelTransfersForPeer(conn.peer);
-    usePeersStore.getState().removeTargetPeer(conn.peer);
+    const store = usePeersStore.getState();
+    const existing = store.targetPeers.find((p) => p.peerId === conn.peer);
+    if (existing?.connection === conn) {
+      store.removeTargetPeer(conn.peer);
+    }
   });
 
   conn.on("error", () => {
     cancelTransfersForPeer(conn.peer);
-    usePeersStore.getState().removeTargetPeer(conn.peer);
+    if (conn.open) conn.close();
+    const store = usePeersStore.getState();
+    const existing = store.targetPeers.find((p) => p.peerId === conn.peer);
+    if (existing?.connection === conn) {
+      store.removeTargetPeer(conn.peer);
+    }
   });
 };
 
@@ -64,6 +77,11 @@ const attemptPeerReconnect = (peer: Peer) => {
 
 export function PeerProvider({ children }: PeerProviderProps) {
   const [localPeerInstance, setLocalPeerInstance] = useState<Peer | null>(null);
+  const [peerGeneration, setPeerGeneration] = useState(0);
+  const reconnectingRef = useRef(false);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const {
     setSelfPeer,
     targetPeers,
@@ -89,13 +107,32 @@ export function PeerProvider({ children }: PeerProviderProps) {
     newPeer.on("open", () => {
       setSelfPeer(newPeer);
       setLocalPeerInstance(newPeer);
+
+      if (reconnectingRef.current) {
+        reconnectingRef.current = false;
+        notify.dismiss(RECONNECT_TOAST_ID);
+        notify.success("Reconnecté");
+      }
     });
+
     newPeer.on("error", (err) => {
       console.error("[PeerProvider] Error:", err);
 
       if (err.type === "disconnected" || err.type === "network") {
-        if (newPeer.disconnected) {
-          attemptPeerReconnect(newPeer);
+        if (!reconnectingRef.current) {
+          reconnectingRef.current = true;
+          notify.info("Reconnexion...", false, RECONNECT_TOAST_ID);
+        }
+
+        if (newPeer.destroyed) {
+          setPeerGeneration((g) => g + 1);
+        } else if (newPeer.disconnected) {
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          reconnectTimeoutRef.current = setTimeout(() => {
+            attemptPeerReconnect(newPeer);
+          }, RECONNECT_DELAY_MS);
         }
         return;
       }
@@ -110,14 +147,29 @@ export function PeerProvider({ children }: PeerProviderProps) {
     });
 
     newPeer.on("disconnected", () => {
-      attemptPeerReconnect(newPeer);
+      if (!reconnectingRef.current) {
+        reconnectingRef.current = true;
+        notify.info("Reconnexion...", false, RECONNECT_TOAST_ID);
+      }
+
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      reconnectTimeoutRef.current = setTimeout(() => {
+        attemptPeerReconnect(newPeer);
+      }, RECONNECT_DELAY_MS);
     });
 
     newPeer.on("connection", (conn: DataConnection) => {
       if (!conn) return;
       setupConnectionListeners(conn);
     });
+
     return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
       newPeer.destroy();
     };
   }, [
@@ -125,6 +177,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
     clearTargetPeers,
     setIsPeerDisconnected,
     isPeerDisconnected,
+    peerGeneration,
   ]);
 
   useEffect(() => {
@@ -132,7 +185,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
 
     targetPeers.forEach((peer) => {
       if (!peer.connection && localPeerInstance.id !== peer.peerId) {
-        const conn = localPeerInstance.connect(peer.peerId);
+        const conn = localPeerInstance.connect(peer.peerId, { reliable: true });
 
         if (!conn) {
           return;

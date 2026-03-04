@@ -5,7 +5,7 @@ export type TStatistics = {
   messagesSent: number;
 };
 
-export type TStatType = "message" | "file" | "user";
+export type TStatType = 'message' | 'file' | 'user';
 
 export type TAddStatPayload = {
   type: TStatType;
@@ -13,7 +13,7 @@ export type TAddStatPayload = {
 };
 
 export type TUpdateStatPayload = {
-  type: "messages" | "files" | "users";
+  type: 'messages' | 'files' | 'users';
   count: number;
   size?: number;
 };

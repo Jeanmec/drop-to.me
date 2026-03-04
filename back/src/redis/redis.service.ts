@@ -1,8 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import Redis from 'ioredis';
 
+const ROOM_TTL_SECONDS = 3600;
+
 @Injectable()
-export class RedisService implements OnModuleInit {
+export class RedisService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RedisService.name);
   private redis: Redis;
 
   onModuleInit() {
@@ -13,6 +16,16 @@ export class RedisService implements OnModuleInit {
     }
 
     this.redis = new Redis(redisUrl);
+
+    this.redis.on('error', (err) => {
+      this.logger.error('Redis connection error', err);
+    });
+  }
+
+  async onModuleDestroy() {
+    if (this.redis) {
+      await this.redis.quit();
+    }
   }
 
   async addPeer(
@@ -25,11 +38,16 @@ export class RedisService implements OnModuleInit {
       return false;
     }
     const res = await this.redis.hset(room, socketId, peerId);
+    await this.redis.expire(room, ROOM_TTL_SECONDS);
     return res === 1;
   }
 
   async removeClient(room: string, socketId: string): Promise<boolean> {
     const res = await this.redis.hdel(room, socketId);
+    const remaining = await this.redis.hlen(room);
+    if (remaining === 0) {
+      await this.redis.del(room);
+    }
     return res === 1;
   }
 

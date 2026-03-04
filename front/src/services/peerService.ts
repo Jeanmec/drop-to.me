@@ -21,6 +21,8 @@ const onFileReceivedCallbacks = new Map<string, OnFileReceivedCallback>();
 const onMessageReceivedCallbacks = new Map<string, OnMessageReceivedCallback>();
 const pendingAcks = new Map<string, { peerId: string; timestamp: number }>();
 
+const PENDING_ACK_TIMEOUT_MS = 30_000;
+
 const pendingStartAcks = new Map<
   string,
   {
@@ -39,12 +41,37 @@ const activeSendTransfers = new Map<
   }
 >();
 
+let pendingAckCleanupInterval: ReturnType<typeof setInterval> | null = null;
+
+function startPendingAckCleanup() {
+  if (pendingAckCleanupInterval) return;
+  pendingAckCleanupInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ackId, info] of pendingAcks) {
+      if (now - info.timestamp > PENDING_ACK_TIMEOUT_MS) {
+        pendingAcks.delete(ackId);
+      }
+    }
+  }, 10_000);
+}
+
+function stopPendingAckCleanup() {
+  if (pendingAckCleanupInterval) {
+    clearInterval(pendingAckCleanupInterval);
+    pendingAckCleanupInterval = null;
+  }
+}
+
 export const createPeerInstance = (): Peer => {
   if (peerInstance && !peerInstance.destroyed) {
     return peerInstance;
   }
 
-  const peerUrl = new URL(process.env.NEXT_PUBLIC_PEERJS_URL!);
+  const rawUrl = process.env.NEXT_PUBLIC_PEERJS_URL;
+  if (!rawUrl) {
+    throw new Error("NEXT_PUBLIC_PEERJS_URL is not defined");
+  }
+  const peerUrl = new URL(rawUrl);
   const isSecure = peerUrl.protocol === "https:";
 
   const port = peerUrl.port ? Number(peerUrl.port) : isSecure ? 443 : 9000;
@@ -80,14 +107,23 @@ export const connectToPeer = (peerId: string): DataConnection | null => {
   if (!peerInstance || !peerInstance.open) {
     return null;
   }
-  return peerInstance.connect(peerId);
+  return peerInstance.connect(peerId, { reliable: true });
 };
 
 export const destroyPeerInstance = () => {
   if (peerInstance && !peerInstance.destroyed) {
     peerInstance.destroy();
-    peerInstance = null;
   }
+  peerInstance = null;
+  onFileReceivedCallbacks.clear();
+  onMessageReceivedCallbacks.clear();
+  pendingAcks.clear();
+  for (const [, pending] of pendingStartAcks) {
+    clearTimeout(pending.timeoutId);
+  }
+  pendingStartAcks.clear();
+  activeSendTransfers.clear();
+  stopPendingAckCleanup();
 };
 
 export const setOnFileReceivedCallback = (
@@ -97,6 +133,10 @@ export const setOnFileReceivedCallback = (
   onFileReceivedCallbacks.set(id, callback);
 };
 
+export const removeOnFileReceivedCallback = (id = "default") => {
+  onFileReceivedCallbacks.delete(id);
+};
+
 export const setOnMessageReceivedCallback = (
   callback: OnMessageReceivedCallback,
   id = "default",
@@ -104,7 +144,10 @@ export const setOnMessageReceivedCallback = (
   onMessageReceivedCallbacks.set(id, callback);
 };
 
-// Cancel all active transfers for a disconnected peer (both sending and receiving)
+export const removeOnMessageReceivedCallback = (id = "default") => {
+  onMessageReceivedCallbacks.delete(id);
+};
+
 export const cancelTransfersForPeer = (peerId: string): void => {
   const sendTransfer = activeSendTransfers.get(peerId);
   if (sendTransfer) {
@@ -131,7 +174,6 @@ export const cancelTransfersForPeer = (peerId: string): void => {
   }
 };
 
-// Cancel all outgoing transfers when sender is alone in the room
 export const cancelAllSendTransfers = (): void => {
   if (activeSendTransfers.size === 0) return;
 
@@ -191,7 +233,6 @@ const waitForStartAck = (
   });
 };
 
-// Handle all incoming WebRTC data (files, messages, acks)
 export const handleIncomingData = (
   data: unknown,
   peerId: string,
@@ -284,8 +325,10 @@ export const handleIncomingData = (
         ? chunkData.content
         : new Uint8Array(chunkData.content);
 
-    receivingFile.receivedChunks[chunkData.chunkIndex] = content;
-    receivingFile.receivedCount++;
+    if (!receivingFile.receivedChunks[chunkData.chunkIndex]) {
+      receivingFile.receivedChunks[chunkData.chunkIndex] = content;
+      receivingFile.receivedCount++;
+    }
 
     const progress =
       (receivingFile.receivedCount / receivingFile.totalChunks) * 100;
@@ -394,12 +437,14 @@ export const handleIncomingData = (
     };
 
     if (messageData.ackId && messageData.content) {
-      const receivedMessage: Message = {
-        received: true,
+      const receivedMessage = {
+        received: true as const,
         content: messageData.content,
         timestamp: new Date(),
       };
-      onMessageReceivedCallbacks.forEach((cb) => cb(receivedMessage));
+      onMessageReceivedCallbacks.forEach((cb) =>
+        cb({ ...receivedMessage, id: messageData.ackId }),
+      );
       void conn?.send({ type: "ack", ackId: messageData.ackId });
       useChatStore.getState().addMessage(receivedMessage);
       return;
@@ -453,7 +498,6 @@ const updateToastFailed = (
   }
 };
 
-// Check if the transfer should stop (cancelled or connection closed)
 const shouldStopTransfer = (
   peerId: string,
   connection: DataConnection,
@@ -470,7 +514,6 @@ const shouldStopTransfer = (
   return false;
 };
 
-// Send a single file chunk and update progress
 const sendFileChunk = async (
   connection: DataConnection,
   fileChunk: Blob,
@@ -499,14 +542,13 @@ const sendFileChunk = async (
   }
 };
 
-// Send a complete file to a specific peer using chunked transfer (16KB chunks)
 const sendFileToPeer = async (
   file: File,
   peerId: string,
   connection: DataConnection,
 ): Promise<boolean> => {
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-  const fileId = `${peerId}-${Date.now()}`;
+  const fileId = `${peerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
   const toastId =
     file.size > PROGRESS_TOAST_THRESHOLD
@@ -534,7 +576,7 @@ const sendFileToPeer = async (
         updateToastFailed(toastId, file.name, true);
         activeSendTransfers.delete(peerId);
       }
-      notify.error("Le correspondant n'est pas prêt à recevoir le fichier.");
+      notify.error("The recipient is not ready to receive the file.");
       return false;
     }
 
@@ -575,10 +617,8 @@ const sendFileToPeer = async (
       fileId,
     });
 
-    pendingAcks.set(fileId, {
-      peerId,
-      timestamp: Date.now(),
-    });
+    pendingAcks.set(fileId, { peerId, timestamp: Date.now() });
+    startPendingAckCleanup();
 
     dismissToast(toastId);
     activeSendTransfers.delete(peerId);
@@ -592,7 +632,6 @@ const sendFileToPeer = async (
   }
 };
 
-// Wait for a connection to be open with timeout
 const waitForConnectionOpen = (
   connection: DataConnection,
   timeout = 10000,
@@ -617,7 +656,6 @@ const waitForConnectionOpen = (
   });
 };
 
-// Send a file to all connected peers in parallel
 export const sendFileToTargets = async (file: File): Promise<boolean> => {
   const { targetPeers } = usePeersStore.getState();
 
@@ -625,7 +663,6 @@ export const sendFileToTargets = async (file: File): Promise<boolean> => {
     return false;
   }
 
-  // Wait for all connections to be open
   const connectionsReady = await Promise.all(
     targetPeers.map(async (target) => {
       if (!target.connection) return null;
@@ -675,10 +712,8 @@ export const sendMessageToTargets = async (content: string): Promise<void> => {
     };
 
     try {
-      pendingAcks.set(ackId, {
-        peerId: target.peerId,
-        timestamp: Date.now(),
-      });
+      pendingAcks.set(ackId, { peerId: target.peerId, timestamp: Date.now() });
+      startPendingAckCleanup();
       void conn.send(payload);
     } catch (err) {
       console.error(err);

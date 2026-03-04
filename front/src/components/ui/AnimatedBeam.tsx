@@ -134,6 +134,7 @@ export default function AnimatedBeam({
 
     let startTime: number | null = null;
     const durationMs = duration * 1000;
+    let rafId: number;
 
     const clamp = (num: number, min: number, max: number) =>
       Math.min(Math.max(num, min), max);
@@ -166,10 +167,12 @@ export default function AnimatedBeam({
       gradientEl.setAttribute("x2", `${endPoint.x}`);
       gradientEl.setAttribute("y2", `${endPoint.y}`);
 
-      requestAnimationFrame(animate);
+      rafId = requestAnimationFrame(animate);
     };
 
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(rafId);
   }, [pathD, duration, beamLengthRatio, reverse]);
 
   const strokeDasharray = dotted ? `${dotSpacing} ${dotSpacing}` : "none";

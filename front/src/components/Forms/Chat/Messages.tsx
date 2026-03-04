@@ -35,30 +35,39 @@ export default function Messages() {
           Retrieve messages and files received here.
         </div>
       ) : (
-        (messages ?? []).map((msg, index) => (
-          <div
-            key={index}
-            className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
-          >
-            <div className="">
-              <time className="text-xs opacity-50">
-                {msg.timestamp.toLocaleTimeString()}
-              </time>
+        (messages ?? []).map((msg) =>
+          msg.system ? (
+            <div
+              key={msg.id}
+              className="animate-bounce-fade-in mx-auto my-1 w-fit rounded-full bg-slate-700/50 px-3 py-0.5 text-center text-xs text-slate-400"
+            >
+              {msg.content}
             </div>
-            {msg.file ? (
-              <FileAttachment file={msg.file} received={msg.received} />
-            ) : (
-              <div
-                onClick={() => copyToClipboard(msg.content)}
-                className={cn(
-                  `animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${msg.received ? "bg-primary-blue" : "bg-secondary-blue"}`,
-                )}
-              >
-                {msg.content}
+          ) : (
+            <div
+              key={msg.id}
+              className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
+            >
+              <div className="">
+                <time className="text-xs opacity-50">
+                  {msg.timestamp.toLocaleTimeString()}
+                </time>
               </div>
-            )}
-          </div>
-        ))
+              {msg.file ? (
+                <FileAttachment file={msg.file} received={msg.received} />
+              ) : (
+                <div
+                  onClick={() => copyToClipboard(msg.content)}
+                  className={cn(
+                    `animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${msg.received ? "bg-primary-blue" : "bg-secondary-blue"}`,
+                  )}
+                >
+                  {msg.content}
+                </div>
+              )}
+            </div>
+          ),
+        )
       )}
     </div>
   );

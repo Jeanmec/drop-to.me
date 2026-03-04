@@ -1,7 +1,11 @@
 import { onSocket, offSocket } from "@/services/socketService";
 
 interface InitializePeerListenersParams {
-  onJoinSuccess: (data: { peers: string[]; ip: string }) => void;
+  onJoinSuccess: (data: {
+    peers: string[];
+    ip: string;
+    roomCode?: string | null;
+  }) => void;
   onPeerLeft: (peerId: string) => void;
   onPeerJoined: (peerId: string) => void;
 }
@@ -11,7 +15,11 @@ export const initializePeerListeners = ({
   onPeerLeft,
   onPeerJoined,
 }: InitializePeerListenersParams) => {
-  onSocket<{ peers: string[]; ip: string }>("join-success", onJoinSuccess);
+  onSocket<{
+    peers: string[];
+    ip: string;
+    roomCode?: string | null;
+  }>("join-success", onJoinSuccess);
   onSocket<string>("peer-left", onPeerLeft);
   onSocket<string>("peer-joined", onPeerJoined);
 };

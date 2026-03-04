@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { StatsModule } from './stats/stats.module';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
@@ -18,6 +20,7 @@ import { PeerModule } from './peer/peer.module';
     UserModule,
     PeerModule,
   ],
-  providers: [UserService],
+  controllers: [AppController],
+  providers: [AppService, UserService],
 })
 export class AppModule {}

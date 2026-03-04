@@ -1,15 +1,14 @@
-import { useSocket } from "@/contexts/SocketProvider";
+import { useUserStore } from "@/stores/useUserStore";
 import RadarBackground from "../Background/BackgroundRadar";
 import GradientTitle from "../ui/GradientTitle";
 
 export default function Alone() {
-  const { userIp } = useSocket();
-  const ip = userIp || "";
+  const ip = useUserStore((s) => s.ip) ?? "";
 
   return (
     <>
       <RadarBackground />
-      <div className="absolute top-[67.5vh] left-1/2 z-[1] flex w-full -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 px-6">
+      <div className="absolute top-[67.5vh] left-1/2 z-1 flex w-full -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-4 px-6">
         <GradientTitle className="flex justify-center gap-2">
           You are alone
         </GradientTitle>

@@ -1,0 +1,33 @@
+{
+  "name": "back",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "back/src",
+  "projectType": "application",
+  "tags": ["scope:back"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "yarn nest build",
+        "cwd": "back"
+      },
+      "configurations": {
+        "production": {}
+      }
+    },
+    "dev": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "yarn nest start --watch",
+        "cwd": "back"
+      }
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "yarn lint",
+        "cwd": "back"
+      }
+    }
+  }
+}

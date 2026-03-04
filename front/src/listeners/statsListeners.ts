@@ -1,5 +1,5 @@
 import { onSocket, offSocket } from "@/services/socketService";
-import type { TUpdateStatPayload } from "@/types/statistics.t";
+import type { TUpdateStatPayload } from "@droptome/shared";
 
 interface InitializeStatsListenersParams {
   onUpdateStat: (data: TUpdateStatPayload) => void;

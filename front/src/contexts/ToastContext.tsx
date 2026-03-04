@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ToastMessage from "@/components/Toast/ToastMessage";
 import ToastFileTransfer from "@/components/Toast/ToastFileTransfer";
@@ -52,9 +52,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [position, setPosition] = useState<"top-right" | "top-center">(
     "top-right",
   );
+  const autoCloseTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const eventBus = useToastEvents();
 
-  // Responsive position management
   useEffect(() => {
     const updatePosition = () => {
       setPosition(window.innerWidth <= 768 ? "top-center" : "top-right");
@@ -66,27 +66,25 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   }, []);
 
   const removeToast = useCallback((toastId: string) => {
-    setToasts((previousToasts) => {
-      const updatedToasts = previousToasts.map((toast) => {
-        if (toast.id === toastId) {
-          return { ...toast, isExiting: true };
-        }
-        return toast;
-      });
-      return updatedToasts;
-    });
+    const existingTimer = autoCloseTimers.current.get(toastId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      autoCloseTimers.current.delete(toastId);
+    }
+
+    setToasts((previousToasts) =>
+      previousToasts.map((toast) =>
+        toast.id === toastId ? { ...toast, isExiting: true } : toast,
+      ),
+    );
 
     setTimeout(() => {
-      setToasts((previousToasts) => {
-        const remainingToasts = previousToasts.filter(
-          (toast) => toast.id !== toastId,
-        );
-        return remainingToasts;
-      });
+      setToasts((previousToasts) =>
+        previousToasts.filter((toast) => toast.id !== toastId),
+      );
     }, EXIT_ANIMATION_DURATION);
   }, []);
 
-  // Add toast with auto-close timer
   const addToast = useCallback(
     (newToast: Toast) => {
       setToasts((previousToasts) => {
@@ -104,13 +102,16 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
       if (newToast.autoClose !== false) {
         const autoCloseDuration =
           newToast.autoClose || DEFAULT_AUTO_CLOSE_DURATION;
-        setTimeout(() => removeToast(newToast.id), autoCloseDuration);
+        const timerId = setTimeout(
+          () => removeToast(newToast.id),
+          autoCloseDuration,
+        );
+        autoCloseTimers.current.set(newToast.id, timerId);
       }
     },
     [removeToast],
   );
 
-  // Update existing toast
   const updateToast = useCallback(
     (payload: { id: string; data: Record<string, unknown> }) => {
       setToasts((previousToasts) => {
@@ -129,7 +130,14 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     [],
   );
 
-  // Event bus listener
+  useEffect(() => {
+    const timers = autoCloseTimers.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
   useEffect(() => {
     if (!eventBus) return;
 
@@ -153,7 +161,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => eventBus.removeEventListener("toast", handleToastEvent);
   }, [eventBus, addToast, updateToast, removeToast]);
 
-  // Render toast content based on type
   const renderToastContent = (toast: Toast) => {
     switch (toast.data.type) {
       case "message":

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { TStatistics } from "@/types/statistics.t";
+import type { TStatistics } from "@droptome/shared";
 
 interface StatsStore {
   statistics: TStatistics;

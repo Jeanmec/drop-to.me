@@ -116,11 +116,15 @@ const items = {
     </>
   ),
   openSource: (
-    <a href={process.env.NEXT_PUBLIC_GITHUB_URL} target="_blank">
-      <div className="absolute right-0 bottom-0 z-[1]">
+    <a
+      href={process.env.NEXT_PUBLIC_GITHUB_URL}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <div className="absolute right-0 bottom-0 z-1">
         <Icon.github className="h-48 w-48 text-slate-950 transition-all duration-1000 md:group-hover:opacity-100 lg:h-36 lg:w-36 lg:opacity-0" />
       </div>
-      <p className="text-description relative z-[2] text-center text-base">
+      <p className="text-description relative z-2 text-center text-base">
         A complete open-source project
       </p>
       <Sparkles

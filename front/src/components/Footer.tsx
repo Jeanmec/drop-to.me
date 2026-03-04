@@ -14,6 +14,7 @@ export default function Footer() {
           <a
             href="https://github.com/Jeanmec"
             target="_blank"
+            rel="noopener noreferrer"
             className="group flex items-center gap-1"
           >
             My Github
@@ -23,6 +24,7 @@ export default function Footer() {
           <a
             href={process.env.NEXT_PUBLIC_GITHUB_URL}
             target="_blank"
+            rel="noopener noreferrer"
             className="group flex items-center gap-1"
           >
             Get the source code

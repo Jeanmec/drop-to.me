@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import useCSSVariable from "@/library/CSSVariable";
 import { useDragFileStore } from "@/stores/useDragFileStore";
@@ -29,15 +29,24 @@ export const BackgroundCircle = () => {
 
   useWindowResize(updateSize);
 
+  const rafId = useRef<number | null>(null);
+
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      setMouse({ x: e.clientX, y: e.clientY });
+      if (rafId.current !== null) return;
+      rafId.current = requestAnimationFrame(() => {
+        setMouse({ x: e.clientX, y: e.clientY });
+        rafId.current = null;
+      });
     };
 
     window.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId.current !== null) {
+        cancelAnimationFrame(rafId.current);
+      }
     };
   }, []);
 

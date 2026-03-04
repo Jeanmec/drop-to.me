@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import {
   sendFileToTargets,
   setOnFileReceivedCallback,
+  removeOnFileReceivedCallback,
 } from "@/services/peerService";
 import { statService } from "@/services/statService";
 import { notify } from "@/library/toastService";
@@ -97,7 +98,7 @@ export default function FileTransferPanel() {
           resetTransferState();
         }
       } catch (error) {
-        console.log(error);
+        console.error("[FileTransfer] Send failed:", error);
         notify.error("Failed to send file.");
         resetTransferState();
       } finally {
@@ -116,9 +117,12 @@ export default function FileTransferPanel() {
     };
   }, []);
 
+  const blobUrlsRef = useRef<string[]>([]);
+
   useEffect(() => {
     setOnFileReceivedCallback((file) => {
       const url = URL.createObjectURL(file.data);
+      blobUrlsRef.current.push(url);
       notify.receivedFile({
         fileUrl: url,
         fileName: file.name,
@@ -136,6 +140,12 @@ export default function FileTransferPanel() {
         },
       });
     });
+
+    return () => {
+      removeOnFileReceivedCallback();
+      blobUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+      blobUrlsRef.current = [];
+    };
   }, [addMessage]);
 
   useEffect(() => {
