@@ -13,9 +13,12 @@ interface PeersStore {
   addTargetPeer: (peerId: string, connection?: DataConnection) => void;
   removeTargetPeer: (peerId: string) => void;
   clearTargetPeers: () => void;
+  detachConnections: () => void;
   updatePeer: (
     peerId: string,
-    updates: Partial<Pick<TPeer, "state" | "connection" | "receivingFile">>,
+    updates: Partial<
+      Pick<TPeer, "isSending" | "isReceiving" | "connection" | "receivingFile">
+    >,
   ) => void;
 }
 
@@ -52,7 +55,12 @@ export const usePeersStore = create<PeersStore>((set) => ({
       return {
         targetPeers: [
           ...state.targetPeers,
-          { peerId, connection: connection ?? null, state: "connected" },
+          {
+            peerId,
+            connection: connection ?? null,
+            isSending: false,
+            isReceiving: false,
+          },
         ],
       };
     }),
@@ -77,6 +85,26 @@ export const usePeersStore = create<PeersStore>((set) => ({
       });
       return { targetPeers: [] };
     }),
+
+  detachConnections: () =>
+    set((state) => ({
+      targetPeers: state.targetPeers.map((peer) => {
+        if (peer.connection && !peer.connection.open) {
+          try {
+            peer.connection.close();
+          } catch {
+            // ignore — connection already torn down
+          }
+        }
+        return {
+          ...peer,
+          connection: null,
+          isSending: false,
+          isReceiving: false,
+          receivingFile: undefined,
+        };
+      }),
+    })),
 
   updatePeer: (peerId, updates) =>
     set((state) => ({

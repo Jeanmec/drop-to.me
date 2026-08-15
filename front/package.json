@@ -28,6 +28,7 @@
     "clsx": "^2.1.1",
     "cobe": "^0.6.4",
     "dotted-map": "^2.2.3",
+    "fflate": "^0.8.2",
     "gsap": "^3.13.0",
     "lottie-react": "^2.4.1",
     "meshline": "^3.3.1",

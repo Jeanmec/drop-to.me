@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 
 interface GlobalFileDropzoneProps {
-  onFileSelected: (file: File | null) => void;
+  onFileSelected: (files: File[] | null) => void;
   disabled?: boolean;
   isDragging: boolean;
 }
@@ -16,8 +16,7 @@ export default function GlobalFileDropzone({
 }: GlobalFileDropzoneProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0] ?? null;
-      onFileSelected(file);
+      onFileSelected(acceptedFiles.length > 0 ? acceptedFiles : null);
     },
     [onFileSelected],
   );
@@ -26,6 +25,7 @@ export default function GlobalFileDropzone({
     onDrop,
     noClick: true,
     noKeyboard: true,
+    multiple: true,
     disabled: disabled ?? !isDragging,
   });
 

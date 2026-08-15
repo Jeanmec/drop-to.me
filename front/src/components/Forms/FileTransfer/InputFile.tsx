@@ -4,7 +4,7 @@ import { cn } from "@/library/utils";
 import { Icon } from "@/components/Icons/Icon";
 
 interface InputFileProps {
-  callback?: (file: File | null) => void;
+  callback?: (files: File[] | null) => void;
   disabled?: boolean;
   icon?: React.ReactNode;
   className?: string;
@@ -18,8 +18,7 @@ export default function InputFile({
 }: InputFileProps) {
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
-      const file = acceptedFiles[0] ?? null;
-      callback?.(file);
+      callback?.(acceptedFiles.length > 0 ? acceptedFiles : null);
     },
     [callback],
   );
@@ -28,6 +27,7 @@ export default function InputFile({
     onDrop,
     disabled,
     noKeyboard: true,
+    multiple: true,
   });
 
   return (

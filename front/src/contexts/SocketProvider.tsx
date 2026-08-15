@@ -52,7 +52,12 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
   const [isRoomJoined, setIsRoomJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const socketRef = useRef<Socket | null>(null);
-  const { removeTargetPeer, addTargetPeer, clearTargetPeers } = usePeersStore();
+  const lastJoinPayloadRef = useRef<{
+    peerId: string;
+    roomCode?: string;
+  } | null>(null);
+  const { removeTargetPeer, addTargetPeer, clearTargetPeers, detachConnections } =
+    usePeersStore();
   const { updateMessageCount, updateUserCount, updateFileStats } =
     useStatsStore();
   const { peer } = usePeer();
@@ -86,6 +91,17 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
 
     const handleDisconnect = () => {
       setIsRoomJoined(false);
+      // The dead WebRTC channels won't recover on their own — drop them so
+      // PeerProvider re-initiates fresh connections after reconnect.
+      detachConnections();
+    };
+
+    const handleConnect = () => {
+      const lastJoin = lastJoinPayloadRef.current;
+      if (lastJoin) {
+        setIsJoining(true);
+        emitSocket("join-room", lastJoin);
+      }
     };
 
     const handleError = (error: unknown) => {
@@ -93,17 +109,19 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     };
 
     onSocket("disconnect", handleDisconnect);
+    onSocket("connect", handleConnect);
     onSocket("error", handleError);
 
     return () => {
       offSocket("disconnect", handleDisconnect as (...args: unknown[]) => void);
+      offSocket("connect", handleConnect as (...args: unknown[]) => void);
       offSocket("error", handleError as (...args: unknown[]) => void);
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, []);
+  }, [detachConnections]);
 
   useEffect(() => {
     if (!peer || !peer.id) return;
@@ -202,6 +220,7 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
       if (roomCode) {
         payload.roomCode = roomCode;
       }
+      lastJoinPayloadRef.current = payload;
       emitSocket("join-room", payload);
     }, 50);
 

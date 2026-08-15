@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { zip, type AsyncZippable } from "fflate";
 import {
   sendFileToTargets,
   setOnFileReceivedCallback,
@@ -18,15 +19,67 @@ import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
 import { useChatStore } from "@/stores/useChatStore";
 
 const WAITING_TOAST_ID = "file-transfer-awaiting-connection";
+const ZIPPING_TOAST_ID = "file-transfer-zipping";
+const WAITING_TIMEOUT_MS = 60_000;
+const MAX_TRANSFER_RETRIES = 3;
+
+const createZipFromFiles = (files: File[]): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    Promise.all(
+      files.map(async (file) => ({
+        name: file.name,
+        data: new Uint8Array(await file.arrayBuffer()),
+      })),
+    )
+      .then((entries) => {
+        const zippable: AsyncZippable = {};
+        const usedNames = new Set<string>();
+        for (const entry of entries) {
+          let name = entry.name;
+          let counter = 1;
+          while (usedNames.has(name)) {
+            const dot = entry.name.lastIndexOf(".");
+            const base = dot > 0 ? entry.name.slice(0, dot) : entry.name;
+            const ext = dot > 0 ? entry.name.slice(dot) : "";
+            name = `${base} (${counter})${ext}`;
+            counter++;
+          }
+          usedNames.add(name);
+          zippable[name] = entry.data;
+        }
+        // level: 0 = store-only (no compression). Most user-shared files
+        // (photos, videos, archives) are already compressed; trade CPU for speed.
+        zip(zippable, { level: 0 }, (err, data) => {
+          if (err) return reject(err);
+          const blob = new Blob([data as BlobPart], {
+            type: "application/zip",
+          });
+          const timestamp = new Date()
+            .toISOString()
+            .replace(/[:T]/g, "-")
+            .slice(0, 19);
+          const zipFile = new File(
+            [blob],
+            `drop-${files.length}-files-${timestamp}.zip`,
+            { type: "application/zip" },
+          );
+          resolve(zipFile);
+        });
+      })
+      .catch(reject);
+  });
+};
 
 export default function FileTransferPanel() {
   const { targetPeers } = usePeersStore();
-  const [isInTransfer, setIsInTransfer] = useState(false);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isAwaitingConnection, setIsAwaitingConnection] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
+  const [isZipping, setIsZipping] = useState(false);
   const transferStartTime = useRef<number | null>(null);
   const sendInProgressRef = useRef(false);
+  const waitingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryCountRef = useRef(0);
 
   const { isDragFileActive, setIsDragFileActive } = useDragFileStore();
   const { addMessage } = useChatStore();
@@ -35,16 +88,30 @@ export default function FileTransferPanel() {
     () => targetPeers.some((peer) => peer.connection?.open),
     [targetPeers],
   );
+  const anySending = useMemo(
+    () => targetPeers.some((peer) => peer.isSending),
+    [targetPeers],
+  );
 
-  const resetTransferState = () => {
-    setIsInTransfer(false);
+  const clearWaitingTimeout = useCallback(() => {
+    if (waitingTimeoutRef.current) {
+      clearTimeout(waitingTimeoutRef.current);
+      waitingTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resetTransferState = useCallback(() => {
     setPendingFile(null);
     setIsAwaitingConnection(false);
     setIsProcessingFile(false);
+    setIsZipping(false);
     sendInProgressRef.current = false;
+    retryCountRef.current = 0;
     transferStartTime.current = null;
+    clearWaitingTimeout();
     notify.dismiss(WAITING_TOAST_ID);
-  };
+    notify.dismiss(ZIPPING_TOAST_ID);
+  }, [clearWaitingTimeout]);
 
   const handleSend = useCallback(async (file: File) => {
     const success = await sendFileToTargets(file);
@@ -54,21 +121,60 @@ export default function FileTransferPanel() {
     return success;
   }, []);
 
-  const handleFileSelection = (file: File | null) => {
-    if (!file) return;
+  const armWaitingTimeout = useCallback(() => {
+    clearWaitingTimeout();
+    waitingTimeoutRef.current = setTimeout(() => {
+      notify.error("No peers available — file not sent.");
+      resetTransferState();
+    }, WAITING_TIMEOUT_MS);
+  }, [clearWaitingTimeout, resetTransferState]);
 
-    if (targetPeers.length === 0) {
-      notify.error("No connected peers available to receive the file.");
-      return;
-    }
+  const handleFileSelection = useCallback(
+    async (files: File[] | null) => {
+      if (!files || files.length === 0) return;
 
-    setPendingFile(file);
+      let fileToSend: File;
 
-    if (!hasReadyConnection) {
-      setIsAwaitingConnection(true);
-      notify.info("Reconnecting...", false, WAITING_TOAST_ID);
-    }
-  };
+      if (files.length === 1) {
+        fileToSend = files[0];
+      } else {
+        setIsZipping(true);
+        notify.info(
+          `Zipping ${files.length} files...`,
+          false,
+          ZIPPING_TOAST_ID,
+        );
+        try {
+          fileToSend = await createZipFromFiles(files);
+        } catch (err) {
+          console.error("[FileTransfer] Zip failed:", err);
+          notify.dismiss(ZIPPING_TOAST_ID);
+          notify.error("Failed to zip selected files.");
+          setIsZipping(false);
+          return;
+        }
+        notify.dismiss(ZIPPING_TOAST_ID);
+        setIsZipping(false);
+      }
+
+      retryCountRef.current = 0;
+      setPendingFile(fileToSend);
+
+      if (!hasReadyConnection) {
+        setIsAwaitingConnection(true);
+        notify.info(
+          targetPeers.length === 0
+            ? "Waiting for a peer to join..."
+            : "Reconnecting...",
+          false,
+          WAITING_TOAST_ID,
+        );
+        armWaitingTimeout();
+      }
+    },
+    [hasReadyConnection, targetPeers.length, armWaitingTimeout],
+  );
+
   useEffect(() => {
     if (!pendingFile || !hasReadyConnection || sendInProgressRef.current) {
       return;
@@ -76,12 +182,13 @@ export default function FileTransferPanel() {
 
     sendInProgressRef.current = true;
     setIsAwaitingConnection(false);
+    clearWaitingTimeout();
     notify.dismiss(WAITING_TOAST_ID);
 
     const startTransfer = async () => {
+      const fileToSend = pendingFile;
       try {
         setIsProcessingFile(true);
-        const fileToSend = pendingFile;
         const success = await handleSend(fileToSend);
 
         if (success) {
@@ -94,28 +201,51 @@ export default function FileTransferPanel() {
               fileSize: fileToSend.size,
             },
           });
-        } else {
           resetTransferState();
+        } else {
+          retryCountRef.current += 1;
+          sendInProgressRef.current = false;
+          setIsProcessingFile(false);
+          if (retryCountRef.current >= MAX_TRANSFER_RETRIES) {
+            notify.error("Failed to send file after several attempts.");
+            resetTransferState();
+          } else {
+            // Keep pendingFile — the effect will re-trigger when a fresh
+            // ready connection appears (e.g. after a reconnect).
+            setIsAwaitingConnection(true);
+            notify.info(
+              "Transfer interrupted — retrying...",
+              false,
+              WAITING_TOAST_ID,
+            );
+            armWaitingTimeout();
+          }
         }
       } catch (error) {
         console.error("[FileTransfer] Send failed:", error);
         notify.error("Failed to send file.");
         resetTransferState();
-      } finally {
-        setPendingFile(null);
-        setIsProcessingFile(false);
-        sendInProgressRef.current = false;
       }
     };
 
     void startTransfer();
-  }, [pendingFile, hasReadyConnection, handleSend, addMessage]);
+  }, [
+    pendingFile,
+    hasReadyConnection,
+    handleSend,
+    addMessage,
+    resetTransferState,
+    clearWaitingTimeout,
+    armWaitingTimeout,
+  ]);
 
   useEffect(() => {
     return () => {
       notify.dismiss(WAITING_TOAST_ID);
+      notify.dismiss(ZIPPING_TOAST_ID);
+      clearWaitingTimeout();
     };
-  }, []);
+  }, [clearWaitingTimeout]);
 
   const blobUrlsRef = useRef<string[]>([]);
 
@@ -148,37 +278,36 @@ export default function FileTransferPanel() {
     };
   }, [addMessage]);
 
+  const [isInTransfer, setIsInTransfer] = useState(false);
   useEffect(() => {
     let timeout: NodeJS.Timeout | null = null;
-    const anySending = targetPeers.some((peer) => peer.state === "sending");
 
     if (anySending) {
       if (!isInTransfer) {
         setIsInTransfer(true);
         transferStartTime.current = Date.now();
       }
-    } else {
-      if (isInTransfer) {
-        const elapsedTime = Date.now() - (transferStartTime.current ?? 0);
-        const remainingTime = 3000 - elapsedTime;
+    } else if (isInTransfer) {
+      const elapsedTime = Date.now() - (transferStartTime.current ?? 0);
+      const remainingTime = 3000 - elapsedTime;
 
-        const completeTransfer = () => {
-          resetTransferState();
-          notify.success("File transfer completed successfully");
-        };
+      const completeTransfer = () => {
+        setIsInTransfer(false);
+        transferStartTime.current = null;
+        notify.success("File transfer completed successfully");
+      };
 
-        if (remainingTime > 0) {
-          timeout = setTimeout(completeTransfer, remainingTime);
-        } else {
-          completeTransfer();
-        }
+      if (remainingTime > 0) {
+        timeout = setTimeout(completeTransfer, remainingTime);
+      } else {
+        completeTransfer();
       }
     }
 
     return () => {
       if (timeout) clearTimeout(timeout);
     };
-  }, [isInTransfer, targetPeers]);
+  }, [isInTransfer, anySending]);
 
   useEffect(() => {
     const handleDragEnter = (e: DragEvent) => {
@@ -222,7 +351,8 @@ export default function FileTransferPanel() {
     isInTransfer ||
     isAwaitingConnection ||
     pendingFile !== null ||
-    isProcessingFile;
+    isProcessingFile ||
+    isZipping;
 
   return (
     <>

@@ -1,12 +1,11 @@
 import type { DataConnection } from "peerjs";
 import type { ToastId } from "@/library/toastService";
 
-export type PeerState = "connected" | "disconnected" | "sending" | "receiving";
-
 export type TPeer = {
   peerId: string;
   connection: DataConnection | null;
-  state: "connected" | "sending" | "receiving";
+  isSending: boolean;
+  isReceiving: boolean;
   receivingFile?: {
     fileId: string;
     name: string;
@@ -14,6 +13,7 @@ export type TPeer = {
     totalChunks: number;
     receivedChunks: Uint8Array[];
     receivedCount: number;
+    lastChunkAt: number;
     toastId?: ToastId;
   };
 };

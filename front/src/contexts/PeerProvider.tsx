@@ -31,6 +31,7 @@ const PeerContext = createContext<PeerContextValue | null>(null);
 
 const RECONNECT_TOAST_ID = "peer-reconnect";
 const RECONNECT_DELAY_MS = 3000;
+const MAX_RECONNECT_ATTEMPTS = 5;
 
 const setupConnectionListeners = (
   conn: DataConnection,
@@ -79,6 +80,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
   const [localPeerInstance, setLocalPeerInstance] = useState<Peer | null>(null);
   const [peerGeneration, setPeerGeneration] = useState(0);
   const reconnectingRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
@@ -87,6 +89,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
     targetPeers,
     updatePeer,
     clearTargetPeers,
+    detachConnections,
     setIsPeerDisconnected,
     isPeerDisconnected,
   } = usePeersStore();
@@ -104,12 +107,37 @@ export function PeerProvider({ children }: PeerProviderProps) {
 
     const newPeer = peer;
 
+    const scheduleReconnect = () => {
+      reconnectAttemptsRef.current += 1;
+      if (reconnectAttemptsRef.current > MAX_RECONNECT_ATTEMPTS) {
+        notify.dismiss(RECONNECT_TOAST_ID);
+        notify.error(
+          "Unable to reconnect. Please refresh the page.",
+          false,
+        );
+        setIsPeerDisconnected(true);
+        setSelfPeer(null);
+        return;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      reconnectTimeoutRef.current = setTimeout(() => {
+        attemptPeerReconnect(newPeer);
+      }, RECONNECT_DELAY_MS);
+    };
+
     newPeer.on("open", () => {
       setSelfPeer(newPeer);
       setLocalPeerInstance(newPeer);
 
       if (reconnectingRef.current) {
         reconnectingRef.current = false;
+        reconnectAttemptsRef.current = 0;
+        // Drop dead WebRTC connections — the existing targetPeers entries
+        // still reference closed data channels. The targetPeers effect below
+        // will re-initiate fresh connections.
+        detachConnections();
         notify.dismiss(RECONNECT_TOAST_ID);
         notify.success("Reconnecté");
       }
@@ -127,12 +155,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
         if (newPeer.destroyed) {
           setPeerGeneration((g) => g + 1);
         } else if (newPeer.disconnected) {
-          if (reconnectTimeoutRef.current) {
-            clearTimeout(reconnectTimeoutRef.current);
-          }
-          reconnectTimeoutRef.current = setTimeout(() => {
-            attemptPeerReconnect(newPeer);
-          }, RECONNECT_DELAY_MS);
+          scheduleReconnect();
         }
         return;
       }
@@ -151,13 +174,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
         reconnectingRef.current = true;
         notify.info("Reconnexion...", false, RECONNECT_TOAST_ID);
       }
-
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      reconnectTimeoutRef.current = setTimeout(() => {
-        attemptPeerReconnect(newPeer);
-      }, RECONNECT_DELAY_MS);
+      scheduleReconnect();
     });
 
     newPeer.on("connection", (conn: DataConnection) => {
@@ -175,6 +192,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
   }, [
     setSelfPeer,
     clearTargetPeers,
+    detachConnections,
     setIsPeerDisconnected,
     isPeerDisconnected,
     peerGeneration,
