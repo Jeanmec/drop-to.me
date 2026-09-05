@@ -109,7 +109,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await socket.leave(roomId);
       data.roomId = undefined;
 
-      if (peerId) {
+      if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
         this.sendClientLeave(roomId, peerId);
       }
     } catch (error) {
@@ -150,7 +150,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
         (socket.data as SocketData).roomId ?? getHashedIp(socket.request);
       const peerId = await this.redisService.getClient(roomId, socket.id);
       await this.redisService.removeClient(roomId, socket.id);
-      if (peerId) {
+      if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
         this.sendClientLeave(roomId, peerId);
       }
     } catch (error) {
@@ -159,6 +159,14 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
         error instanceof Error ? error.stack : error,
       );
     }
+  }
+
+  private async isPeerStillInRoom(
+    roomId: string,
+    peerId: string,
+  ): Promise<boolean> {
+    const clients = await this.redisService.getClients(roomId);
+    return Object.values(clients).includes(peerId);
   }
 
   sendClientLeave(room: string, peerId: string): void {

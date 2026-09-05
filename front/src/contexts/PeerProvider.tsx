@@ -47,21 +47,21 @@ const setupConnectionListeners = (
   });
 
   conn.on("close", () => {
-    cancelTransfersForPeer(conn.peer);
     const store = usePeersStore.getState();
     const existing = store.targetPeers.find((p) => p.peerId === conn.peer);
-    if (existing?.connection === conn) {
-      store.removeTargetPeer(conn.peer);
-    }
+    if (existing?.connection !== conn) return;
+    cancelTransfersForPeer(conn.peer);
+    store.removeTargetPeer(conn.peer);
   });
 
   conn.on("error", () => {
-    cancelTransfersForPeer(conn.peer);
-    if (conn.open) conn.close();
     const store = usePeersStore.getState();
     const existing = store.targetPeers.find((p) => p.peerId === conn.peer);
     if (existing?.connection === conn) {
+      cancelTransfersForPeer(conn.peer);
       store.removeTargetPeer(conn.peer);
+    } else if (conn.open) {
+      conn.close();
     }
   });
 };
@@ -111,10 +111,7 @@ export function PeerProvider({ children }: PeerProviderProps) {
       reconnectAttemptsRef.current += 1;
       if (reconnectAttemptsRef.current > MAX_RECONNECT_ATTEMPTS) {
         notify.dismiss(RECONNECT_TOAST_ID);
-        notify.error(
-          "Unable to reconnect. Please refresh the page.",
-          false,
-        );
+        notify.error("Unable to reconnect. Please refresh the page.", false);
         setIsPeerDisconnected(true);
         setSelfPeer(null);
         return;

@@ -17,11 +17,18 @@ import { useDragFileStore } from "@/stores/useDragFileStore";
 import { Icon } from "../../Icons/Icon";
 import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
 import { useChatStore } from "@/stores/useChatStore";
+import { cn } from "@/library/utils";
 
 const WAITING_TOAST_ID = "file-transfer-awaiting-connection";
 const ZIPPING_TOAST_ID = "file-transfer-zipping";
 const WAITING_TIMEOUT_MS = 60_000;
 const MAX_TRANSFER_RETRIES = 3;
+const ZIP_TOAST_DELAY_MS = 300;
+const ZIP_TOAST_MIN_VISIBLE_MS = 800;
+
+interface FileTransferPanelProps {
+  isActive?: boolean;
+}
 
 const createZipFromFiles = (files: File[]): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -70,7 +77,11 @@ const createZipFromFiles = (files: File[]): Promise<File> => {
   });
 };
 
-export default function FileTransferPanel() {
+// Stays mounted while the user is alone: unmounting would detach the file input
+// while the native picker is open (Android backgrounds the page), losing the selection.
+export default function FileTransferPanel({
+  isActive = true,
+}: FileTransferPanelProps) {
   const { targetPeers } = usePeersStore();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isAwaitingConnection, setIsAwaitingConnection] = useState(false);
@@ -78,6 +89,8 @@ export default function FileTransferPanel() {
   const [isZipping, setIsZipping] = useState(false);
   const transferStartTime = useRef<number | null>(null);
   const sendInProgressRef = useRef(false);
+  const transferSucceededRef = useRef(false);
+  const isMountedRef = useRef(true);
   const waitingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
 
@@ -139,24 +152,39 @@ export default function FileTransferPanel() {
         fileToSend = files[0];
       } else {
         setIsZipping(true);
-        notify.info(
-          `Zipping ${files.length} files...`,
-          false,
-          ZIPPING_TOAST_ID,
-        );
+        const zipToast = { shownAt: null as number | null };
+        const zipToastTimer = setTimeout(() => {
+          if (!isMountedRef.current) return;
+          notify.info(
+            `Zipping ${files.length} files...`,
+            false,
+            ZIPPING_TOAST_ID,
+          );
+          zipToast.shownAt = Date.now();
+        }, ZIP_TOAST_DELAY_MS);
         try {
           fileToSend = await createZipFromFiles(files);
         } catch (err) {
+          clearTimeout(zipToastTimer);
           console.error("[FileTransfer] Zip failed:", err);
           notify.dismiss(ZIPPING_TOAST_ID);
           notify.error("Failed to zip selected files.");
           setIsZipping(false);
           return;
         }
-        notify.dismiss(ZIPPING_TOAST_ID);
+        clearTimeout(zipToastTimer);
+        if (zipToast.shownAt !== null) {
+          const remaining =
+            ZIP_TOAST_MIN_VISIBLE_MS - (Date.now() - zipToast.shownAt);
+          if (remaining > 0) {
+            await new Promise((resolve) => setTimeout(resolve, remaining));
+          }
+          notify.dismiss(ZIPPING_TOAST_ID);
+        }
         setIsZipping(false);
       }
 
+      if (!isMountedRef.current) return;
       retryCountRef.current = 0;
       setPendingFile(fileToSend);
 
@@ -189,9 +217,12 @@ export default function FileTransferPanel() {
       const fileToSend = pendingFile;
       try {
         setIsProcessingFile(true);
+        transferSucceededRef.current = false;
         const success = await handleSend(fileToSend);
+        if (!isMountedRef.current) return;
 
         if (success) {
+          transferSucceededRef.current = true;
           addMessage({
             received: false,
             content: "",
@@ -203,6 +234,7 @@ export default function FileTransferPanel() {
           });
           resetTransferState();
         } else {
+          transferSucceededRef.current = false;
           retryCountRef.current += 1;
           sendInProgressRef.current = false;
           setIsProcessingFile(false);
@@ -223,6 +255,7 @@ export default function FileTransferPanel() {
         }
       } catch (error) {
         console.error("[FileTransfer] Send failed:", error);
+        if (!isMountedRef.current) return;
         notify.error("Failed to send file.");
         resetTransferState();
       }
@@ -240,7 +273,9 @@ export default function FileTransferPanel() {
   ]);
 
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
+      isMountedRef.current = false;
       notify.dismiss(WAITING_TOAST_ID);
       notify.dismiss(ZIPPING_TOAST_ID);
       clearWaitingTimeout();
@@ -294,7 +329,10 @@ export default function FileTransferPanel() {
       const completeTransfer = () => {
         setIsInTransfer(false);
         transferStartTime.current = null;
-        notify.success("File transfer completed successfully");
+        if (transferSucceededRef.current) {
+          transferSucceededRef.current = false;
+          notify.success("File transfer completed successfully");
+        }
       };
 
       if (remainingTime > 0) {
@@ -310,10 +348,12 @@ export default function FileTransferPanel() {
   }, [isInTransfer, anySending]);
 
   useEffect(() => {
+    if (!isActive) setIsDragFileActive(false);
+
     const handleDragEnter = (e: DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      if (e.dataTransfer?.types.includes("Files")) {
+      if (isActive && e.dataTransfer?.types.includes("Files")) {
         setIsDragFileActive(true);
       }
     };
@@ -345,7 +385,7 @@ export default function FileTransferPanel() {
       window.removeEventListener("drop", handleDrop);
       window.removeEventListener("dragover", preventDefaults);
     };
-  }, [setIsDragFileActive]);
+  }, [setIsDragFileActive, isActive]);
 
   const isTransferLocked =
     isInTransfer ||
@@ -356,15 +396,25 @@ export default function FileTransferPanel() {
 
   return (
     <>
-      <BackgroundCircle />
+      {isActive && <BackgroundCircle />}
       <GlobalFileDropzone
         onFileSelected={handleFileSelection}
-        disabled={isTransferLocked}
+        disabled={isTransferLocked || !isActive}
         isDragging={isDragFileActive}
       />
 
-      <div className="absolute top-[67.5vh] left-1/2 z-[21] -translate-x-1/2 -translate-y-1/2">
-        <div className="animate-fade-in-right flex flex-1 flex-col items-center justify-start overflow-auto">
+      <div
+        className={cn(
+          "absolute top-[67.5vh] left-1/2 z-[21] -translate-x-1/2 -translate-y-1/2",
+          !isActive && "invisible",
+        )}
+      >
+        <div
+          className={cn(
+            "flex flex-1 flex-col items-center justify-start overflow-auto",
+            isActive && "animate-fade-in-right",
+          )}
+        >
           <InputFile
             className={isDragFileActive ? "scale-110" : ""}
             callback={handleFileSelection}

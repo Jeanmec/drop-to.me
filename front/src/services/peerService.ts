@@ -25,9 +25,10 @@ const pendingAcks = new Map<string, { peerId: string; timestamp: number }>();
 const PENDING_ACK_TIMEOUT_MS = 30_000;
 const RECEIVE_INACTIVITY_TIMEOUT_MS = 45_000;
 const CHUNK_SIZE = 16 * 1024;
-const PROGRESS_TOAST_THRESHOLD = 10 * 1024 * 1024; // 10MB
+const PROGRESS_TOAST_MIN_VISIBLE_MS = 1000;
 const HIGH_WATERMARK = 1 * 1024 * 1024; // 1MB
 const LOW_WATERMARK = 256 * 1024; // 256KB
+const BUFFER_POLL_MS = 50;
 const START_ACK_TIMEOUT_MS = 10_000;
 const START_ACK_MAX_ATTEMPTS = 3;
 
@@ -47,6 +48,8 @@ const activeSendTransfers = new Map<
     fileName: string;
   }
 >();
+
+const progressToastShownAt = new Map<ToastId, number>();
 
 let pendingAckCleanupInterval: ReturnType<typeof setInterval> | null = null;
 let receiveTimeoutInterval: ReturnType<typeof setInterval> | null = null;
@@ -80,9 +83,7 @@ function startBackgroundCleanups() {
           receiving &&
           now - receiving.lastChunkAt > RECEIVE_INACTIVITY_TIMEOUT_MS
         ) {
-          if (receiving.toastId) {
-            notify.updateToFailed(receiving.toastId, receiving.name, false);
-          }
+          updateToastFailed(receiving.toastId, receiving.name, false);
           usePeersStore.getState().updatePeer(peer.peerId, {
             isReceiving: false,
             receivingFile: undefined,
@@ -210,13 +211,11 @@ export const cancelTransfersForPeer = (peerId: string): void => {
   }
 
   if (peer?.receivingFile) {
-    if (peer.receivingFile.toastId) {
-      notify.updateToFailed(
-        peer.receivingFile.toastId,
-        peer.receivingFile.name,
-        false,
-      );
-    }
+    updateToastFailed(
+      peer.receivingFile.toastId,
+      peer.receivingFile.name,
+      false,
+    );
     usePeersStore.getState().updatePeer(peerId, {
       isReceiving: false,
       receivingFile: undefined,
@@ -343,10 +342,7 @@ export const handleIncomingData = (
       return;
     }
 
-    const toastId =
-      fileStart.size > PROGRESS_TOAST_THRESHOLD
-        ? notify.receivingFile(fileStart.name)
-        : undefined;
+    const toastId = showProgressToast(notify.receivingFile(fileStart.name));
 
     usePeersStore.getState().updatePeer(peerId, {
       isReceiving: true,
@@ -538,6 +534,11 @@ export const handleIncomingData = (
   }
 };
 
+const showProgressToast = (toastId: ToastId): ToastId => {
+  progressToastShownAt.set(toastId, Date.now());
+  return toastId;
+};
+
 const updateToastProgress = (
   toastId: ToastId | undefined,
   fileName: string,
@@ -550,7 +551,16 @@ const updateToastProgress = (
 };
 
 const dismissToast = (toastId: ToastId | undefined): void => {
-  if (toastId) {
+  if (!toastId) return;
+  const shownAt = progressToastShownAt.get(toastId);
+  progressToastShownAt.delete(toastId);
+  const remaining =
+    shownAt === undefined
+      ? 0
+      : PROGRESS_TOAST_MIN_VISIBLE_MS - (Date.now() - shownAt);
+  if (remaining > 0) {
+    setTimeout(() => notify.dismiss(toastId), remaining);
+  } else {
     notify.dismiss(toastId);
   }
 };
@@ -561,6 +571,7 @@ const updateToastFailed = (
   isUploading: boolean,
 ): void => {
   if (toastId) {
+    progressToastShownAt.delete(toastId);
     notify.updateToFailed(toastId, fileName, isUploading);
   }
 };
@@ -581,18 +592,19 @@ const shouldStopTransfer = (
   return false;
 };
 
+// Polled rather than the bufferedamountlow event: peerjs owns bufferedAmountLowThreshold.
 const awaitBufferedAmountLow = (connection: DataConnection): Promise<void> => {
   const dc = (connection as unknown as { dataChannel?: RTCDataChannel })
     .dataChannel;
   if (!dc) return Promise.resolve();
   if (dc.bufferedAmount < HIGH_WATERMARK) return Promise.resolve();
-  dc.bufferedAmountLowThreshold = LOW_WATERMARK;
   return new Promise((resolve) => {
-    const onLow = () => {
-      dc.removeEventListener("bufferedamountlow", onLow);
-      resolve();
-    };
-    dc.addEventListener("bufferedamountlow", onLow);
+    const poll = setInterval(() => {
+      if (dc.bufferedAmount <= LOW_WATERMARK || dc.readyState !== "open") {
+        clearInterval(poll);
+        resolve();
+      }
+    }, BUFFER_POLL_MS);
   });
 };
 
@@ -670,13 +682,7 @@ const sendFileToPeer = async (
       await awaitBufferedAmountLow(connection);
 
       const chunk = file.slice(offset, offset + CHUNK_SIZE);
-      await sendFileChunk(
-        connection,
-        chunk,
-        chunkIndex,
-        totalChunks,
-        fileId,
-      );
+      await sendFileChunk(connection, chunk, chunkIndex, totalChunks, fileId);
 
       offset += CHUNK_SIZE;
       chunkIndex++;
@@ -747,13 +753,13 @@ export const sendFileToTargets = async (file: File): Promise<boolean> => {
   );
 
   if (readyTargets.length === 0) {
+    console.warn("[sendFileToTargets] No open connection — retry pending");
     return false;
   }
 
-  const toastId =
-    file.size > PROGRESS_TOAST_THRESHOLD
-      ? notify.sendingFile(file.name)
-      : undefined;
+  const toastId: ToastId | undefined = showProgressToast(
+    notify.sendingFile(file.name),
+  );
 
   const peerProgress = new Map<string, number>();
   const reportProgress: ProgressReporter = (peerId, progress) => {

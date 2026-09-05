@@ -14,6 +14,9 @@
   --font-inter: "Inter", sans-serif;
   --font-poppins: "Poppins", sans-serif;
   --font-plus-jakarta-sans: "Plus Jakarta Sans", sans-serif;
+
+  --aspect-card-illustration: 10 / 7;
+  --aspect-card-banner: 25 / 9;
 }
 
 .animate-border {

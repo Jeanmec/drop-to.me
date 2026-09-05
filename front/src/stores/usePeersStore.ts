@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Peer, DataConnection } from "peerjs";
 import type { TPeer } from "@/types/peer.t";
+import { notify } from "@/library/toastService";
 
 interface PeersStore {
   selfPeer: Peer | null;
@@ -95,6 +96,13 @@ export const usePeersStore = create<PeersStore>((set) => ({
           } catch {
             // ignore — connection already torn down
           }
+        }
+        if (peer.receivingFile?.toastId) {
+          notify.updateToFailed(
+            peer.receivingFile.toastId,
+            peer.receivingFile.name,
+            false,
+          );
         }
         return {
           ...peer,

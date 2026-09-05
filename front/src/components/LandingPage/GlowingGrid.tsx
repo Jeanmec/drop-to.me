@@ -3,15 +3,40 @@
 import MagicBento, { BentoCard } from "../ui/MagicBento";
 import useCSSVariable from "@/library/CSSVariable";
 import { cn, hexToRgbObject } from "@/library/utils";
-import BeamConnection from "@/components/Beam/BeamConnection";
-import BeamTransfer from "@/components/Beam/BeamTransfer";
 import { Icon } from "@/components/Icons/Icon";
 import DivAppear from "@/components/ui/DivAppear";
 import Sparkles from "@/components/ui/Sparkles";
 import Image from "next/image";
 import Lottie from "lottie-react";
 import GlobeLottie from "@/app/lottie/globe.json";
+import ConnectionLottie from "@/app/lottie/connection.json";
+import TransferLottie from "@/app/lottie/transfer.json";
 import Ripple from "../ui/Ripple";
+
+const sourceUrl = process.env.NEXT_PUBLIC_GITHUB_URL;
+
+const OpenSourceContent = () => {
+  const sparklesColor = useCSSVariable("--color-secondary-blue");
+
+  return (
+    <>
+      <div className="absolute right-0 bottom-0 z-1">
+        <Icon.github className="h-48 w-48 text-slate-950 transition-all duration-1000 md:group-hover:opacity-100 lg:h-36 lg:w-36 lg:opacity-0" />
+      </div>
+      <p className="text-description relative z-2 text-center text-base">
+        A complete open-source project
+      </p>
+      <Sparkles
+        density={80}
+        speed={1.2}
+        size={1.2}
+        opacitySpeed={2}
+        color={sparklesColor || undefined}
+        className="absolute inset-x-0 bottom-0 h-full w-full opacity-0 transition-all duration-1000 md:group-hover:opacity-100"
+      />
+    </>
+  );
+};
 
 type GlowingCardProps = {
   className?: string;
@@ -58,7 +83,11 @@ const items = {
         peer-to-peer connection between devices on the same network.
       </p>
       <div className="my-auto flex w-full justify-center">
-        <BeamConnection />
+        <Lottie
+          className="aspect-card-banner w-full max-w-lg"
+          animationData={ConnectionLottie}
+          loop={true}
+        />
       </div>
     </>
   ),
@@ -110,32 +139,23 @@ const items = {
         {process.env.NEXT_PUBLIC_WEBSITE_NAME} allows you to transfer files and
         messages securely and efficiently to all connected users.
       </p>
-      <div className="mt-5 flex h-full w-full flex-1 items-center px-4">
-        <BeamTransfer />
+      <div className="mt-5 flex h-full w-full flex-1 items-center justify-center px-4">
+        <Lottie
+          className="aspect-card-illustration w-full max-w-lg"
+          animationData={TransferLottie}
+          loop={true}
+        />
       </div>
     </>
   ),
-  openSource: (
-    <a
-      href={process.env.NEXT_PUBLIC_GITHUB_URL}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <div className="absolute right-0 bottom-0 z-1">
-        <Icon.github className="h-48 w-48 text-slate-950 transition-all duration-1000 md:group-hover:opacity-100 lg:h-36 lg:w-36 lg:opacity-0" />
-      </div>
-      <p className="text-description relative z-2 text-center text-base">
-        A complete open-source project
-      </p>
-      <Sparkles
-        density={80}
-        speed={1.2}
-        size={1.2}
-        opacitySpeed={2}
-        color="#32A7FF"
-        className="absolute inset-x-0 bottom-0 h-full w-full opacity-0 transition-all duration-1000 md:group-hover:opacity-100"
-      />
+  openSource: sourceUrl ? (
+    <a href={sourceUrl} target="_blank" rel="noopener noreferrer">
+      <OpenSourceContent />
     </a>
+  ) : (
+    <div>
+      <OpenSourceContent />
+    </div>
   ),
 };
 

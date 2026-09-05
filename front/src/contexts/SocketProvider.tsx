@@ -56,8 +56,13 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     peerId: string;
     roomCode?: string;
   } | null>(null);
-  const { removeTargetPeer, addTargetPeer, clearTargetPeers, detachConnections } =
-    usePeersStore();
+  const announcedRoomRef = useRef<string | null | undefined>(undefined);
+  const {
+    removeTargetPeer,
+    addTargetPeer,
+    clearTargetPeers,
+    detachConnections,
+  } = usePeersStore();
   const { updateMessageCount, updateUserCount, updateFileStats } =
     useStatsStore();
   const { peer } = usePeer();
@@ -133,22 +138,30 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
         if (data.ip) setIp(data.ip);
         setRoomCode(data.roomCode ?? null);
 
-        clearTargetPeers();
-        data.peers.forEach((targetPeer: string) => {
-          if (peer && peer.id !== targetPeer) {
-            addTargetPeer(targetPeer);
+        const wanted = new Set(
+          data.peers.filter((targetPeer: string) => targetPeer !== peer.id),
+        );
+        usePeersStore.getState().targetPeers.forEach((p) => {
+          if (!wanted.has(p.peerId)) {
+            cancelTransfersForPeer(p.peerId);
+            removeTargetPeer(p.peerId);
           }
         });
+        wanted.forEach((targetPeer) => addTargetPeer(targetPeer));
 
-        const roomLabel = data.roomCode
-          ? `room ${data.roomCode}`
-          : "default room";
-        useChatStore.getState().addMessage({
-          received: false,
-          content: `Joined ${roomLabel}`,
-          timestamp: new Date(),
-          system: true,
-        });
+        const joinedRoom = data.roomCode ?? null;
+        if (announcedRoomRef.current !== joinedRoom) {
+          announcedRoomRef.current = joinedRoom;
+          const roomLabel = data.roomCode
+            ? `room ${data.roomCode}`
+            : "default room";
+          useChatStore.getState().addMessage({
+            received: false,
+            content: `Joined ${roomLabel}`,
+            timestamp: new Date(),
+            system: true,
+          });
+        }
       },
       onPeerLeft: (peerId) => {
         cancelTransfersForPeer(peerId);
@@ -186,7 +199,6 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     peer,
     addTargetPeer,
     removeTargetPeer,
-    clearTargetPeers,
     updateFileStats,
     updateMessageCount,
     updateUserCount,
@@ -200,6 +212,16 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     const socket = socketRef.current;
     if (!socket || !peer?.id) return;
 
+    // peer.id bounces id → null → id on a PeerJS reconnect; handleConnect already rejoined.
+    const lastJoin = lastJoinPayloadRef.current;
+    if (
+      lastJoin &&
+      lastJoin.peerId === peer.id &&
+      (lastJoin.roomCode ?? null) === (roomCode ?? null)
+    ) {
+      return;
+    }
+
     // Close stale WebRTC connections to avoid ghost peers after room switch
     const currentPeers = usePeersStore.getState().targetPeers;
     currentPeers.forEach((p) => {
@@ -208,6 +230,7 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     clearTargetPeers();
     cancelAllSendTransfers();
     useChatStore.getState().setMessages([]);
+    announcedRoomRef.current = undefined;
 
     setIsJoining(true);
     setIsRoomJoined(false);
@@ -221,7 +244,10 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
         payload.roomCode = roomCode;
       }
       lastJoinPayloadRef.current = payload;
-      emitSocket("join-room", payload);
+      // A buffered emit is flushed right before "connect" and doubles the join handleConnect replays.
+      if (socketRef.current?.connected) {
+        emitSocket("join-room", payload);
+      }
     }, 50);
 
     return () => clearTimeout(timeoutId);

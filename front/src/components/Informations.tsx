@@ -53,7 +53,7 @@ export default function Informations() {
     {
       value: "free-and-open-source",
       title: "Is it free ?",
-      content: (
+      content: process.env.NEXT_PUBLIC_GITHUB_URL ? (
         <p>
           Yes, this application is completely free and open-source. You can
           access the source code on
@@ -67,6 +67,8 @@ export default function Informations() {
           </a>
           .
         </p>
+      ) : (
+        <p>Yes, this application is completely free and open-source.</p>
       ),
     },
   ];

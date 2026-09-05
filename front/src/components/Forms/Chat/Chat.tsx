@@ -1,38 +1,55 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { AnimatePresence, motion } from "motion/react";
 import MessageInput from "./MessageInput";
 import Messages from "./Messages";
 import { Icon } from "../../Icons/Icon";
 import { useDragFileStore } from "@/stores/useDragFileStore";
+import { useChatStore } from "@/stores/useChatStore";
 
 export function Chat() {
-  const [isOpen, setIsOpen] = useState(false);
+  const { isChatOpen, setChatOpen, unreadCount } = useChatStore();
   const { isDragFileActive } = useDragFileStore();
+
+  const unreadLabel =
+    unreadCount === 1 ? "1 unread message" : `${unreadCount} unread messages`;
 
   return (
     <>
-      {!isOpen && !isDragFileActive && (
-        <div
+      <span role="status" className="sr-only">
+        {unreadCount > 0 ? unreadLabel : ""}
+      </span>
+      {!isChatOpen && !isDragFileActive && (
+        <button
+          type="button"
+          aria-label={
+            unreadCount > 0 ? `Open chat, ${unreadLabel}` : "Open chat"
+          }
           className="fixed right-6 bottom-6 z-10 cursor-pointer"
-          onClick={() => setIsOpen(true)}
+          onClick={() => setChatOpen(true)}
         >
-          <div className="rounded-full border-2 border-slate-100/30 p-5 backdrop-blur-xs">
+          <div className="relative rounded-full border-2 border-slate-100/30 p-5 backdrop-blur-xs">
+            {unreadCount > 0 && (
+              <span
+                aria-hidden
+                className="bg-secondary-blue animate-bounce-fade-in absolute top-2.5 left-2.5 h-2.5 w-2.5 rounded-full"
+              />
+            )}
             <Icon.message className="text-3xl" />
           </div>
-        </div>
+        </button>
       )}
 
       <AnimatePresence>
-        {isOpen && (
+        {isChatOpen && (
           <>
             <motion.div
               initial={{ backdropFilter: "blur(0px)", opacity: 0 }}
               animate={{ backdropFilter: "blur(4px)", opacity: 1 }}
               exit={{ backdropFilter: "blur(0px)", opacity: 0 }}
               className="fixed inset-0 z-40 cursor-pointer bg-black/20"
-              onClick={() => setIsOpen(false)}
+              onClick={() => setChatOpen(false)}
             />
             <motion.div
               initial={{ opacity: 0, y: "100%" }}
