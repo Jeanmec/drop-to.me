@@ -11,22 +11,19 @@ services:
       - '3000:3000'
       - '9000:9000'
     labels:
-      # Désactiver le router par défaut de Coolify en utilisant des noms de routers personnalisés
-
-      # Router Socket.IO (priorité très élevée pour être traité avant le router Coolify)
-      - 'traefik.http.routers.custom-socketio.rule=Host(`back.drop-to.me`) && PathPrefix(`/socket.io`)'
-      - 'traefik.http.routers.custom-socketio.entrypoints=https'
-      - 'traefik.http.routers.custom-socketio.tls=true'
-      - 'traefik.http.routers.custom-socketio.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.custom-socketio.service=custom-socketio-svc'
-      - 'traefik.http.routers.custom-socketio.priority=200'
-      - 'traefik.http.services.custom-socketio-svc.loadbalancer.server.port=3000'
-
-      # Router PeerJS (priorité très basse - catch-all pour tout le reste)
-      - 'traefik.http.routers.custom-peerjs.rule=Host(`back.drop-to.me`) && PathPrefix(`/`)'
+      # Coolify also generates a router for the service domain, with priority = rule length (~42)
+      - 'traefik.http.routers.custom-peerjs.rule=Host(`back.drop-to.me`) && PathPrefix(`/peerjs`)'
       - 'traefik.http.routers.custom-peerjs.entrypoints=https'
       - 'traefik.http.routers.custom-peerjs.tls=true'
       - 'traefik.http.routers.custom-peerjs.tls.certresolver=letsencrypt'
       - 'traefik.http.routers.custom-peerjs.service=custom-peerjs-svc'
-      - 'traefik.http.routers.custom-peerjs.priority=1'
+      - 'traefik.http.routers.custom-peerjs.priority=200'
       - 'traefik.http.services.custom-peerjs-svc.loadbalancer.server.port=9000'
+
+      - 'traefik.http.routers.custom-nest.rule=Host(`back.drop-to.me`)'
+      - 'traefik.http.routers.custom-nest.entrypoints=https'
+      - 'traefik.http.routers.custom-nest.tls=true'
+      - 'traefik.http.routers.custom-nest.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.custom-nest.service=custom-nest-svc'
+      - 'traefik.http.routers.custom-nest.priority=100'
+      - 'traefik.http.services.custom-nest-svc.loadbalancer.server.port=3000'
