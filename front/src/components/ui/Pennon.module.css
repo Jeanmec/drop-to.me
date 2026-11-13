@@ -1,0 +1,42 @@
+.pennon {
+  position: relative;
+  background: var(--edge, currentColor);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%);
+  isolation: isolate;
+}
+
+.pennon::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: var(--pen);
+  background: var(--fill, var(--color-night));
+  clip-path: polygon(
+    0 0,
+    calc(100% - 1px) 0,
+    calc(100% - 10.9px) 50%,
+    calc(100% - 1px) 100%,
+    0 100%
+  );
+}
+
+.notchStart {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%);
+}
+
+.notchStart::before {
+  clip-path: polygon(1px 0, 100% 0, 100% 100%, 1px 100%, 10.9px 50%);
+}
+
+.moon {
+  --edge: var(--color-moon);
+}
+
+.alert {
+  --edge: var(--color-alert);
+}
+
+.solid {
+  --edge: var(--color-moon);
+  --fill: var(--color-moon);
+}

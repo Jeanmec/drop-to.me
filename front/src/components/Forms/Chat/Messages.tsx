@@ -4,7 +4,9 @@ import { notify } from "@/library/toastService";
 import { useChatStore } from "@/stores/useChatStore";
 import { useEffect, useRef } from "react";
 import FileAttachment from "./FileAttachment";
+import Pennon from "@/components/ui/Pennon";
 import { cn } from "@/library/utils";
+import styles from "./Chat.module.css";
 
 export default function Messages() {
   const { messages } = useChatStore();
@@ -26,12 +28,9 @@ export default function Messages() {
   }, [messages]);
 
   return (
-    <div
-      ref={chatContainerRef}
-      className="flex h-auto w-full flex-1 flex-col justify-start gap-2 overflow-y-auto px-4"
-    >
+    <div ref={chatContainerRef} className={styles.flags}>
       {(messages ?? []).length === 0 ? (
-        <div className="m-auto text-center text-sm opacity-60">
+        <div className="text-ash m-auto px-4 text-center font-mono text-xs">
           Retrieve messages and files received here.
         </div>
       ) : (
@@ -39,31 +38,49 @@ export default function Messages() {
           msg.system ? (
             <div
               key={msg.id}
-              className="animate-bounce-fade-in mx-auto my-1 w-fit rounded-full bg-slate-700/50 px-3 py-0.5 text-center text-xs text-slate-400"
+              className="text-ash text-caption self-center font-mono"
             >
               {msg.content}
             </div>
           ) : (
             <div
               key={msg.id}
-              className={`flex flex-col ${msg.received ? "mr-auto items-start" : "ml-auto items-end"}`}
+              className={cn(
+                "grid max-w-4/5 gap-0.5",
+                msg.received ? "self-start" : "justify-items-end self-end",
+                msg.delivery === "pending" && "opacity-60",
+              )}
             >
-              <div className="">
-                <time className="text-xs opacity-50">
-                  {msg.timestamp.toLocaleTimeString()}
-                </time>
-              </div>
+              <time className="text-ash text-caption px-2 font-mono">
+                {msg.timestamp.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </time>
               {msg.file ? (
                 <FileAttachment file={msg.file} received={msg.received} />
               ) : (
-                <div
+                <button
+                  type="button"
                   onClick={() => copyToClipboard(msg.content)}
-                  className={cn(
-                    `animate-bounce-fade-in w-fit cursor-pointer rounded-lg px-2 py-1 ${msg.received ? "bg-primary-blue" : "bg-secondary-blue"}`,
-                  )}
+                  className="max-w-full cursor-pointer text-left"
                 >
-                  {msg.content}
-                </div>
+                  <Pennon
+                    tone={msg.received ? "plain" : "moon"}
+                    notch={msg.received ? "end" : "start"}
+                    className={cn(
+                      "py-2 text-base leading-snug wrap-anywhere",
+                      msg.received ? "pr-6.5 pl-3" : "pr-3 pl-6.5",
+                    )}
+                  >
+                    {msg.content}
+                  </Pennon>
+                </button>
+              )}
+              {msg.delivery === "failed" && (
+                <span className="text-alert text-caption px-2 font-mono">
+                  Not delivered
+                </span>
               )}
             </div>
           ),

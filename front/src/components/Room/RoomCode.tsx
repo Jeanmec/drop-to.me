@@ -1,44 +1,45 @@
 "use client";
 
-import { useState } from "react";
 import { useRoomStore } from "@/stores/useRoomStore";
-import { Icon } from "@/components/Icons/Icon";
-import { notify } from "@/library/toastService";
+import { cn } from "@/library/utils";
+import Seamark from "@/components/ui/Seamark";
+import { LeaveRoomButton } from "./LeaveRoomButton";
+import styles from "./Room.module.css";
 
 export function RoomCode() {
-  const [copied, setCopied] = useState(false);
   const roomCode = useRoomStore((s) => s.roomCode);
 
   if (!roomCode) return null;
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(roomCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      notify.error("Failed to copy to clipboard");
-    }
-  };
-
   return (
-    <div className="flex items-center gap-2 rounded-lg border-2 border-slate-600 bg-slate-800/50 px-3 py-2">
-      <span className="text-sm text-slate-400">Room code:</span>
-      <span className="font-mono text-lg font-semibold tracking-widest text-emerald-400">
-        {roomCode}
+    <Seamark isSteady>
+      <span className={styles.roomline}>
+        <span
+          className={cn(
+            styles.tab,
+            styles.tabLabel,
+            "bg-night text-ash text-micro mr-1.5 font-mono tracking-widest uppercase",
+          )}
+        >
+          Room
+        </span>
+        <span className="sr-only">{roomCode}</span>
+        <span className={styles.bunting} aria-hidden>
+          {[...roomCode].map((letter, index) => (
+            <span
+              key={index}
+              className={cn(
+                styles.pennant,
+                styles.letter,
+                "text-label font-mono max-md:text-xs",
+              )}
+            >
+              {letter}
+            </span>
+          ))}
+        </span>
+        <LeaveRoomButton />
       </span>
-      <button
-        type="button"
-        onClick={handleCopy}
-        className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
-        title={copied ? "Copied!" : "Copy code"}
-      >
-        {copied ? (
-          <Icon.check className="text-base text-emerald-400" />
-        ) : (
-          <Icon.code className="text-base" />
-        )}
-      </button>
-    </div>
+    </Seamark>
   );
 }

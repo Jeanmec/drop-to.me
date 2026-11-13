@@ -2,38 +2,54 @@ type ToastmessageType = "success" | "error" | "info" | "warning";
 
 import { cn } from "@/library/utils";
 import { Icon } from "@/components/Icons/Icon";
+import Pennon from "@/components/ui/Pennon";
+
+interface ToastMessageProps {
+  message: string;
+  type: ToastmessageType;
+  detail?: string;
+}
+
+const isProblem = (type: ToastmessageType): boolean => {
+  switch (type) {
+    case "error":
+    case "warning":
+      return true;
+    case "success":
+    case "info":
+      return false;
+  }
+};
 
 export default function ToastMessage({
   message,
   type,
-}: {
-  message: string;
-  type: ToastmessageType;
-}) {
+  detail,
+}: ToastMessageProps) {
+  const tint = isProblem(type) ? "text-alert" : "text-moon";
+
   return (
-    <div className="flex items-center gap-3 px-4">
-      <div
-        className={cn(
-          `mr-2 flex items-center justify-center rounded-full p-2 text-xl text-white`,
-          {
-            "bg-primary-blue": type === "success",
-            "bg-red-500": type === "error",
-            "bg-secondary-blue": type === "info",
-            "bg-yellow-500": type === "warning",
-          },
-        )}
-      >
+    <Pennon
+      tone={isProblem(type) ? "alert" : "moon"}
+      className="pointer-events-auto flex max-w-85 items-center gap-2.5 py-2.5 pr-7 pl-3.5 text-base leading-snug"
+    >
+      <span className={cn("shrink-0 text-lg", tint)}>
         {type === "error" ? (
-          <Icon.exclamation />
+          <Icon.exclamation className={tint} />
         ) : type === "success" ? (
-          <Icon.check />
+          <Icon.check className={tint} />
         ) : type === "info" ? (
-          <Icon.information />
+          <Icon.information className={tint} />
         ) : type === "warning" ? (
-          <Icon.warning />
+          <Icon.warning className={tint} />
         ) : null}
-      </div>
-      <span className="text-white">{message}</span>
-    </div>
+      </span>
+      <span className="min-w-0 wrap-anywhere">
+        {message}
+        {detail && (
+          <span className="text-ash block font-mono text-xs">{detail}</span>
+        )}
+      </span>
+    </Pennon>
   );
 }

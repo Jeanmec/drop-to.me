@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { zip, type AsyncZippable } from "fflate";
 import {
   sendFileToTargets,
   setOnFileReceivedCallback,
@@ -11,82 +10,76 @@ import { statService } from "@/services/statService";
 import { notify } from "@/library/toastService";
 import { usePeersStore } from "@/stores/usePeersStore";
 import InputFile from "@/components/Forms/FileTransfer/InputFile";
-import ParticleLoader from "@/components/loaders/ParticleLoader";
+import TransferStatus from "@/components/Forms/FileTransfer/TransferStatus";
 import GlobalFileDropzone from "@/components/Forms/FileTransfer/GlobalFileDropzone";
+import Alone from "@/components/Clients/Alone";
 import { useDragFileStore } from "@/stores/useDragFileStore";
-import { Icon } from "../../Icons/Icon";
-import { BackgroundCircle } from "@/components/Background/BackgroundCircle";
 import { useChatStore } from "@/stores/useChatStore";
-import { cn } from "@/library/utils";
+import { createZipFromFiles } from "@/utils/zip.utils";
+import { useWindowFileDrag } from "@/hooks/useWindowFileDrag";
+import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
+import type { TTransferPhase } from "@/types/file.t";
 
-const WAITING_TOAST_ID = "file-transfer-awaiting-connection";
-const ZIPPING_TOAST_ID = "file-transfer-zipping";
 const WAITING_TIMEOUT_MS = 60_000;
 const MAX_TRANSFER_RETRIES = 3;
-const ZIP_TOAST_DELAY_MS = 300;
-const ZIP_TOAST_MIN_VISIBLE_MS = 800;
 
 interface FileTransferPanelProps {
   isActive?: boolean;
+  isConnecting: boolean;
 }
 
-const createZipFromFiles = (files: File[]): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    Promise.all(
-      files.map(async (file) => ({
-        name: file.name,
-        data: new Uint8Array(await file.arrayBuffer()),
-      })),
-    )
-      .then((entries) => {
-        const zippable: AsyncZippable = {};
-        const usedNames = new Set<string>();
-        for (const entry of entries) {
-          let name = entry.name;
-          let counter = 1;
-          while (usedNames.has(name)) {
-            const dot = entry.name.lastIndexOf(".");
-            const base = dot > 0 ? entry.name.slice(0, dot) : entry.name;
-            const ext = dot > 0 ? entry.name.slice(dot) : "";
-            name = `${base} (${counter})${ext}`;
-            counter++;
-          }
-          usedNames.add(name);
-          zippable[name] = entry.data;
-        }
-        // level: 0 = store-only (no compression). Most user-shared files
-        // (photos, videos, archives) are already compressed; trade CPU for speed.
-        zip(zippable, { level: 0 }, (err, data) => {
-          if (err) return reject(err);
-          const blob = new Blob([data as BlobPart], {
-            type: "application/zip",
-          });
-          const timestamp = new Date()
-            .toISOString()
-            .replace(/[:T]/g, "-")
-            .slice(0, 19);
-          const zipFile = new File(
-            [blob],
-            `drop-${files.length}-files-${timestamp}.zip`,
-            { type: "application/zip" },
-          );
-          resolve(zipFile);
-        });
-      })
-      .catch(reject);
-  });
+interface TransferFlags {
+  isWaiting: boolean;
+  isSending: boolean;
+  isDragging: boolean;
+  isDone: boolean;
+}
+
+const phaseOf = ({
+  isWaiting,
+  isSending,
+  isDragging,
+  isDone,
+}: TransferFlags): TTransferPhase => {
+  if (isWaiting) {
+    return "waiting";
+  }
+  if (isSending) {
+    return "sending";
+  }
+  if (isDragging) {
+    return "drag";
+  }
+  return isDone ? "done" : "idle";
+};
+
+const sendLabelOf = (phase: TTransferPhase): string => {
+  switch (phase) {
+    case "drag":
+      return "Drop to send";
+    case "waiting":
+    case "sending":
+      return "Sending file";
+    case "idle":
+    case "done":
+      return "Send files";
+  }
 };
 
 // Stays mounted while the user is alone: unmounting would detach the file input
 // while the native picker is open (Android backgrounds the page), losing the selection.
 export default function FileTransferPanel({
   isActive = true,
+  isConnecting,
 }: FileTransferPanelProps) {
   const { targetPeers } = usePeersStore();
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [isAwaitingConnection, setIsAwaitingConnection] = useState(false);
   const [isProcessingFile, setIsProcessingFile] = useState(false);
   const [isZipping, setIsZipping] = useState(false);
+  const [waitingMessage, setWaitingMessage] = useState("");
+  const [sentFileName, setSentFileName] = useState("");
+  const [isDone, setIsDone] = useState(false);
   const transferStartTime = useRef<number | null>(null);
   const sendInProgressRef = useRef(false);
   const transferSucceededRef = useRef(false);
@@ -94,15 +87,19 @@ export default function FileTransferPanel({
   const waitingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const retryCountRef = useRef(0);
 
-  const { isDragFileActive, setIsDragFileActive } = useDragFileStore();
+  const { isDragFileActive } = useDragFileStore();
   const { addMessage } = useChatStore();
 
   const hasReadyConnection = useMemo(
-    () => targetPeers.some((peer) => peer.connection?.open),
+    () => targetPeers.some((peer) => peer.isReachable),
     [targetPeers],
   );
   const anySending = useMemo(
     () => targetPeers.some((peer) => peer.isSending),
+    [targetPeers],
+  );
+  const isSendingOrReceiving = useMemo(
+    () => targetPeers.some((peer) => peer.isSending || peer.isReceiving),
     [targetPeers],
   );
 
@@ -122,8 +119,6 @@ export default function FileTransferPanel({
     retryCountRef.current = 0;
     transferStartTime.current = null;
     clearWaitingTimeout();
-    notify.dismiss(WAITING_TOAST_ID);
-    notify.dismiss(ZIPPING_TOAST_ID);
   }, [clearWaitingTimeout]);
 
   const handleSend = useCallback(async (file: File) => {
@@ -146,42 +141,22 @@ export default function FileTransferPanel({
     async (files: File[] | null) => {
       if (!files || files.length === 0) return;
 
+      setIsDone(false);
       let fileToSend: File;
 
       if (files.length === 1) {
         fileToSend = files[0];
       } else {
         setIsZipping(true);
-        const zipToast = { shownAt: null as number | null };
-        const zipToastTimer = setTimeout(() => {
-          if (!isMountedRef.current) return;
-          notify.info(
-            `Zipping ${files.length} files...`,
-            false,
-            ZIPPING_TOAST_ID,
-          );
-          zipToast.shownAt = Date.now();
-        }, ZIP_TOAST_DELAY_MS);
+        setWaitingMessage(`Zipping ${files.length} files...`);
         try {
           fileToSend = await createZipFromFiles(files);
-        } catch (err) {
-          clearTimeout(zipToastTimer);
-          console.error("[FileTransfer] Zip failed:", err);
-          notify.dismiss(ZIPPING_TOAST_ID);
+        } catch {
           notify.error("Failed to zip selected files.");
-          setIsZipping(false);
           return;
+        } finally {
+          setIsZipping(false);
         }
-        clearTimeout(zipToastTimer);
-        if (zipToast.shownAt !== null) {
-          const remaining =
-            ZIP_TOAST_MIN_VISIBLE_MS - (Date.now() - zipToast.shownAt);
-          if (remaining > 0) {
-            await new Promise((resolve) => setTimeout(resolve, remaining));
-          }
-          notify.dismiss(ZIPPING_TOAST_ID);
-        }
-        setIsZipping(false);
       }
 
       if (!isMountedRef.current) return;
@@ -190,12 +165,10 @@ export default function FileTransferPanel({
 
       if (!hasReadyConnection) {
         setIsAwaitingConnection(true);
-        notify.info(
+        setWaitingMessage(
           targetPeers.length === 0
             ? "Waiting for a peer to join..."
-            : "Reconnecting...",
-          false,
-          WAITING_TOAST_ID,
+            : "Waiting for the connection to your peer...",
         );
         armWaitingTimeout();
       }
@@ -211,12 +184,12 @@ export default function FileTransferPanel({
     sendInProgressRef.current = true;
     setIsAwaitingConnection(false);
     clearWaitingTimeout();
-    notify.dismiss(WAITING_TOAST_ID);
 
     const startTransfer = async () => {
       const fileToSend = pendingFile;
       try {
         setIsProcessingFile(true);
+        setSentFileName(fileToSend.name);
         transferSucceededRef.current = false;
         const success = await handleSend(fileToSend);
         if (!isMountedRef.current) return;
@@ -245,10 +218,8 @@ export default function FileTransferPanel({
             // Keep pendingFile — the effect will re-trigger when a fresh
             // ready connection appears (e.g. after a reconnect).
             setIsAwaitingConnection(true);
-            notify.info(
-              "Transfer interrupted — retrying...",
-              false,
-              WAITING_TOAST_ID,
+            setWaitingMessage(
+              "Transfer interrupted. It restarts when your peer is back.",
             );
             armWaitingTimeout();
           }
@@ -276,8 +247,6 @@ export default function FileTransferPanel({
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      notify.dismiss(WAITING_TOAST_ID);
-      notify.dismiss(ZIPPING_TOAST_ID);
       clearWaitingTimeout();
     };
   }, [clearWaitingTimeout]);
@@ -331,7 +300,7 @@ export default function FileTransferPanel({
         transferStartTime.current = null;
         if (transferSucceededRef.current) {
           transferSucceededRef.current = false;
-          notify.success("File transfer completed successfully");
+          setIsDone(true);
         }
       };
 
@@ -347,45 +316,8 @@ export default function FileTransferPanel({
     };
   }, [isInTransfer, anySending]);
 
-  useEffect(() => {
-    if (!isActive) setIsDragFileActive(false);
-
-    const handleDragEnter = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (isActive && e.dataTransfer?.types.includes("Files")) {
-        setIsDragFileActive(true);
-      }
-    };
-
-    const handleDragLeave = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (e.relatedTarget === null || e.target === document.body) {
-        setIsDragFileActive(false);
-      }
-    };
-
-    const handleDrop = (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsDragFileActive(false);
-    };
-
-    const preventDefaults = (e: DragEvent) => e.preventDefault();
-
-    window.addEventListener("dragenter", handleDragEnter);
-    window.addEventListener("dragleave", handleDragLeave);
-    window.addEventListener("drop", handleDrop);
-    window.addEventListener("dragover", preventDefaults);
-
-    return () => {
-      window.removeEventListener("dragenter", handleDragEnter);
-      window.removeEventListener("dragleave", handleDragLeave);
-      window.removeEventListener("drop", handleDrop);
-      window.removeEventListener("dragover", preventDefaults);
-    };
-  }, [setIsDragFileActive, isActive]);
+  useWindowFileDrag(isActive);
+  useScreenWakeLock(isSendingOrReceiving);
 
   const isTransferLocked =
     isInTransfer ||
@@ -394,42 +326,51 @@ export default function FileTransferPanel({
     isProcessingFile ||
     isZipping;
 
+  const sendingProgress = targetPeers
+    .filter((peer) => peer.isSending)
+    .map((peer) => peer.sendProgress ?? 0);
+  const heldProgress = pendingFile ? 0 : 100;
+  const phase = phaseOf({
+    isWaiting: isZipping || isAwaitingConnection,
+    isSending: isInTransfer || isProcessingFile || pendingFile !== null,
+    isDragging: isDragFileActive,
+    isDone,
+  });
+
   return (
     <>
-      {isActive && <BackgroundCircle />}
       <GlobalFileDropzone
         onFileSelected={handleFileSelection}
         disabled={isTransferLocked || !isActive}
         isDragging={isDragFileActive}
       />
-
-      <div
-        className={cn(
-          "absolute top-[67.5vh] left-1/2 z-[21] -translate-x-1/2 -translate-y-1/2",
-          !isActive && "invisible",
-        )}
-      >
-        <div
-          className={cn(
-            "flex flex-1 flex-col items-center justify-start overflow-auto",
-            isActive && "animate-fade-in-right",
-          )}
-        >
-          <InputFile
-            className={isDragFileActive ? "scale-110" : ""}
-            callback={handleFileSelection}
-            disabled={isTransferLocked}
-            icon={
-              isDragFileActive ? (
-                <Icon.downloadAnimated className="text-5xl" />
-              ) : isTransferLocked ? (
-                <ParticleLoader />
-              ) : (
-                <Icon.upload className="animate-fade-in text-primary-blue text-primary-shadow text-4xl" />
-              )
+      <InputFile
+        callback={handleFileSelection}
+        disabled={isTransferLocked}
+        hasNoRecipient={!isActive}
+        isDropTarget={isDragFileActive}
+        label={sendLabelOf(phase)}
+      />
+      <div role="status" className="grid justify-items-center gap-2">
+        {phase === "idle" && !isActive ? (
+          <Alone isConnecting={isConnecting} />
+        ) : (
+          <TransferStatus
+            phase={phase}
+            peerCount={targetPeers.length}
+            connectedCount={
+              targetPeers.filter((peer) => peer.isReachable).length
             }
+            waitingMessage={waitingMessage}
+            fileName={sentFileName}
+            progress={
+              sendingProgress.length > 0
+                ? Math.min(...sendingProgress)
+                : heldProgress
+            }
+            onDoneShown={() => setIsDone(false)}
           />
-        </div>
+        )}
       </div>
     </>
   );

@@ -6,11 +6,16 @@ import {
   FaRegFilePdf,
   FaTriangleExclamation,
 } from "react-icons/fa6";
-import { FiDatabase, FiMessageSquare, FiUser } from "react-icons/fi";
+import {
+  FiArrowDownCircle,
+  FiDatabase,
+  FiMessageSquare,
+  FiUser,
+} from "react-icons/fi";
 import React, { type ComponentType } from "react";
 import IconConnect from "./Connect";
 import { GoVideo } from "react-icons/go";
-import { HiOutlineUpload } from "react-icons/hi";
+import { HiOutlineDownload, HiOutlineUpload } from "react-icons/hi";
 import { DownloadLoopIcon } from "./DownloadLoopIcon";
 import { TbArrowsTransferUpDown, TbBrandGithubFilled } from "react-icons/tb";
 import IconCheck from "./Check";
@@ -44,6 +49,8 @@ export const Icon = {
   message: createIcon(FiMessageSquare),
   image: createIcon(FaRegFileImage),
   upload: createIcon(HiOutlineUpload),
+  download: createIcon(FiArrowDownCircle),
+  downloadTray: createIcon(HiOutlineDownload),
   downloadAnimated: createIcon(DownloadLoopIcon),
   github: createIcon(TbBrandGithubFilled),
   check: createIcon(IconCheck),

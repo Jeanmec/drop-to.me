@@ -1,0 +1,260 @@
+@keyframes march {
+  to {
+    background-position: 16px 0;
+  }
+}
+
+@keyframes marchDown {
+  to {
+    background-position: 0 16px;
+  }
+}
+
+@keyframes voyage {
+  from {
+    left: 0;
+  }
+  to {
+    left: 100%;
+  }
+}
+
+@keyframes voyageDown {
+  from {
+    top: 0;
+  }
+  to {
+    top: 100%;
+  }
+}
+
+@keyframes pass {
+  0%,
+  10% {
+    background-color: var(--color-moon);
+    box-shadow: 0 0 0 7px var(--color-moon-glow);
+    color: var(--color-night);
+  }
+  18%,
+  100% {
+    background-color: var(--color-night);
+    box-shadow: 0 0 0 0 transparent;
+    color: var(--color-moon);
+  }
+}
+
+@keyframes read {
+  0%,
+  30% {
+    opacity: 1;
+  }
+  36%,
+  100% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes sway {
+  from {
+    rotate: -7deg;
+  }
+  to {
+    rotate: 7deg;
+  }
+}
+
+.sheet {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0 28px;
+  min-height: 340px;
+  padding: 52px 44px 40px;
+  overflow: clip;
+  border: var(--pen) solid var(--color-dim);
+  background-image:
+    linear-gradient(var(--color-chart-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-chart-grid) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.rose {
+  position: absolute;
+  right: 36px;
+  bottom: 28px;
+  width: 132px;
+  height: 132px;
+}
+
+.north {
+  fill: var(--color-ash);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-anchor: middle;
+}
+
+.needle {
+  animation: sway 5s ease-in-out infinite alternate;
+}
+
+.end {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 96px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.endIcon {
+  width: 44px;
+  height: 44px;
+  background: var(--color-night);
+}
+
+.track {
+  position: relative;
+}
+
+.wake {
+  position: absolute;
+  left: -56px;
+  right: -56px;
+  top: 21px;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--color-moon-soft) 0 8px,
+    transparent 8px 16px
+  );
+  animation: march 1.4s linear infinite;
+}
+
+.voyager {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  top: 22px;
+  width: 0;
+  height: 0;
+  animation: voyage 15s linear infinite;
+}
+
+.voyagerBoat {
+  position: absolute;
+  left: -19px;
+  top: -39px;
+  width: 38px;
+  height: 38px;
+}
+
+.course {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.step {
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 16px;
+}
+
+.buoy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1.6px solid var(--color-moon);
+  border-radius: 50%;
+  background-color: var(--color-night);
+  color: var(--color-moon);
+  animation: pass 15s linear infinite;
+}
+
+.stepText {
+  max-width: 22em;
+  line-height: 1.45;
+  animation: read 15s linear infinite;
+}
+
+.step:nth-child(2) .buoy,
+.step:nth-child(2) .stepText {
+  animation-delay: 5s;
+}
+
+.step:nth-child(3) .buoy,
+.step:nth-child(3) .stepText {
+  animation-delay: 10s;
+}
+
+@media (width <= 900px) {
+  .sheet {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px 0;
+    min-height: 0;
+    padding: 28px 22px;
+  }
+
+  .rose {
+    display: none;
+  }
+
+  .end {
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 14px;
+    width: auto;
+    text-align: left;
+  }
+
+  .wake {
+    left: 21px;
+    right: auto;
+    top: -20px;
+    bottom: -20px;
+    width: 2px;
+    height: auto;
+    background: repeating-linear-gradient(
+      180deg,
+      var(--color-moon-soft) 0 8px,
+      transparent 8px 16px
+    );
+    animation-name: marchDown;
+  }
+
+  .voyager {
+    left: 22px;
+    top: 0;
+    animation-name: voyageDown;
+  }
+
+  .voyagerBoat {
+    left: -19px;
+    top: -19px;
+    background: var(--color-night);
+  }
+
+  .course {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .step {
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: start;
+    gap: 14px;
+  }
+
+  .stepText {
+    padding-top: 8px;
+  }
+}

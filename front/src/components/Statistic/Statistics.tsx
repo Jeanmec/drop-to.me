@@ -5,7 +5,12 @@ import { useStatsStore } from "@/stores/useStatsStore";
 import { statService } from "@/services/statService";
 import { useSocket } from "@/contexts/SocketProvider";
 import NumberFlow from "@number-flow/react";
-import { Icon } from "@/components/Icons/Icon";
+import BarrelIcon from "@/components/Icons/BarrelIcon";
+import BottleIcon from "@/components/Icons/BottleIcon";
+import CrateIcon from "@/components/Icons/CrateIcon";
+import SailboatIcon from "@/components/Icons/SailboatIcon";
+import { cn } from "@/library/utils";
+import styles from "./Statistics.module.css";
 
 interface StatisticItemProps {
   icon: ReactNode;
@@ -16,20 +21,25 @@ interface StatisticItemProps {
 
 function StatisticItem({ icon, title, value, suffix }: StatisticItemProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 p-4 sm:flex-row">
-      <div className="[&>svg]:text-primary-blue text-3xl">{icon}</div>
-      <div className="flex flex-col items-center sm:items-start">
-        <span className="text-sm text-slate-500 dark:text-slate-400">
-          {title}
-        </span>
-        <div className="font-plus-jakarta-sans w-24 text-center text-3xl font-bold text-white sm:text-left">
-          <NumberFlow
-            spinTiming={{ duration: 750 }}
-            value={value}
-            suffix={suffix}
-          />
-        </div>
-      </div>
+    <div className={styles.stat}>
+      <div className={styles.statIcon}>{icon}</div>
+      <dt
+        className={cn(
+          styles.statLabel,
+          "text-ash text-caption font-mono tracking-widest uppercase",
+        )}
+      >
+        {title}
+      </dt>
+      <dd
+        className={cn(styles.statValue, "text-tally font-light tabular-nums")}
+      >
+        <NumberFlow
+          spinTiming={{ duration: 750 }}
+          value={value}
+          suffix={suffix}
+        />
+      </dd>
     </div>
   );
 }
@@ -58,27 +68,31 @@ export default function Statistics() {
 
   const statsData: StatisticItemProps[] = [
     {
-      icon: <Icon.database />,
+      icon: <BarrelIcon className="size-8.5" />,
       title: "Data Transferred",
       value: sizeValue,
       suffix: sizeSuffix,
     },
-    { icon: <Icon.user />, title: "Users", value: statistics.users },
     {
-      icon: <Icon.message />,
+      icon: <SailboatIcon className="size-8.5" />,
+      title: "Users",
+      value: statistics.users,
+    },
+    {
+      icon: <BottleIcon className="size-8.5" />,
       title: "Messages Sent",
       value: statistics.messagesSent,
     },
     {
-      icon: <Icon.exchange />,
+      icon: <CrateIcon className="size-8.5" />,
       title: "Files Transferred",
       value: statistics.totalTransfers,
     },
   ];
 
   return (
-    <div className="w-full px-4 py-5">
-      <div className="mx-auto grid w-full max-w-6xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-y-0 lg:divide-dashed lg:divide-slate-400">
+    <section aria-label="Statistics">
+      <dl className={styles.tally}>
         {statsData.map((stat) => (
           <StatisticItem
             key={stat.title}
@@ -88,7 +102,7 @@ export default function Statistics() {
             suffix={stat.suffix}
           />
         ))}
-      </div>
-    </div>
+      </dl>
+    </section>
   );
 }

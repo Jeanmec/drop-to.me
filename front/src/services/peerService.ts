@@ -1,9 +1,11 @@
 import { usePeersStore } from "@/stores/usePeersStore";
 import { useChatStore } from "@/stores/useChatStore";
 import type { Message } from "@/types/message.t";
-import type { TPeer } from "@/types/peer.t";
+import type { TDevice, TReceivingFile } from "@/types/peer.t";
 import Peer, { type DataConnection } from "peerjs";
 import { notify, type ToastId } from "@/library/toastService";
+import { statService } from "@/services/statService";
+import { describeDevice } from "@/utils/device.utils";
 
 export interface ReceivedFile {
   id: string;
@@ -15,95 +17,109 @@ export interface ReceivedFile {
 type OnFileReceivedCallback = (file: ReceivedFile) => void;
 type OnMessageReceivedCallback = (message: Message) => void;
 type ProgressReporter = (peerId: string, progress: number) => void;
+type ChunkEncoding = "bare" | "wrapped";
+// peerjs delivers an ArrayBuffer, or a Uint8Array when it reassembled a message above its MTU
+type PeerBinary = ArrayBuffer | Uint8Array;
+
+interface FileStartMessage {
+  type: "file-start";
+  fileId: string;
+  name: string;
+  size: number;
+}
+
+interface FileStartAckMessage {
+  type: "file-start-ack";
+  fileId: string;
+}
+
+interface FileChunkMessage {
+  type: "file-chunk";
+  fileId: string;
+  content: PeerBinary;
+}
+
+interface FileProgressMessage {
+  type: "file-progress";
+  fileId: string;
+  receivedBytes: number;
+}
+
+interface FileEndMessage {
+  type: "file-end";
+  fileId: string;
+}
+
+interface LegacyFileMessage {
+  type: "file";
+  fileId: string;
+  name: string;
+  size: number;
+  content: PeerBinary;
+}
+
+interface ChatMessage {
+  type: "message";
+  ackId: string;
+  content: string;
+}
+
+interface AckMessage {
+  type: "ack";
+  ackId: string;
+}
+
+interface HelloMessage {
+  type: "hello";
+  device: TDevice;
+}
+
+type PeerMessage =
+  | FileStartMessage
+  | FileStartAckMessage
+  | FileChunkMessage
+  | FileProgressMessage
+  | FileEndMessage
+  | LegacyFileMessage
+  | ChatMessage
+  | AckMessage
+  | HelloMessage;
+
+interface SendTransfer {
+  fileId: string;
+  chunkEncoding: ChunkEncoding | null;
+  receivedBytes: number;
+  resume: () => void;
+}
+
+interface PendingMessage {
+  messageId: string;
+  connections: Set<DataConnection>;
+}
 
 let peerInstance: Peer | null = null;
 
 const onFileReceivedCallbacks = new Map<string, OnFileReceivedCallback>();
 const onMessageReceivedCallbacks = new Map<string, OnMessageReceivedCallback>();
-const pendingAcks = new Map<string, { peerId: string; timestamp: number }>();
+const pendingAckPeerIds = new Map<string, string>();
+const pendingMessages = new Map<string, PendingMessage>();
 
-const PENDING_ACK_TIMEOUT_MS = 30_000;
-const RECEIVE_INACTIVITY_TIMEOUT_MS = 45_000;
-const CHUNK_SIZE = 16 * 1024;
+// a chunk packed above peerjs's 16300-byte MTU is split in two and reassembled in JS
+const CHUNK_SIZE = 15 * 1024;
+// bytes in flight beyond what the path can queue are dropped, and SCTP takes seconds to recover
+const INITIAL_SEND_WINDOW = 4 * CHUNK_SIZE;
+const MAX_SEND_WINDOW = 64 * CHUNK_SIZE;
+// a Blob hands its bytes over to the browser, which can page them to disk
+const RECEIVED_CHUNKS_PER_BLOB = 1024;
 const PROGRESS_TOAST_MIN_VISIBLE_MS = 1000;
+const MAX_DEVICE_LABEL_LENGTH = 40;
+const MAX_UNCONFIRMED_PERCENT = 99;
 const HIGH_WATERMARK = 1 * 1024 * 1024; // 1MB
 const LOW_WATERMARK = 256 * 1024; // 256KB
-const BUFFER_POLL_MS = 50;
-const START_ACK_TIMEOUT_MS = 10_000;
-const START_ACK_MAX_ATTEMPTS = 3;
 
-const pendingStartAcks = new Map<
-  string,
-  {
-    peerId: string;
-    resolve: (result: boolean) => void;
-    timeoutId: NodeJS.Timeout;
-  }
->();
-
-const activeSendTransfers = new Map<
-  string,
-  {
-    fileId: string;
-    fileName: string;
-  }
->();
+const activeSendTransfers = new Map<string, SendTransfer>();
 
 const progressToastShownAt = new Map<ToastId, number>();
-
-let pendingAckCleanupInterval: ReturnType<typeof setInterval> | null = null;
-let receiveTimeoutInterval: ReturnType<typeof setInterval> | null = null;
-
-function startBackgroundCleanups() {
-  if (!pendingAckCleanupInterval) {
-    pendingAckCleanupInterval = setInterval(() => {
-      const now = Date.now();
-      for (const [ackId, info] of pendingAcks) {
-        if (now - info.timestamp > PENDING_ACK_TIMEOUT_MS) {
-          pendingAcks.delete(ackId);
-          const peer = usePeersStore
-            .getState()
-            .targetPeers.find((p) => p.peerId === info.peerId);
-          if (peer?.isSending) {
-            usePeersStore
-              .getState()
-              .updatePeer(info.peerId, { isSending: false });
-          }
-        }
-      }
-    }, 10_000);
-  }
-  if (!receiveTimeoutInterval) {
-    receiveTimeoutInterval = setInterval(() => {
-      const now = Date.now();
-      const peers = usePeersStore.getState().targetPeers;
-      peers.forEach((peer) => {
-        const receiving = peer.receivingFile;
-        if (
-          receiving &&
-          now - receiving.lastChunkAt > RECEIVE_INACTIVITY_TIMEOUT_MS
-        ) {
-          updateToastFailed(receiving.toastId, receiving.name, false);
-          usePeersStore.getState().updatePeer(peer.peerId, {
-            isReceiving: false,
-            receivingFile: undefined,
-          });
-        }
-      });
-    }, 5_000);
-  }
-}
-
-function stopBackgroundCleanups() {
-  if (pendingAckCleanupInterval) {
-    clearInterval(pendingAckCleanupInterval);
-    pendingAckCleanupInterval = null;
-  }
-  if (receiveTimeoutInterval) {
-    clearInterval(receiveTimeoutInterval);
-    receiveTimeoutInterval = null;
-  }
-}
 
 export const createPeerInstance = (): Peer => {
   if (peerInstance && !peerInstance.destroyed) {
@@ -119,17 +135,25 @@ export const createPeerInstance = (): Peer => {
 
   const port = peerUrl.port ? Number(peerUrl.port) : isSecure ? 443 : 9000;
 
+  const iceServers: RTCIceServer[] = [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:global.stun.twilio.com:3478" },
+  ];
+  const turnUrl = process.env.NEXT_PUBLIC_TURN_URL;
+  if (turnUrl) {
+    iceServers.push({
+      urls: turnUrl,
+      username: process.env.NEXT_PUBLIC_TURN_USERNAME,
+      credential: process.env.NEXT_PUBLIC_TURN_CREDENTIAL,
+    });
+  }
+
   const newPeer = new Peer({
     host: peerUrl.hostname,
     port: port,
     path: "/",
     secure: isSecure,
-    config: {
-      iceServers: [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:global.stun.twilio.com:3478" },
-      ],
-    },
+    config: { iceServers },
   });
 
   peerInstance = newPeer;
@@ -145,29 +169,6 @@ export const getPeerInstance = () => peerInstance;
 export const getPeerId = () => peerInstance?.id;
 
 export const isPeerOpen = () => !!peerInstance?.open;
-
-export const connectToPeer = (peerId: string): DataConnection | null => {
-  if (!peerInstance || !peerInstance.open) {
-    return null;
-  }
-  return peerInstance.connect(peerId, { reliable: true });
-};
-
-export const destroyPeerInstance = () => {
-  if (peerInstance && !peerInstance.destroyed) {
-    peerInstance.destroy();
-  }
-  peerInstance = null;
-  onFileReceivedCallbacks.clear();
-  onMessageReceivedCallbacks.clear();
-  pendingAcks.clear();
-  for (const [, pending] of pendingStartAcks) {
-    clearTimeout(pending.timeoutId);
-  }
-  pendingStartAcks.clear();
-  activeSendTransfers.clear();
-  stopBackgroundCleanups();
-};
 
 export const setOnFileReceivedCallback = (
   callback: OnFileReceivedCallback,
@@ -192,13 +193,15 @@ export const removeOnMessageReceivedCallback = (id = "default") => {
 };
 
 export const cancelTransfersForPeer = (peerId: string): void => {
-  if (activeSendTransfers.has(peerId)) {
+  const sendTransfer = activeSendTransfers.get(peerId);
+  if (sendTransfer) {
     activeSendTransfers.delete(peerId);
+    sendTransfer.resume();
   }
 
-  Array.from(pendingStartAcks.entries()).forEach(([fileId, pending]) => {
-    if (pending.peerId === peerId) {
-      resolvePendingStartAck(fileId, false);
+  pendingAckPeerIds.forEach((ackPeerId, ackId) => {
+    if (ackPeerId === peerId) {
+      pendingAckPeerIds.delete(ackId);
     }
   });
 
@@ -223,14 +226,26 @@ export const cancelTransfersForPeer = (peerId: string): void => {
   }
 };
 
+export const failMessagesPendingOn = (connection: DataConnection): void => {
+  pendingMessages.forEach((pendingMessage, ackId) => {
+    if (
+      pendingMessage.connections.delete(connection) &&
+      pendingMessage.connections.size === 0
+    ) {
+      pendingMessages.delete(ackId);
+      useChatStore
+        .getState()
+        .setMessageDelivery(pendingMessage.messageId, "failed");
+    }
+  });
+};
+
 export const cancelAllSendTransfers = (): void => {
   if (activeSendTransfers.size === 0) return;
 
+  const sendTransfers = Array.from(activeSendTransfers.values());
   activeSendTransfers.clear();
-
-  Array.from(pendingStartAcks.keys()).forEach((fileId) => {
-    resolvePendingStartAck(fileId, false);
-  });
+  sendTransfers.forEach((sendTransfer) => sendTransfer.resume());
 
   const peers = usePeersStore.getState().targetPeers;
   peers.forEach((peer) => {
@@ -251,39 +266,251 @@ const generateMessageId = (content: string): string => {
   return `${content}-${Date.now()}`;
 };
 
-const resolvePendingStartAck = (fileId: string, result: boolean): void => {
-  const pending = pendingStartAcks.get(fileId);
-  if (!pending) {
+const findSendTransfer = (
+  peerId: string,
+  fileId: string,
+): SendTransfer | undefined => {
+  const sendTransfer = activeSendTransfers.get(peerId);
+  return sendTransfer?.fileId === fileId ? sendTransfer : undefined;
+};
+
+const waitForReceiver = (sendTransfer: SendTransfer): Promise<void> =>
+  new Promise((resolve) => {
+    sendTransfer.resume = resolve;
+  });
+
+const isPeerBinary = (value: unknown): value is PeerBinary =>
+  value instanceof ArrayBuffer || value instanceof Uint8Array;
+
+const toArrayBuffer = (binary: PeerBinary): ArrayBuffer =>
+  binary instanceof ArrayBuffer ? binary : binary.slice().buffer;
+
+const isDeviceLabel = (value: unknown): value is string =>
+  typeof value === "string" && value.length <= MAX_DEVICE_LABEL_LENGTH;
+
+const isDevice = (value: unknown): value is TDevice =>
+  typeof value === "object" &&
+  value !== null &&
+  "name" in value &&
+  isDeviceLabel(value.name) &&
+  "browser" in value &&
+  isDeviceLabel(value.browser) &&
+  "system" in value &&
+  isDeviceLabel(value.system);
+
+const isPeerMessage = (value: object): value is PeerMessage => {
+  if (!("type" in value)) {
+    return false;
+  }
+
+  switch (value.type) {
+    case "file-start":
+      return (
+        "fileId" in value &&
+        typeof value.fileId === "string" &&
+        "name" in value &&
+        typeof value.name === "string" &&
+        "size" in value &&
+        typeof value.size === "number"
+      );
+    case "file-start-ack":
+    case "file-end":
+      return "fileId" in value && typeof value.fileId === "string";
+    case "file-chunk":
+      return (
+        "fileId" in value &&
+        typeof value.fileId === "string" &&
+        "content" in value &&
+        isPeerBinary(value.content)
+      );
+    case "file-progress":
+      return (
+        "fileId" in value &&
+        typeof value.fileId === "string" &&
+        "receivedBytes" in value &&
+        typeof value.receivedBytes === "number"
+      );
+    case "file":
+      return (
+        "fileId" in value &&
+        typeof value.fileId === "string" &&
+        "name" in value &&
+        typeof value.name === "string" &&
+        "size" in value &&
+        typeof value.size === "number" &&
+        "content" in value &&
+        isPeerBinary(value.content)
+      );
+    case "message":
+      return (
+        "ackId" in value &&
+        typeof value.ackId === "string" &&
+        "content" in value &&
+        typeof value.content === "string"
+      );
+    case "ack":
+      return "ackId" in value && typeof value.ackId === "string";
+    case "hello":
+      return "device" in value && isDevice(value.device);
+    default:
+      return false;
+  }
+};
+
+const findReceivingFile = (peerId: string): TReceivingFile | undefined =>
+  usePeersStore.getState().targetPeers.find((p) => p.peerId === peerId)
+    ?.receivingFile;
+
+const receivedPercent = (receivingFile: TReceivingFile): number =>
+  Math.floor((receivingFile.receivedBytes / receivingFile.size) * 100);
+
+const appendToReceivingFile = (
+  receivingFile: TReceivingFile,
+  chunk: PeerBinary,
+): void => {
+  const previousPercent = receivedPercent(receivingFile);
+
+  receivingFile.chunks.push(toArrayBuffer(chunk));
+  receivingFile.receivedBytes += chunk.byteLength;
+  if (receivingFile.chunks.length === RECEIVED_CHUNKS_PER_BLOB) {
+    receivingFile.blobs.push(new Blob(receivingFile.chunks));
+    receivingFile.chunks = [];
+  }
+
+  const percent = receivedPercent(receivingFile);
+  if (percent !== previousPercent) {
+    updateToastProgress(
+      receivingFile.toastId,
+      receivingFile.name,
+      percent,
+      false,
+    );
+  }
+};
+
+const receiveFileStart = (
+  message: FileStartMessage,
+  peerId: string,
+  conn: DataConnection | undefined,
+): void => {
+  // Idempotent: duplicate file-start (sender retry) — just re-ack
+  if (findReceivingFile(peerId)?.fileId !== message.fileId) {
+    usePeersStore.getState().updatePeer(peerId, {
+      isReceiving: true,
+      receivingFile: {
+        fileId: message.fileId,
+        name: message.name,
+        size: message.size,
+        receivedBytes: 0,
+        chunks: [],
+        blobs: [],
+        toastId: showProgressToast(notify.receivingFile(message.name)),
+      },
+    });
+  }
+
+  void conn?.send({
+    type: "file-start-ack",
+    fileId: message.fileId,
+    bareChunks: true,
+  });
+};
+
+const receiveFileEnd = (
+  message: FileEndMessage,
+  peerId: string,
+  conn: DataConnection | undefined,
+): void => {
+  const receivingFile = findReceivingFile(peerId);
+
+  if (receivingFile?.fileId !== message.fileId) {
+    console.warn("Received file-end for unknown file:", message.fileId);
     return;
   }
 
-  clearTimeout(pending.timeoutId);
-  pendingStartAcks.delete(fileId);
-  pending.resolve(result);
+  dismissToast(receivingFile.toastId);
+  usePeersStore.getState().updatePeer(peerId, {
+    isReceiving: false,
+    receivingFile: undefined,
+  });
+
+  if (receivingFile.receivedBytes !== receivingFile.size) {
+    console.error(
+      `Incomplete file: ${receivingFile.receivedBytes}/${receivingFile.size} bytes`,
+    );
+    notify.error("File transfer incomplete");
+    conn?.close();
+    return;
+  }
+
+  const receivedFile: ReceivedFile = {
+    id: message.fileId,
+    name: receivingFile.name,
+    data: new Blob([...receivingFile.blobs, ...receivingFile.chunks]),
+    size: receivingFile.size,
+  };
+
+  onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
+  void conn?.send({ type: "ack", ackId: message.fileId });
 };
 
-const waitForStartAck = (
-  fileId: string,
-  peerId: string,
-  timeout = START_ACK_TIMEOUT_MS,
-): Promise<boolean> => {
-  return new Promise((resolve) => {
-    const timeoutId = setTimeout(() => {
-      if (pendingStartAcks.has(fileId)) {
-        pendingStartAcks.delete(fileId);
-      }
-      resolve(false);
-    }, timeout);
+// Legacy format for backward compatibility
+const receiveLegacyFile = (
+  message: LegacyFileMessage,
+  conn: DataConnection | undefined,
+): void => {
+  const receivedFile: ReceivedFile = {
+    id: message.fileId,
+    name: message.name,
+    data: new Blob([toArrayBuffer(message.content)]),
+    size: message.size,
+  };
 
-    pendingStartAcks.set(fileId, {
-      peerId,
-      timeoutId,
-      resolve: (result: boolean) => {
-        clearTimeout(timeoutId);
-        resolve(result);
-      },
-    });
-  });
+  onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
+  void conn?.send({ type: "ack", ackId: message.fileId });
+};
+
+const receiveChatMessage = (
+  message: ChatMessage,
+  conn: DataConnection | undefined,
+): void => {
+  if (!message.content) {
+    return;
+  }
+
+  const receivedMessage = {
+    received: true,
+    content: message.content,
+    timestamp: new Date(),
+  };
+
+  onMessageReceivedCallbacks.forEach((cb) =>
+    cb({ ...receivedMessage, id: message.ackId }),
+  );
+  void conn?.send({ type: "ack", ackId: message.ackId });
+  useChatStore.getState().addMessage(receivedMessage);
+};
+
+const receiveAck = (message: AckMessage): void => {
+  const pendingMessage = pendingMessages.get(message.ackId);
+
+  if (pendingMessage) {
+    pendingMessages.delete(message.ackId);
+    useChatStore
+      .getState()
+      .setMessageDelivery(pendingMessage.messageId, "delivered");
+    statService.addMessageStat();
+    return;
+  }
+
+  const ackPeerId = pendingAckPeerIds.get(message.ackId);
+
+  if (ackPeerId) {
+    usePeersStore
+      .getState()
+      .updatePeer(ackPeerId, { isSending: false, sendProgress: 100 });
+    pendingAckPeerIds.delete(message.ackId);
+  }
 };
 
 export const handleIncomingData = (
@@ -293,245 +520,84 @@ export const handleIncomingData = (
 ): void => {
   const conn = incomingConnection ?? getConnectionByPeerId(peerId);
 
-  const peersStore = usePeersStore.getState();
-  const existingPeer = peersStore.targetPeers.find((p) => p.peerId === peerId);
-
-  if (!existingPeer) {
-    peersStore.addTargetPeer(peerId, incomingConnection);
-  } else if (
-    incomingConnection &&
-    existingPeer.connection !== incomingConnection
-  ) {
-    peersStore.updatePeer(peerId, { connection: incomingConnection });
-  }
-
-  if (!data || typeof data !== "object") {
+  if (!usePeersStore.getState().targetPeers.some((p) => p.peerId === peerId)) {
     return;
   }
 
-  const typedData = data as { type?: string };
-
-  if (typedData.type === "file-start-ack") {
-    const startAck = data as {
-      type: "file-start-ack";
-      fileId: string;
-    };
-    resolvePendingStartAck(startAck.fileId, true);
-    return;
-  }
-
-  if (typedData.type === "file-start") {
-    const fileStart = data as {
-      type: "file-start";
-      fileId: string;
-      name: string;
-      size: number;
-      totalChunks: number;
-    };
-
-    const peer = usePeersStore
-      .getState()
-      .targetPeers.find((p) => p.peerId === peerId);
-
-    // Idempotent: duplicate file-start (sender retry) — just re-ack
-    if (peer?.receivingFile?.fileId === fileStart.fileId) {
+  if (isPeerBinary(data)) {
+    const receivingFile = findReceivingFile(peerId);
+    if (receivingFile) {
+      appendToReceivingFile(receivingFile, data);
       void conn?.send({
-        type: "file-start-ack" as const,
-        fileId: fileStart.fileId,
+        type: "file-progress",
+        fileId: receivingFile.fileId,
+        receivedBytes: receivingFile.receivedBytes,
       });
-      return;
     }
-
-    const toastId = showProgressToast(notify.receivingFile(fileStart.name));
-
-    usePeersStore.getState().updatePeer(peerId, {
-      isReceiving: true,
-      receivingFile: {
-        fileId: fileStart.fileId,
-        name: fileStart.name,
-        size: fileStart.size,
-        totalChunks: fileStart.totalChunks,
-        receivedChunks: new Array(fileStart.totalChunks),
-        receivedCount: 0,
-        lastChunkAt: Date.now(),
-        toastId,
-      },
-    });
-    startBackgroundCleanups();
-
-    void conn?.send({
-      type: "file-start-ack" as const,
-      fileId: fileStart.fileId,
-    });
     return;
   }
 
-  if (typedData.type === "file-chunk") {
-    const chunkData = data as {
-      type: "file-chunk";
-      fileId: string;
-      chunkIndex: number;
-      totalChunks: number;
-      content: Uint8Array | ArrayBuffer;
-    };
-
-    const peer = usePeersStore
-      .getState()
-      .targetPeers.find((p) => p.peerId === peerId);
-    const receivingFile = peer?.receivingFile;
-
-    if (!receivingFile || receivingFile.fileId !== chunkData.fileId) {
-      console.warn("Received chunk for unknown file:", chunkData.fileId);
-      return;
-    }
-
-    const content =
-      chunkData.content instanceof Uint8Array
-        ? chunkData.content
-        : new Uint8Array(chunkData.content);
-
-    if (!receivingFile.receivedChunks[chunkData.chunkIndex]) {
-      receivingFile.receivedChunks[chunkData.chunkIndex] = content;
-      receivingFile.receivedCount++;
-    }
-    receivingFile.lastChunkAt = Date.now();
-
-    const progress =
-      (receivingFile.receivedCount / receivingFile.totalChunks) * 100;
-    updateToastProgress(
-      receivingFile.toastId,
-      receivingFile.name,
-      progress,
-      false,
-    );
-
+  if (!data || typeof data !== "object" || !isPeerMessage(data)) {
     return;
   }
 
-  if (typedData.type === "file-end") {
-    const fileEnd = data as {
-      type: "file-end";
-      fileId: string;
-    };
-
-    const peer = usePeersStore
-      .getState()
-      .targetPeers.find((p) => p.peerId === peerId);
-    const receivingFile = peer?.receivingFile;
-
-    if (!receivingFile || receivingFile.fileId !== fileEnd.fileId) {
-      console.warn("Received file-end for unknown file:", fileEnd.fileId);
+  switch (data.type) {
+    case "file-start":
+      receiveFileStart(data, peerId, conn);
       return;
-    }
-
-    if (receivingFile.receivedCount !== receivingFile.totalChunks) {
-      console.error(
-        `Missing chunks: ${receivingFile.receivedCount}/${receivingFile.totalChunks}`,
-      );
-
-      dismissToast(receivingFile.toastId);
-      notify.error("File transfer incomplete");
-
-      usePeersStore.getState().updatePeer(peerId, {
-        isReceiving: false,
-        receivingFile: undefined,
-      });
-      return;
-    }
-
-    const allChunks = receivingFile.receivedChunks.filter(
-      (chunk): chunk is Uint8Array => chunk !== undefined,
-    );
-    const blob = new Blob(allChunks as BlobPart[]);
-
-    const receivedFile: ReceivedFile = {
-      id: fileEnd.fileId,
-      name: receivingFile.name,
-      data: blob,
-      size: receivingFile.size,
-    };
-
-    onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
-    void conn?.send({ type: "ack", ackId: fileEnd.fileId });
-
-    dismissToast(receivingFile.toastId);
-
-    usePeersStore.getState().updatePeer(peerId, {
-      isReceiving: false,
-      receivingFile: undefined,
-    });
-    return;
-  }
-
-  // Legacy format for backward compatibility
-  if (typedData.type === "file") {
-    const fileData = data as {
-      type: "file";
-      fileId: string;
-      name: string;
-      size: number;
-      content: Uint8Array | ArrayBuffer;
-    };
-
-    if (
-      fileData.fileId &&
-      fileData.name &&
-      fileData.size &&
-      (fileData.content instanceof Uint8Array ||
-        fileData.content instanceof ArrayBuffer)
-    ) {
-      const blob = new Blob([fileData.content as BlobPart]);
-
-      const receivedFile: ReceivedFile = {
-        id: fileData.fileId,
-        name: fileData.name,
-        data: blob,
-        size: fileData.size,
-      };
-      onFileReceivedCallbacks.forEach((cb) => cb(receivedFile));
-      void conn?.send({ type: "ack", ackId: fileData.fileId });
-      return;
-    }
-  }
-
-  if (typedData.type === "message") {
-    const messageData = data as {
-      type: "message";
-      ackId: string;
-      received: boolean;
-      content: string;
-    };
-
-    if (messageData.ackId && messageData.content) {
-      const receivedMessage = {
-        received: true as const,
-        content: messageData.content,
-        timestamp: new Date(),
-      };
-      onMessageReceivedCallbacks.forEach((cb) =>
-        cb({ ...receivedMessage, id: messageData.ackId }),
-      );
-      void conn?.send({ type: "ack", ackId: messageData.ackId });
-      useChatStore.getState().addMessage(receivedMessage);
-      return;
-    }
-  }
-
-  if (typedData.type === "ack") {
-    const ackData = data as { type: "ack"; ackId: string };
-
-    if (ackData.ackId) {
-      const ackInfo = pendingAcks.get(ackData.ackId);
-      if (ackInfo) {
-        usePeersStore
-          .getState()
-          .updatePeer(ackInfo.peerId, { isSending: false });
-
-        pendingAcks.delete(ackData.ackId);
+    case "file-start-ack": {
+      const sendTransfer = findSendTransfer(peerId, data.fileId);
+      if (sendTransfer) {
+        sendTransfer.chunkEncoding =
+          "bareChunks" in data && data.bareChunks === true ? "bare" : "wrapped";
+        sendTransfer.resume();
       }
       return;
     }
+    case "file-progress": {
+      const sendTransfer = findSendTransfer(peerId, data.fileId);
+      if (sendTransfer) {
+        sendTransfer.receivedBytes = data.receivedBytes;
+        sendTransfer.resume();
+      }
+      return;
+    }
+    case "file-chunk": {
+      const receivingFile = findReceivingFile(peerId);
+      if (receivingFile?.fileId !== data.fileId) {
+        console.warn("Received chunk for unknown file:", data.fileId);
+        return;
+      }
+      appendToReceivingFile(receivingFile, data.content);
+      return;
+    }
+    case "file-end":
+      receiveFileEnd(data, peerId, conn);
+      return;
+    case "file":
+      receiveLegacyFile(data, conn);
+      return;
+    case "message":
+      receiveChatMessage(data, conn);
+      return;
+    case "ack":
+      receiveAck(data);
+      return;
+    case "hello":
+      usePeersStore.getState().updatePeer(peerId, { device: data.device });
+      return;
   }
+};
+
+export const sendHello = (connection: DataConnection): void => {
+  if (!connection.open) {
+    return;
+  }
+  const hello: HelloMessage = {
+    type: "hello",
+    device: describeDevice(navigator.userAgent, navigator.maxTouchPoints),
+  };
+  void connection.send(hello);
 };
 
 const showProgressToast = (toastId: ToastId): ToastId => {
@@ -592,40 +658,145 @@ const shouldStopTransfer = (
   return false;
 };
 
-// Polled rather than the bufferedamountlow event: peerjs owns bufferedAmountLowThreshold.
 const awaitBufferedAmountLow = (connection: DataConnection): Promise<void> => {
-  const dc = (connection as unknown as { dataChannel?: RTCDataChannel })
-    .dataChannel;
-  if (!dc) return Promise.resolve();
-  if (dc.bufferedAmount < HIGH_WATERMARK) return Promise.resolve();
+  const channel = connection.dataChannel;
+  if (channel.bufferedAmount < HIGH_WATERMARK) {
+    return Promise.resolve();
+  }
+  // peerjs sets this threshold only for its MsgPack serialization
+  channel.bufferedAmountLowThreshold = LOW_WATERMARK;
   return new Promise((resolve) => {
-    const poll = setInterval(() => {
-      if (dc.bufferedAmount <= LOW_WATERMARK || dc.readyState !== "open") {
-        clearInterval(poll);
-        resolve();
-      }
-    }, BUFFER_POLL_MS);
+    const settle = () => {
+      channel.removeEventListener("bufferedamountlow", settle);
+      connection.off("close", settle);
+      resolve();
+    };
+    channel.addEventListener("bufferedamountlow", settle);
+    connection.on("close", settle);
   });
 };
 
-const sendFileChunk = async (
+const sendWrappedChunks = async (
+  file: File,
+  peerId: string,
   connection: DataConnection,
-  fileChunk: Blob,
-  chunkIndex: number,
-  totalChunks: number,
-  fileId: string,
-): Promise<void> => {
-  const buffer = new Uint8Array(await fileChunk.arrayBuffer());
+  sendTransfer: SendTransfer,
+  reportProgress?: ProgressReporter,
+): Promise<boolean> => {
+  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+  let chunkIndex = 0;
+  let offset = 0;
 
-  const chunkPayload = {
-    type: "file-chunk" as const,
-    fileId,
-    chunkIndex,
-    totalChunks,
-    content: buffer,
-  };
+  while (offset < file.size) {
+    if (shouldStopTransfer(peerId, connection)) {
+      return false;
+    }
 
-  connection.send(chunkPayload);
+    await awaitBufferedAmountLow(connection);
+
+    const chunk = file.slice(offset, offset + CHUNK_SIZE);
+    connection.send({
+      type: "file-chunk",
+      fileId: sendTransfer.fileId,
+      chunkIndex,
+      totalChunks,
+      content: new Uint8Array(await chunk.arrayBuffer()),
+    });
+
+    offset += CHUNK_SIZE;
+    chunkIndex++;
+
+    if (activeSendTransfers.has(peerId)) {
+      reportProgress?.(peerId, (chunkIndex / totalChunks) * 100);
+    }
+  }
+
+  return true;
+};
+
+const sendBareChunks = async (
+  file: File,
+  peerId: string,
+  connection: DataConnection,
+  sendTransfer: SendTransfer,
+  reportProgress?: ProgressReporter,
+): Promise<boolean> => {
+  let sentBytes = 0;
+  let acknowledgedBytes = 0;
+  let sendWindow = INITIAL_SEND_WINDOW;
+
+  while (acknowledgedBytes < file.size) {
+    const sendableChunks = Math.floor(
+      (sendWindow - (sentBytes - acknowledgedBytes)) / CHUNK_SIZE,
+    );
+
+    if (sentBytes < file.size && sendableChunks > 0) {
+      const burst = new Uint8Array(
+        await file
+          .slice(sentBytes, sentBytes + sendableChunks * CHUNK_SIZE)
+          .arrayBuffer(),
+      );
+
+      if (shouldStopTransfer(peerId, connection)) {
+        return false;
+      }
+
+      for (
+        let burstOffset = 0;
+        burstOffset < burst.byteLength;
+        burstOffset += CHUNK_SIZE
+      ) {
+        connection.send(burst.subarray(burstOffset, burstOffset + CHUNK_SIZE));
+      }
+      sentBytes += burst.byteLength;
+    } else {
+      await waitForReceiver(sendTransfer);
+
+      if (shouldStopTransfer(peerId, connection)) {
+        return false;
+      }
+    }
+
+    const newlyAcknowledgedBytes =
+      sendTransfer.receivedBytes - acknowledgedBytes;
+    sendWindow = Math.min(
+      MAX_SEND_WINDOW,
+      sendWindow + (CHUNK_SIZE * newlyAcknowledgedBytes) / sendWindow,
+    );
+    acknowledgedBytes = sendTransfer.receivedBytes;
+    reportProgress?.(peerId, (acknowledgedBytes / file.size) * 100);
+  }
+
+  return true;
+};
+
+const sendChunks = (
+  file: File,
+  peerId: string,
+  connection: DataConnection,
+  sendTransfer: SendTransfer,
+  reportProgress?: ProgressReporter,
+): Promise<boolean> => {
+  switch (sendTransfer.chunkEncoding) {
+    case "bare":
+      return sendBareChunks(
+        file,
+        peerId,
+        connection,
+        sendTransfer,
+        reportProgress,
+      );
+    case "wrapped":
+      return sendWrappedChunks(
+        file,
+        peerId,
+        connection,
+        sendTransfer,
+        reportProgress,
+      );
+    case null:
+      return Promise.resolve(false);
+  }
 };
 
 const sendFileToPeer = async (
@@ -634,126 +805,62 @@ const sendFileToPeer = async (
   connection: DataConnection,
   reportProgress?: ProgressReporter,
 ): Promise<boolean> => {
-  const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const fileId = `${peerId}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-
-  activeSendTransfers.set(peerId, {
+  const sendTransfer: SendTransfer = {
     fileId,
-    fileName: file.name,
-  });
+    chunkEncoding: null,
+    receivedBytes: 0,
+    resume: () => undefined,
+  };
+  const resumeSendTransfer = () => sendTransfer.resume();
+
+  activeSendTransfers.set(peerId, sendTransfer);
+  connection.on("close", resumeSendTransfer);
 
   try {
-    let startAcked = false;
-    for (
-      let attempt = 0;
-      attempt < START_ACK_MAX_ATTEMPTS && !startAcked;
-      attempt++
-    ) {
-      if (!connection.open) {
-        break;
-      }
-      connection.send({
-        type: "file-start" as const,
-        fileId,
-        name: file.name,
-        size: file.size,
-        totalChunks,
-      });
-      startAcked = await waitForStartAck(fileId, peerId);
-      if (!startAcked && !activeSendTransfers.has(peerId)) {
-        // Cancelled externally during the wait — abort
-        return false;
-      }
-    }
+    connection.send({
+      type: "file-start",
+      fileId,
+      name: file.name,
+      size: file.size,
+      totalChunks: Math.ceil(file.size / CHUNK_SIZE),
+    });
+    await waitForReceiver(sendTransfer);
 
-    if (!startAcked) {
-      activeSendTransfers.delete(peerId);
+    if (
+      shouldStopTransfer(peerId, connection) ||
+      !(await sendChunks(
+        file,
+        peerId,
+        connection,
+        sendTransfer,
+        reportProgress,
+      ))
+    ) {
       return false;
     }
 
-    let chunkIndex = 0;
-    let offset = 0;
-
-    while (offset < file.size) {
-      if (shouldStopTransfer(peerId, connection)) {
-        return false;
-      }
-
-      await awaitBufferedAmountLow(connection);
-
-      const chunk = file.slice(offset, offset + CHUNK_SIZE);
-      await sendFileChunk(connection, chunk, chunkIndex, totalChunks, fileId);
-
-      offset += CHUNK_SIZE;
-      chunkIndex++;
-
-      if (activeSendTransfers.has(peerId)) {
-        reportProgress?.(peerId, (chunkIndex / totalChunks) * 100);
-      }
-    }
-
-    connection.send({
-      type: "file-end" as const,
-      fileId,
-    });
-
-    pendingAcks.set(fileId, { peerId, timestamp: Date.now() });
-    startBackgroundCleanups();
-
-    activeSendTransfers.delete(peerId);
+    connection.send({ type: "file-end", fileId });
+    pendingAckPeerIds.set(fileId, peerId);
     return true;
   } catch (err) {
     console.error("[sendFileToPeer] Error:", err);
-    activeSendTransfers.delete(peerId);
+    connection.close();
     return false;
-  }
-};
-
-const waitForConnectionOpen = (
-  connection: DataConnection,
-  timeout = 10000,
-): Promise<boolean> => {
-  return new Promise((resolve) => {
-    if (connection.open) {
-      resolve(true);
-      return;
+  } finally {
+    connection.off("close", resumeSendTransfer);
+    if (activeSendTransfers.get(peerId) === sendTransfer) {
+      activeSendTransfers.delete(peerId);
     }
-
-    const timeoutId = setTimeout(() => {
-      connection.off("open", onOpen);
-      resolve(false);
-    }, timeout);
-
-    const onOpen = () => {
-      clearTimeout(timeoutId);
-      resolve(true);
-    };
-
-    connection.once("open", onOpen);
-  });
+  }
 };
 
 export const sendFileToTargets = async (file: File): Promise<boolean> => {
-  const { targetPeers } = usePeersStore.getState();
-
-  if (targetPeers.length === 0) {
-    return false;
-  }
-
-  const connectionsReady = await Promise.all(
-    targetPeers.map(async (target) => {
-      if (!target.connection) return null;
-      const isReady = await waitForConnectionOpen(target.connection);
-      return isReady ? target : null;
-    }),
-  );
-
-  const readyTargets = connectionsReady.filter(
-    (target): target is TPeer => target !== null,
-  );
+  const readyTargets = usePeersStore
+    .getState()
+    .targetPeers.filter((target) => target.isReachable);
 
   if (readyTargets.length === 0) {
-    console.warn("[sendFileToTargets] No open connection — retry pending");
     return false;
   }
 
@@ -762,24 +869,45 @@ export const sendFileToTargets = async (file: File): Promise<boolean> => {
   );
 
   const peerProgress = new Map<string, number>();
+  const sentPercents = new Map<string, number>();
+  let reportedPercent = 0;
   const reportProgress: ProgressReporter = (peerId, progress) => {
+    const sendProgress = Math.min(
+      MAX_UNCONFIRMED_PERCENT,
+      Math.floor(progress),
+    );
+    if (sendProgress !== sentPercents.get(peerId)) {
+      sentPercents.set(peerId, sendProgress);
+      usePeersStore.getState().updatePeer(peerId, { sendProgress });
+    }
     peerProgress.set(peerId, progress);
-    if (toastId) {
-      const values = Array.from(peerProgress.values());
-      const aggregated = values.length > 0 ? Math.min(...values) : 0;
-      updateToastProgress(toastId, file.name, aggregated, true);
+    const percent = Math.floor(Math.min(...peerProgress.values()));
+    if (toastId && percent !== reportedPercent) {
+      reportedPercent = percent;
+      updateToastProgress(toastId, file.name, percent, true);
     }
   };
 
   const results = await Promise.all(
     readyTargets.map(async (target) => {
-      usePeersStore.getState().updatePeer(target.peerId, { isSending: true });
-      return sendFileToPeer(
+      if (!target.connection) {
+        return false;
+      }
+      usePeersStore
+        .getState()
+        .updatePeer(target.peerId, { isSending: true, sendProgress: 0 });
+      const isSent = await sendFileToPeer(
         file,
         target.peerId,
-        target.connection!,
+        target.connection,
         reportProgress,
       );
+      if (!isSent) {
+        usePeersStore
+          .getState()
+          .updatePeer(target.peerId, { isSending: false });
+      }
+      return isSent;
     }),
   );
 
@@ -798,40 +926,35 @@ export const sendFileToTargets = async (file: File): Promise<boolean> => {
     notify.warning(
       `Sent to ${successCount}/${results.length} peers (${failureCount} failed)`,
     );
-  } else if (successCount === 0) {
-    notify.error("Failed to send file");
   }
 
   return successCount > 0;
 };
 
-export const sendMessageToTargets = async (content: string): Promise<void> => {
-  const { targetPeers } = usePeersStore.getState();
+export const sendMessageToTargets = (content: string): boolean => {
+  const ackId = generateMessageId(content);
+  const connections = new Set<DataConnection>();
 
-  if (targetPeers.length === 0) {
-    return;
-  }
-
-  for (const target of targetPeers) {
+  for (const target of usePeersStore.getState().targetPeers) {
     const conn = target.connection;
-    if (!conn?.open) {
+    if (!conn || !target.isReachable) {
       continue;
     }
 
-    const ackId = generateMessageId(content);
-    const payload = {
-      type: "message" as const,
-      ackId,
-      received: false,
-      content,
-    };
-
-    try {
-      pendingAcks.set(ackId, { peerId: target.peerId, timestamp: Date.now() });
-      startBackgroundCleanups();
-      void conn.send(payload);
-    } catch (err) {
-      console.error(err);
-    }
+    void conn.send({ type: "message", ackId, received: false, content });
+    connections.add(conn);
   }
+
+  if (connections.size === 0) {
+    return false;
+  }
+
+  const messageId = useChatStore.getState().addMessage({
+    received: false,
+    content,
+    timestamp: new Date(),
+    delivery: "pending",
+  });
+  pendingMessages.set(ackId, { messageId, connections });
+  return true;
 };

@@ -3,3 +3,5 @@ export interface ToastFileTransfer {
   fileName: string;
   fileSize: number;
 }
+
+export type TTransferPhase = "idle" | "drag" | "waiting" | "sending" | "done";

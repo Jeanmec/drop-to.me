@@ -4,6 +4,10 @@ import { useEffect, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { useRoomStore } from "@/stores/useRoomStore";
 import { validateRoomCode } from "@droptome/shared";
+import { notify } from "@/library/toastService";
+
+const INVALID_ROOM_TOAST_ID = "invalid-room-link";
+const INVALID_ROOM_TOAST_DURATION_MS = 7000;
 
 export function RoomUrlSync() {
   const searchParams = useSearchParams();
@@ -20,9 +24,18 @@ export function RoomUrlSync() {
   // URL → Store
   useEffect(() => {
     const code = searchParams.get("room")?.trim().toUpperCase();
-    if (code && validateRoomCode(code) && !roomCodeRef.current) {
-      setRoomCode(code);
+    if (!code || roomCodeRef.current) {
+      return;
     }
+    if (validateRoomCode(code)) {
+      setRoomCode(code);
+      return;
+    }
+    notify.warning(
+      `"${code}" isn't a valid room code, so you're in your network's default room.`,
+      INVALID_ROOM_TOAST_DURATION_MS,
+      INVALID_ROOM_TOAST_ID,
+    );
   }, [searchParams, setRoomCode]);
 
   // Store → URL

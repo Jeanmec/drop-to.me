@@ -6,7 +6,7 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { DefaultEventsMap, Server, Socket } from 'socket.io';
 import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
 import { StatsService } from '../stats/stats.service';
 import { RedisService } from 'src/redis/redis.service';
@@ -17,10 +17,19 @@ interface SocketData {
   roomId?: string;
 }
 
+type RoomSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
+
 @Injectable()
 @WebSocketGateway({
   path: '/socket.io',
   transports: ['websocket'],
+  pingInterval: 10_000,
+  pingTimeout: 10_000,
 })
 export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(SignalGateway.name);
@@ -60,7 +69,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('join-room')
   async handleJoinRoom(
     @MessageBody() data: { peerId: string; roomCode?: string },
-    @ConnectedSocket() socket: Socket,
+    @ConnectedSocket() socket: RoomSocket,
   ) {
     try {
       if (!data?.peerId || typeof data.peerId !== 'string') {
@@ -72,7 +81,8 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const roomCode = data.roomCode;
       const roomId = this.getRoomId(socket, roomCode);
 
-      (socket.data as SocketData).roomId = roomId;
+      await this.leaveCurrentRoom(socket);
+      socket.data.roomId = roomId;
       await socket.join(roomId);
 
       await this.redisService.addPeer(roomId, socket.id, peerId);
@@ -98,25 +108,28 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('leave-room')
-  async handleLeaveRoom(@ConnectedSocket() socket: Socket) {
+  async handleLeaveRoom(@ConnectedSocket() socket: RoomSocket) {
     try {
-      const data = socket.data as SocketData;
-      const roomId = data.roomId;
-      if (!roomId) return;
-
-      const peerId = await this.redisService.getClient(roomId, socket.id);
-      await this.redisService.removeClient(roomId, socket.id);
-      await socket.leave(roomId);
-      data.roomId = undefined;
-
-      if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
-        this.sendClientLeave(roomId, peerId);
-      }
+      await this.leaveCurrentRoom(socket);
     } catch (error) {
       this.logger.error(
         `handleLeaveRoom failed for ${socket.id}`,
         error instanceof Error ? error.stack : error,
       );
+    }
+  }
+
+  private async leaveCurrentRoom(socket: RoomSocket): Promise<void> {
+    const roomId = socket.data.roomId;
+    if (!roomId) return;
+
+    const peerId = await this.redisService.getClient(roomId, socket.id);
+    await this.redisService.removeClient(roomId, socket.id);
+    await socket.leave(roomId);
+    socket.data.roomId = undefined;
+
+    if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
+      this.sendClientLeave(roomId, peerId);
     }
   }
 
@@ -144,10 +157,9 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     return activePeerIds;
   }
 
-  async handleDisconnect(socket: Socket) {
+  async handleDisconnect(socket: RoomSocket) {
     try {
-      const roomId =
-        (socket.data as SocketData).roomId ?? getHashedIp(socket.request);
+      const roomId = socket.data.roomId ?? getHashedIp(socket.request);
       const peerId = await this.redisService.getClient(roomId, socket.id);
       await this.redisService.removeClient(roomId, socket.id);
       if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {

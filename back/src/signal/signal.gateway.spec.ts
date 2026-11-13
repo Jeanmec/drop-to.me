@@ -7,10 +7,12 @@ import { StatsService } from '../stats/stats.service';
 describe('SignalGateway', () => {
   let gateway: SignalGateway;
   let emit: jest.Mock;
+  let socketCalls: string[];
   let redis: {
     getClient: jest.Mock;
     removeClient: jest.Mock;
     getClients: jest.Mock;
+    addPeer: jest.Mock;
   };
 
   const makeSocket = (roomId: string): Socket =>
@@ -18,14 +20,22 @@ describe('SignalGateway', () => {
       id: 'old-socket',
       data: { roomId },
       request: { headers: {}, socket: { remoteAddress: '127.0.0.1' } },
-      leave: jest.fn().mockResolvedValue(undefined),
+      leave: jest.fn((room: string) => {
+        socketCalls.push(`leave ${room}`);
+      }),
+      join: jest.fn((room: string) => {
+        socketCalls.push(`join ${room}`);
+      }),
+      emit: jest.fn(),
     }) as unknown as Socket;
 
   beforeEach(async () => {
+    socketCalls = [];
     redis = {
       getClient: jest.fn().mockResolvedValue('peer-A'),
       removeClient: jest.fn().mockResolvedValue(true),
       getClients: jest.fn().mockResolvedValue({}),
+      addPeer: jest.fn().mockResolvedValue(undefined),
     };
     emit = jest.fn();
 
@@ -38,7 +48,12 @@ describe('SignalGateway', () => {
     }).compile();
 
     gateway = module.get<SignalGateway>(SignalGateway);
-    gateway.afterInit({ to: jest.fn().mockReturnValue({ emit }) } as never);
+    gateway.afterInit({
+      to: jest.fn().mockReturnValue({ emit }),
+      in: jest.fn().mockReturnValue({
+        fetchSockets: jest.fn().mockResolvedValue([]),
+      }),
+    } as never);
   });
 
   it('should be defined', () => {
@@ -78,6 +93,18 @@ describe('SignalGateway', () => {
       await gateway.handleLeaveRoom(makeSocket('room:ABCD'));
 
       expect(emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleJoinRoom', () => {
+    it('leaves the current room before joining the requested one', async () => {
+      await gateway.handleJoinRoom(
+        { peerId: 'peer-A', roomCode: 'wxyz' },
+        makeSocket('room:ABCD'),
+      );
+
+      expect(socketCalls).toEqual(['leave room:ABCD', 'join room:WXYZ']);
+      expect(emit).toHaveBeenCalledWith('peer-left', 'peer-A');
     });
   });
 });

@@ -41,11 +41,11 @@ export default function ParticleLoader({
             cy={particle.y}
             r={particle.size}
             fill="var(--color-primary-blue)"
-            initial={{ opacity: 0 }}
+            initial={{ opacity: 0, x: 0, y: 0 }}
             animate={{
               opacity: [0, 1, 0],
-              cx: [particle.x, 0, particle.x],
-              cy: [particle.y, 0, particle.y],
+              x: [0, -particle.x, 0],
+              y: [0, -particle.y, 0],
             }}
             transition={{
               duration: 3,

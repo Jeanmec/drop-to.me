@@ -1,16 +1,16 @@
 export const formatFileSize = (bytes: number): string => {
-  const formatter = new Intl.NumberFormat("fr-FR", {
+  const formatter = new Intl.NumberFormat(undefined, {
     maximumSignificantDigits: 3,
   });
 
   if (bytes >= 1024 ** 3) {
-    return `${formatter.format(bytes / 1024 ** 3)} Go`;
+    return `${formatter.format(bytes / 1024 ** 3)} GB`;
   } else if (bytes >= 1024 ** 2) {
-    return `${formatter.format(bytes / 1024 ** 2)} Mo`;
+    return `${formatter.format(bytes / 1024 ** 2)} MB`;
   } else if (bytes >= 1024) {
-    return `${formatter.format(bytes / 1024)} Ko`;
+    return `${formatter.format(bytes / 1024)} KB`;
   }
-  return `${formatter.format(bytes)} o`;
+  return `${formatter.format(bytes)} B`;
 };
 
 export const getTruncatedFileName = (

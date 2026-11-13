@@ -18,14 +18,18 @@ import {
   cancelTransfersForPeer,
   cancelAllSendTransfers,
 } from "@/services/peerService";
+import {
+  closeAllConnections,
+  closeConnectionsTo,
+  resetConnectionTo,
+} from "@/services/peerConnections";
 import { fetchUserIp } from "@/services/roomService";
-import React, {
+import {
   createContext,
   useContext,
   useEffect,
   useRef,
   useState,
-  type FC,
   type ReactNode,
 } from "react";
 import { io, type Socket } from "socket.io-client";
@@ -34,6 +38,7 @@ import { useStatsStore } from "@/stores/useStatsStore";
 import { useUserStore } from "@/stores/useUserStore";
 import { useRoomStore } from "@/stores/useRoomStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { useConnectionStore } from "@/stores/useConnectionStore";
 import { usePeer } from "@/contexts/PeerProvider";
 
 interface SocketContextValue {
@@ -46,23 +51,30 @@ interface SocketProviderProps {
   children: ReactNode;
 }
 
+interface JoinRoomPayload {
+  peerId: string;
+  roomCode?: string;
+}
+
 const SocketContext = createContext<SocketContextValue | null>(null);
 
-export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
+const DEFAULT_ROOM_KEY = "default";
+// back gateway: pingInterval 10 s + pingTimeout 10 s
+const PING_DEADLINE_MS = 25_000;
+
+export const SocketProvider = ({ children }: SocketProviderProps) => {
   const [isRoomJoined, setIsRoomJoined] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const socketRef = useRef<Socket | null>(null);
-  const lastJoinPayloadRef = useRef<{
-    peerId: string;
-    roomCode?: string;
-  } | null>(null);
+  const setSocketConnected = useConnectionStore(
+    (state) => state.setSocketConnected,
+  );
+  const recordFailedAttempt = useConnectionStore(
+    (state) => state.recordFailedAttempt,
+  );
+  const lastJoinPayloadRef = useRef<JoinRoomPayload | null>(null);
   const announcedRoomRef = useRef<string | null | undefined>(undefined);
-  const {
-    removeTargetPeer,
-    addTargetPeer,
-    clearTargetPeers,
-    detachConnections,
-  } = usePeersStore();
+  const { removeTargetPeer, addTargetPeer, clearTargetPeers } = usePeersStore();
   const { updateMessageCount, updateUserCount, updateFileStats } =
     useStatsStore();
   const { peer } = usePeer();
@@ -93,40 +105,64 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
     });
     socketRef.current = socket;
     setSocketInstance(socket);
+    let lastPingAt = Date.now();
 
     const handleDisconnect = () => {
-      setIsRoomJoined(false);
-      // The dead WebRTC channels won't recover on their own — drop them so
-      // PeerProvider re-initiates fresh connections after reconnect.
-      detachConnections();
+      setSocketConnected(false);
     };
 
     const handleConnect = () => {
+      setSocketConnected(true);
+      lastPingAt = Date.now();
       const lastJoin = lastJoinPayloadRef.current;
       if (lastJoin) {
-        setIsJoining(true);
         emitSocket("join-room", lastJoin);
       }
+    };
+
+    const handlePing = () => {
+      lastPingAt = Date.now();
     };
 
     const handleError = (error: unknown) => {
       console.error("SocketProvider: Socket error:", error);
     };
 
+    // a page frozen past the server ping timeout keeps a socket that reports connected
+    const reconnectIfStale = () => {
+      if (!socket.connected || Date.now() - lastPingAt > PING_DEADLINE_MS) {
+        socket.disconnect().connect();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        reconnectIfStale();
+      }
+    };
+
     onSocket("disconnect", handleDisconnect);
     onSocket("connect", handleConnect);
+    onSocket("connect_error", recordFailedAttempt);
     onSocket("error", handleError);
+    socket.io.on("ping", handlePing);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("online", reconnectIfStale);
 
     return () => {
-      offSocket("disconnect", handleDisconnect as (...args: unknown[]) => void);
-      offSocket("connect", handleConnect as (...args: unknown[]) => void);
-      offSocket("error", handleError as (...args: unknown[]) => void);
+      offSocket("disconnect", handleDisconnect);
+      offSocket("connect", handleConnect);
+      offSocket("connect_error", recordFailedAttempt);
+      offSocket("error", handleError);
+      socket.io.off("ping", handlePing);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("online", reconnectIfStale);
       if (socketRef.current) {
         socketRef.current.disconnect();
         socketRef.current = null;
       }
     };
-  }, [detachConnections]);
+  }, [setSocketConnected, recordFailedAttempt]);
 
   useEffect(() => {
     if (!peer || !peer.id) return;
@@ -142,7 +178,10 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
           data.peers.filter((targetPeer: string) => targetPeer !== peer.id),
         );
         usePeersStore.getState().targetPeers.forEach((p) => {
-          if (!wanted.has(p.peerId)) {
+          if (wanted.has(p.peerId)) {
+            resetConnectionTo(p.peerId);
+          } else {
+            closeConnectionsTo(p.peerId);
             cancelTransfersForPeer(p.peerId);
             removeTargetPeer(p.peerId);
           }
@@ -164,6 +203,7 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
         }
       },
       onPeerLeft: (peerId) => {
+        closeConnectionsTo(peerId);
         cancelTransfersForPeer(peerId);
         removeTargetPeer(peerId);
 
@@ -174,6 +214,7 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
       },
       onPeerJoined: (targetPeerId) => {
         if (peer && peer.id !== targetPeerId) {
+          resetConnectionTo(targetPeerId);
           addTargetPeer(targetPeerId);
         }
       },
@@ -222,35 +263,29 @@ export const SocketProvider: FC<SocketProviderProps> = ({ children }) => {
       return;
     }
 
-    // Close stale WebRTC connections to avoid ghost peers after room switch
-    const currentPeers = usePeersStore.getState().targetPeers;
-    currentPeers.forEach((p) => {
-      if (p.connection?.open) p.connection.close();
-    });
+    const nextRoom = roomCode ?? null;
+    const isRoomChange = !lastJoin || (lastJoin.roomCode ?? null) !== nextRoom;
+
+    closeAllConnections();
     clearTargetPeers();
     cancelAllSendTransfers();
-    useChatStore.getState().setMessages([]);
-    announcedRoomRef.current = undefined;
+    if (isRoomChange) {
+      useChatStore.getState().openRoom(nextRoom ?? DEFAULT_ROOM_KEY);
+      announcedRoomRef.current = undefined;
+    }
 
     setIsJoining(true);
     setIsRoomJoined(false);
-    emitSocket("leave-room");
 
-    const timeoutId = setTimeout(() => {
-      const payload: { peerId: string; roomCode?: string } = {
-        peerId: peer.id,
-      };
-      if (roomCode) {
-        payload.roomCode = roomCode;
-      }
-      lastJoinPayloadRef.current = payload;
-      // A buffered emit is flushed right before "connect" and doubles the join handleConnect replays.
-      if (socketRef.current?.connected) {
-        emitSocket("join-room", payload);
-      }
-    }, 50);
-
-    return () => clearTimeout(timeoutId);
+    const payload: JoinRoomPayload = { peerId: peer.id };
+    if (roomCode) {
+      payload.roomCode = roomCode;
+    }
+    lastJoinPayloadRef.current = payload;
+    // A buffered emit is flushed right before "connect" and doubles the join handleConnect replays.
+    if (socket.connected) {
+      emitSocket("join-room", payload);
+    }
   }, [roomCode, peer?.id, clearTargetPeers]);
 
   const value = {

@@ -1,11 +1,17 @@
 "use client";
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  type ReactNode,
+} from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import ToastMessage from "@/components/Toast/ToastMessage";
 import ToastFileTransfer from "@/components/Toast/ToastFileTransfer";
 import DownloadFileToast from "@/components/Toast/ToastDownloadFile";
 import { useToastEvents } from "@/library/toastService";
-import { Icon } from "@/components/Icons/Icon";
+import { getTruncatedFileName } from "@/utils/file.utils";
 
 export type ToastMessageType = "success" | "error" | "info" | "warning";
 export type ToastType = "message" | "file-transfer" | "file-received";
@@ -34,25 +40,25 @@ type ToastFileReceived = {
 export type Toast = {
   id: string;
   autoClose?: number | false;
-  isExiting?: boolean;
   data: ToastMessage | ToastFileTransfer | ToastFileReceived;
 };
 
-const EXIT_ANIMATION_DURATION = 200;
 const DEFAULT_AUTO_CLOSE_DURATION = 5000;
-const POSITION_CLASSES = {
-  "top-right": "top-4 right-6",
-  "top-center": "top-8 left-1/2 -translate-x-1/2 w-full px-12",
-} as const;
+const DESKTOP_MAX_TOASTS = 3;
+const MOBILE_MAX_TOASTS = 2;
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+interface ToastProviderProps {
+  children: ReactNode;
+}
+
+export const ToastProvider = ({ children }: ToastProviderProps) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [position, setPosition] = useState<"top-right" | "top-center">(
     "top-right",
   );
-  const autoCloseTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const autoCloseTimers = useRef(
+    new Map<string, ReturnType<typeof setTimeout>>(),
+  );
   const eventBus = useToastEvents();
 
   useEffect(() => {
@@ -73,16 +79,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     setToasts((previousToasts) =>
-      previousToasts.map((toast) =>
-        toast.id === toastId ? { ...toast, isExiting: true } : toast,
-      ),
+      previousToasts.filter((toast) => toast.id !== toastId),
     );
-
-    setTimeout(() => {
-      setToasts((previousToasts) =>
-        previousToasts.filter((toast) => toast.id !== toastId),
-      );
-    }, EXIT_ANIMATION_DURATION);
   }, []);
 
   const addToast = useCallback(
@@ -161,7 +159,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => eventBus.removeEventListener("toast", handleToastEvent);
   }, [eventBus, addToast, updateToast, removeToast]);
 
-  const renderToastContent = (toast: Toast) => {
+  const maxToasts =
+    position === "top-center" ? MOBILE_MAX_TOASTS : DESKTOP_MAX_TOASTS;
+
+  const renderToastContent = (toast: Toast, index: number): ReactNode => {
     switch (toast.data.type) {
       case "message":
         return (
@@ -170,52 +171,69 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
             type={toast.data.messageType}
           />
         );
-      case "file-transfer":
-        return (
-          <ToastFileTransfer
-            fileName={toast.data.fileName}
-            progress={toast.data.progress}
-            isUploading={toast.data.isUploading}
-            isFailed={toast.data.isFailed}
-          />
-        );
+      case "file-transfer": {
+        const { fileName, progress, isUploading, isFailed } = toast.data;
+        if (isFailed) {
+          return (
+            <ToastMessage
+              message={isUploading ? "Failed sending" : "Failed reception"}
+              type="error"
+              detail={getTruncatedFileName(fileName, 25).displayName}
+            />
+          );
+        }
+        // the service keeps a progress toast up to a second after its file is received
+        const isReceived = toasts
+          .slice(index + 1)
+          .some(
+            (later) =>
+              later.data.type === "file-received" &&
+              later.data.fileName === fileName,
+          );
+        if (isUploading || isReceived) {
+          return null;
+        }
+        return <ToastFileTransfer fileName={fileName} progress={progress} />;
+      }
       case "file-received":
         return (
           <DownloadFileToast
             fileUrl={toast.data.fileUrl}
             fileName={toast.data.fileName}
             fileSize={toast.data.fileSize}
+            onDismiss={() => removeToast(toast.id)}
           />
         );
     }
   };
 
+  const shownToasts = toasts
+    .flatMap((toast, index) => {
+      const content = renderToastContent(toast, index);
+      return content ? [{ id: toast.id, content }] : [];
+    })
+    .slice(-maxToasts)
+    .reverse();
+
   return (
     <>
       {children}
       <div
-        className={`fixed z-[9999] flex w-auto flex-col gap-2 md:w-96 ${POSITION_CLASSES[position]}`}
+        role="status"
+        className="pointer-events-none fixed top-3.5 right-6 z-9999 grid justify-items-end gap-3 max-md:top-2.5 max-md:right-3 max-md:left-3"
       >
         <AnimatePresence mode="popLayout">
-          {toasts.map((toast) => (
+          {shownToasts.map((toast) => (
             <motion.div
               key={toast.id}
+              layout="position"
               initial={{ opacity: 0, y: -20, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, x: 100, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="relative"
+              className="max-w-full"
             >
-              <button
-                onClick={() => removeToast(toast.id)}
-                className="absolute -top-2 -left-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-gray-700 text-gray-400 transition-colors hover:bg-gray-600"
-                aria-label="Close notification"
-              >
-                <Icon.close />
-              </button>
-              <div className="border-primary-blue relative w-full overflow-hidden rounded-lg border-2 bg-gray-800 py-2">
-                {renderToastContent(toast)}
-              </div>
+              {toast.content}
             </motion.div>
           ))}
         </AnimatePresence>

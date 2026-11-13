@@ -1,13 +1,14 @@
 import "@/styles/globals.css";
 
 import { type Metadata } from "next";
-import { Inter, Poppins, Plus_Jakarta_Sans } from "next/font/google";
+import { DM_Mono, Fraunces } from "next/font/google";
 
 import { SocketProvider } from "@/contexts/SocketProvider";
 import { PeerProvider } from "@/contexts/PeerProvider";
 import { ConnectionProvider } from "@/contexts/ConnectionProvider";
 import { ToastProvider } from "@/contexts/ToastContext";
 import Footer from "@/components/Footer";
+import HatchPatterns from "@/components/Scene/HatchPatterns";
 import { StrictMode } from "react";
 
 export const metadata: Metadata = {
@@ -19,21 +20,17 @@ export const metadata: Metadata = {
   icons: [{ rel: "icon", url: "/favicon.svg" }],
 };
 
-const inter = Inter({
+const fraunces = Fraunces({
   subsets: ["latin"],
-  variable: "--font-inter",
+  style: ["normal", "italic"],
+  axes: ["opsz"],
+  variable: "--font-fraunces",
   display: "swap",
 });
-const poppins = Poppins({
+const dmMono = DM_Mono({
   subsets: ["latin"],
-  weight: ["400", "600", "700"],
-  variable: "--font-poppins",
-  display: "swap",
-});
-const plusJakartaSans = Plus_Jakarta_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-plus-jakarta-sans",
+  weight: ["400", "500"],
+  variable: "--font-dm-mono",
   display: "swap",
 });
 
@@ -42,11 +39,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <StrictMode>
-      <html
-        lang="en"
-        className={`${inter.variable} ${poppins.variable} ${plusJakartaSans.variable}`}
-      >
+      <html lang="en" className={`${fraunces.variable} ${dmMono.variable}`}>
         <body>
+          <HatchPatterns />
           <ToastProvider>
             <PeerProvider>
               <SocketProvider>

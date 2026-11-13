@@ -1,0 +1,99 @@
+@keyframes string {
+  from {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+.roomline {
+  display: flex;
+  align-items: flex-start;
+  width: max-content;
+  padding-right: 8px;
+  border-top: var(--pen) solid var(--color-cream);
+}
+
+.tab {
+  display: block;
+  padding: 3px 7px 4px;
+  border: var(--pen) solid currentColor;
+  border-top: 0;
+  line-height: 14px;
+}
+
+.bunting {
+  display: flex;
+  gap: 3px;
+}
+
+.pennant {
+  position: relative;
+  background: var(--edge);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+  isolation: isolate;
+}
+
+.pennant::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: var(--color-night);
+  clip-path: polygon(
+    2.2px var(--pen),
+    calc(100% - 2.2px) var(--pen),
+    50% calc(100% - 3.6px)
+  );
+}
+
+.pennant:nth-child(3n + 1) {
+  --edge: var(--color-blush);
+}
+
+.pennant:nth-child(3n + 2) {
+  --edge: var(--color-moon);
+}
+
+.pennant:nth-child(3n) {
+  --edge: var(--color-lilac);
+}
+
+.letter {
+  width: 28px;
+  height: 33px;
+  padding-top: 2px;
+  line-height: 16px;
+  text-align: center;
+  animation: string 0.35s ease-out backwards;
+}
+
+.letter:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.letter:nth-child(3) {
+  animation-delay: 120ms;
+}
+
+.letter:nth-child(4) {
+  animation-delay: 180ms;
+}
+
+.letter:nth-child(5) {
+  animation-delay: 240ms;
+}
+
+.letter:nth-child(6) {
+  animation-delay: 300ms;
+}
+
+@media (width < 768px) {
+  .tabLabel {
+    display: none;
+  }
+
+  .letter {
+    width: 25px;
+    height: 30px;
+  }
+}

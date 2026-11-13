@@ -84,9 +84,9 @@ export class StatsService {
       (await this.fileTransferRepository
         .createQueryBuilder('transfer')
         .select('SUM(transfer.fileSize)', 'totalSize')
-        .getRawOne<{ totalSize: number | null }>()) ?? {};
+        .getRawOne<{ totalSize: string | null }>()) ?? {};
 
-    return totalSize ?? 0;
+    return Number(totalSize ?? 0);
   }
 
   async getStats(): Promise<TStatistics> {

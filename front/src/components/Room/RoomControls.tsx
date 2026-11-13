@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRoomStore } from "@/stores/useRoomStore";
 import { useSocket } from "@/contexts/SocketProvider";
+import Pennon from "@/components/ui/Pennon";
+import Seamark from "@/components/ui/Seamark";
 import { JoinRoomModal } from "./JoinRoomModal";
 import { RoomCode } from "./RoomCode";
-import { LeaveRoomButton } from "./LeaveRoomButton";
 
 export function RoomControls() {
   const [isJoinOpen, setIsJoinOpen] = useState(false);
+  const closeJoinModal = useCallback(() => setIsJoinOpen(false), []);
   const roomCode = useRoomStore((s) => s.roomCode);
   const { isRoomJoined, isJoining } = useSocket();
 
@@ -18,25 +20,28 @@ export function RoomControls() {
 
   const showJoinButton = !roomCode;
   const showRoomCode = isRoomJoined && roomCode;
-  const showLeaveButton = isRoomJoined && !!roomCode;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {showRoomCode && <RoomCode />}
+    <>
+      <div className="absolute bottom-4 left-7 max-md:bottom-3 max-md:left-3">
+        {showRoomCode && <RoomCode />}
 
-      {showJoinButton && (
-        <button
-          type="button"
-          onClick={() => setIsJoinOpen(true)}
-          className="rounded-lg border-2 border-slate-600 bg-slate-800/50 px-4 py-2 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-800"
-        >
-          Enter a room
-        </button>
-      )}
+        {showJoinButton && (
+          <button
+            type="button"
+            onClick={() => setIsJoinOpen(true)}
+            className="group block cursor-pointer text-left"
+          >
+            <Seamark>
+              <Pennon className="group-hover:text-moon text-label min-h-7.5 w-max py-1.5 pr-6 pl-2.5 font-mono leading-4.5 tracking-wider whitespace-nowrap max-md:text-xs">
+                Enter a room
+              </Pennon>
+            </Seamark>
+          </button>
+        )}
+      </div>
 
-      {showLeaveButton && <LeaveRoomButton />}
-
-      <JoinRoomModal isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} />
-    </div>
+      <JoinRoomModal isOpen={isJoinOpen} onClose={closeJoinModal} />
+    </>
   );
 }

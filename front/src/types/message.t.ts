@@ -4,6 +4,8 @@ export interface File {
   fileUrl?: string;
 }
 
+export type MessageDelivery = "pending" | "delivered" | "failed";
+
 export interface Message {
   id: string;
   received: boolean;
@@ -11,4 +13,5 @@ export interface Message {
   timestamp: Date;
   file?: File;
   system?: boolean;
+  delivery?: MessageDelivery;
 }

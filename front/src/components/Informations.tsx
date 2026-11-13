@@ -1,10 +1,11 @@
-import Accordion from "@/components/ui/Accordion";
-import GlowingGrid from "./LandingPage/GlowingGrid";
+import QuestionFleet, { type FleetQuestion } from "./LandingPage/QuestionFleet";
+import VoyageChart from "./LandingPage/VoyageChart";
 
 export default function Informations() {
-  const accordionItems = [
+  const questions: FleetQuestion[] = [
     {
       value: "what-is-it",
+      boat: "cutter",
       title: `What is ${process.env.NEXT_PUBLIC_WEBSITE_NAME} ?`,
       content: (
         <>
@@ -18,6 +19,7 @@ export default function Informations() {
     },
     {
       value: "data-collection",
+      boat: "periscope",
       title: "What data are collected?",
       content: (
         <>
@@ -35,7 +37,28 @@ export default function Informations() {
       ),
     },
     {
+      value: "security",
+      boat: "galleon",
+      title: "Is it secure?",
+      content: (
+        <>
+          <p>
+            Files and messages travel from browser to browser over WebRTC, which
+            encrypts every connection. Nothing you send is stored on our
+            servers.
+          </p>
+          <p>
+            Anyone on the same network, or anyone who has your room code, shows
+            up as a connected device: they receive what you send and can send
+            you files. Check who is connected before sending, and only open
+            files you were expecting.
+          </p>
+        </>
+      ),
+    },
+    {
       value: "like-airdrop",
+      boat: "airdrop",
       title: `Is it like AirDrop?`,
       content: (
         <>
@@ -52,6 +75,7 @@ export default function Informations() {
     },
     {
       value: "free-and-open-source",
+      boat: "coins",
       title: "Is it free ?",
       content: process.env.NEXT_PUBLIC_GITHUB_URL ? (
         <p>
@@ -61,7 +85,7 @@ export default function Informations() {
             href={process.env.NEXT_PUBLIC_GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-primary-blue ml-1"
+            className="text-moon ml-1 underline underline-offset-4"
           >
             GitHub
           </a>
@@ -74,14 +98,12 @@ export default function Informations() {
   ];
 
   return (
-    <div className="w-full">
-      <div
-        className="container mx-auto flex flex-col items-center justify-center gap-16 px-12"
-        id="informations"
-      >
-        <Accordion items={accordionItems} defaultValue={"what-is-it"} />
-        <GlowingGrid />
-      </div>
+    <div
+      className="grid gap-20 px-14 py-20 max-md:gap-14 max-md:px-4 max-md:py-14"
+      id="informations"
+    >
+      <VoyageChart />
+      <QuestionFleet questions={questions} />
     </div>
   );
 }

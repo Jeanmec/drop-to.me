@@ -5,12 +5,23 @@ import { AnimatePresence, motion } from "motion/react";
 import MessageInput from "./MessageInput";
 import Messages from "./Messages";
 import { Icon } from "../../Icons/Icon";
+import Pennon from "@/components/ui/Pennon";
+import Seamark from "@/components/ui/Seamark";
 import { useDragFileStore } from "@/stores/useDragFileStore";
 import { useChatStore } from "@/stores/useChatStore";
+import { useOverlayClose } from "@/hooks/useOverlayClose";
+import { useUnreadTabNotice } from "@/hooks/useUnreadTabNotice";
+import styles from "./Chat.module.css";
 
-export function Chat() {
-  const { isChatOpen, setChatOpen, unreadCount } = useChatStore();
+interface ChatProps {
+  isBuoyStowed: boolean;
+}
+
+export function Chat({ isBuoyStowed }: ChatProps) {
+  const { isChatOpen, setChatOpen, closeChat, unreadCount } = useChatStore();
   const { isDragFileActive } = useDragFileStore();
+  useOverlayClose(isChatOpen, closeChat);
+  useUnreadTabNotice();
 
   const unreadLabel =
     unreadCount === 1 ? "1 unread message" : `${unreadCount} unread messages`;
@@ -20,24 +31,28 @@ export function Chat() {
       <span role="status" className="sr-only">
         {unreadCount > 0 ? unreadLabel : ""}
       </span>
-      {!isChatOpen && !isDragFileActive && (
+      {!isChatOpen && !isDragFileActive && !isBuoyStowed && (
         <button
           type="button"
           aria-label={
             unreadCount > 0 ? `Open chat, ${unreadLabel}` : "Open chat"
           }
-          className="fixed right-6 bottom-6 z-10 cursor-pointer"
+          className="group absolute right-7 bottom-4 block cursor-pointer text-left max-md:right-3 max-md:bottom-3"
           onClick={() => setChatOpen(true)}
         >
-          <div className="relative rounded-full border-2 border-slate-100/30 p-5 backdrop-blur-xs">
+          <Seamark isOffbeat>
+            <Pennon className="group-hover:text-moon text-label min-h-7.5 w-max py-1.5 pr-6 pl-2.5 font-mono leading-4.5 tracking-wider whitespace-nowrap max-md:text-xs">
+              Chat
+            </Pennon>
             {unreadCount > 0 && (
-              <span
-                aria-hidden
-                className="bg-secondary-blue animate-bounce-fade-in absolute top-2.5 left-2.5 h-2.5 w-2.5 rounded-full"
-              />
+              <Pennon
+                tone="solid"
+                className="text-night text-caption mt-0.75 min-h-5.5 w-max py-0.5 pr-5 pl-2 font-mono leading-4.5 whitespace-nowrap"
+              >
+                {unreadCount} new
+              </Pennon>
             )}
-            <Icon.message className="text-3xl" />
-          </div>
+          </Seamark>
         </button>
       )}
 
@@ -45,25 +60,36 @@ export function Chat() {
         {isChatOpen && (
           <>
             <motion.div
-              initial={{ backdropFilter: "blur(0px)", opacity: 0 }}
-              animate={{ backdropFilter: "blur(4px)", opacity: 1 }}
-              exit={{ backdropFilter: "blur(0px)", opacity: 0 }}
-              className="fixed inset-0 z-40 cursor-pointer bg-black/20"
-              onClick={() => setChatOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="bg-scrim fixed inset-0 z-40 cursor-pointer"
+              onClick={closeChat}
             />
             <motion.div
-              initial={{ opacity: 0, y: "100%" }}
+              role="dialog"
+              aria-label="Chat"
+              initial={{ opacity: 0, y: 22 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: "100%" }}
-              transition={{ type: "spring", bounce: 0.1, duration: 0.4 }}
-              className="fixed z-50 overflow-hidden max-md:right-0 max-md:bottom-0 max-md:left-0 max-md:h-[75vh] max-md:w-full max-md:px-4 max-md:pb-4 md:right-4 md:bottom-4 md:h-[400px] md:w-[360px]"
+              exit={{ opacity: 0, y: 22 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+              className={styles.hoist}
             >
-              <div className="border-primary-blue flex h-full w-full flex-col justify-end rounded-xl border-2 bg-gradient-to-b from-stone-900 to-stone-800 p-2">
-                <Messages />
-                <div className="mt-auto">
-                  <MessageInput />
-                </div>
+              <div className="flex items-center justify-between pt-1.5 pr-1.5 pb-0.5 pl-4">
+                <b className="text-moon font-mono text-xs font-normal tracking-widest uppercase">
+                  Chat
+                </b>
+                <button
+                  type="button"
+                  aria-label="Close chat"
+                  onClick={closeChat}
+                  className="text-ash hover:text-moon grid size-11 cursor-pointer place-items-center"
+                >
+                  <Icon.close className="size-7 text-current" />
+                </button>
               </div>
+              <Messages />
+              <MessageInput />
             </motion.div>
           </>
         )}

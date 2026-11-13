@@ -1,50 +1,56 @@
 import { Icon } from "@/components/Icons/Icon";
+import Pennon from "@/components/ui/Pennon";
 import { formatFileSize, getTruncatedFileName } from "@/utils/file.utils";
 
 interface ToastDownloadFileProps {
   fileUrl: string;
   fileName: string;
   fileSize: number;
+  onDismiss: () => void;
 }
 
 export default function ToastDownloadFile({
   fileUrl,
   fileName,
   fileSize,
+  onDismiss,
 }: ToastDownloadFileProps) {
   const formattedFileSize = formatFileSize(fileSize);
   const { displayName, isTruncated } = getTruncatedFileName(fileName, 25);
 
   return (
-    <div className="flex h-full w-full items-center pl-4">
-      <div className="flex flex-col justify-center">
-        <span className="!text-xl font-bold text-white">
-          You receive a file
+    <Pennon
+      tone="moon"
+      className="pointer-events-auto flex w-80 max-w-full items-center gap-2 py-1.5 pr-5 pl-3.5 text-base leading-snug"
+    >
+      <span className="min-w-0 flex-1">
+        You receive a file
+        <span className="text-ash flex gap-1.5 font-mono text-xs">
+          <span className="truncate" title={isTruncated ? fileName : undefined}>
+            {displayName}
+          </span>
+          <span className="shrink-0">· {formattedFileSize}</span>
         </span>
-        <span className="text-description text-sm">
-          {isTruncated ? (
-            <div className="tooltip" data-tip={fileName}>
-              <span>{displayName}</span>
-            </div>
-          ) : (
-            <span>{displayName}</span>
-          )}
-        </span>
-      </div>
-
-      <div className="via-primary-blue relative ml-auto h-full w-[1px] bg-gradient-to-t from-transparent to-transparent" />
+      </span>
 
       <a
         href={fileUrl}
         download={fileName}
-        className="group flex flex-col items-center gap-1"
+        onClick={onDismiss}
+        aria-label={`Download ${fileName}`}
+        className="bg-moon grid size-11 shrink-0 place-items-center rounded-full"
       >
-        <span className="bg-primary-blue mx-4 flex cursor-pointer flex-col items-center justify-center rounded-full p-2 text-3xl text-white transition-all duration-200 group-hover:scale-110">
-          <Icon.downloadAnimated />
-        </span>
-
-        <span className="text-primary-blue text-xs">{formattedFileSize}</span>
+        <Icon.downloadTray className="text-night size-5" />
       </a>
-    </div>
+
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Close notification"
+        className="text-ash hover:text-moon -mr-2 grid size-11 shrink-0 cursor-pointer place-items-center"
+      >
+        <Icon.close className="size-7 text-current" />
+      </button>
+    </Pennon>
   );
 }

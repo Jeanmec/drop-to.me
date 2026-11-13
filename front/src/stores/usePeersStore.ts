@@ -1,7 +1,16 @@
 import { create } from "zustand";
 import type { Peer, DataConnection } from "peerjs";
-import type { TPeer } from "@/types/peer.t";
-import { notify } from "@/library/toastService";
+import type { TDevice, TPeer, TReceivingFile } from "@/types/peer.t";
+
+interface PeerUpdate {
+  connection?: DataConnection | null;
+  isReachable?: boolean;
+  isSending?: boolean;
+  isReceiving?: boolean;
+  receivingFile?: TReceivingFile;
+  device?: TDevice;
+  sendProgress?: number;
+}
 
 interface PeersStore {
   selfPeer: Peer | null;
@@ -11,16 +20,10 @@ interface PeersStore {
   setIsPeerDisconnected: (disconnected: boolean) => void;
 
   targetPeers: TPeer[];
-  addTargetPeer: (peerId: string, connection?: DataConnection) => void;
+  addTargetPeer: (peerId: string) => void;
   removeTargetPeer: (peerId: string) => void;
   clearTargetPeers: () => void;
-  detachConnections: () => void;
-  updatePeer: (
-    peerId: string,
-    updates: Partial<
-      Pick<TPeer, "isSending" | "isReceiving" | "connection" | "receivingFile">
-    >,
-  ) => void;
+  updatePeer: (peerId: string, updates: PeerUpdate) => void;
 }
 
 export const usePeersStore = create<PeersStore>((set) => ({
@@ -35,22 +38,10 @@ export const usePeersStore = create<PeersStore>((set) => ({
 
   targetPeers: [],
 
-  addTargetPeer: (peerId, connection) =>
+  addTargetPeer: (peerId) =>
     set((state) => {
-      const existingPeer = state.targetPeers.find(
-        (peer) => peer.peerId === peerId,
-      );
-
-      if (existingPeer) {
-        if (!connection || existingPeer.connection === connection) {
-          return state;
-        }
-
-        return {
-          targetPeers: state.targetPeers.map((peer) =>
-            peer.peerId === peerId ? { ...peer, connection } : peer,
-          ),
-        };
+      if (state.targetPeers.some((peer) => peer.peerId === peerId)) {
+        return state;
       }
 
       return {
@@ -58,7 +49,8 @@ export const usePeersStore = create<PeersStore>((set) => ({
           ...state.targetPeers,
           {
             peerId,
-            connection: connection ?? null,
+            connection: null,
+            isReachable: false,
             isSending: false,
             isReceiving: false,
           },
@@ -67,52 +59,11 @@ export const usePeersStore = create<PeersStore>((set) => ({
     }),
 
   removeTargetPeer: (peerId) =>
-    set((state) => {
-      const peer = state.targetPeers.find((p) => p.peerId === peerId);
-      if (peer?.connection?.open) {
-        peer.connection.close();
-      }
-      return {
-        targetPeers: state.targetPeers.filter((p) => p.peerId !== peerId),
-      };
-    }),
-
-  clearTargetPeers: () =>
-    set((state) => {
-      state.targetPeers.forEach((peer) => {
-        if (peer.connection?.open) {
-          peer.connection.close();
-        }
-      });
-      return { targetPeers: [] };
-    }),
-
-  detachConnections: () =>
     set((state) => ({
-      targetPeers: state.targetPeers.map((peer) => {
-        if (peer.connection && !peer.connection.open) {
-          try {
-            peer.connection.close();
-          } catch {
-            // ignore — connection already torn down
-          }
-        }
-        if (peer.receivingFile?.toastId) {
-          notify.updateToFailed(
-            peer.receivingFile.toastId,
-            peer.receivingFile.name,
-            false,
-          );
-        }
-        return {
-          ...peer,
-          connection: null,
-          isSending: false,
-          isReceiving: false,
-          receivingFile: undefined,
-        };
-      }),
+      targetPeers: state.targetPeers.filter((p) => p.peerId !== peerId),
     })),
+
+  clearTargetPeers: () => set({ targetPeers: [] }),
 
   updatePeer: (peerId, updates) =>
     set((state) => ({

@@ -1,0 +1,43 @@
+@keyframes bob {
+  from {
+    rotate: -2.5deg;
+  }
+  to {
+    rotate: 2.5deg;
+  }
+}
+
+.bobber {
+  position: relative;
+  display: block;
+  min-height: 84px;
+  padding: 3px 0 0 22px;
+  transform-origin: 22px 76px;
+  animation: bob 4s ease-in-out infinite alternate;
+  transition:
+    opacity 0.5s ease-out 0.3s,
+    translate 0.5s ease-out 0.3s;
+}
+
+@starting-style {
+  .bobber {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+.offbeat {
+  animation-delay: -1.7s;
+}
+
+.steady {
+  animation: none;
+}
+
+.float {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 44px;
+  height: 84px;
+}

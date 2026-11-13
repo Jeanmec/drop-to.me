@@ -1,5 +1,23 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+// the --text-* tokens of globals.css: tailwind-merge would otherwise take their classes for text colors
+const twMerge = extendTailwindMerge({
+  extend: {
+    theme: {
+      text: [
+        "micro",
+        "caption",
+        "label",
+        "action",
+        "lead",
+        "sign",
+        "tally",
+        "title",
+      ],
+    },
+  },
+});
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));

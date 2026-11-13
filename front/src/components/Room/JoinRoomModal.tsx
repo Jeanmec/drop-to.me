@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEventHandler } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRoomStore } from "@/stores/useRoomStore";
-import { validateRoomCode } from "@droptome/shared";
+import { getRoomCodeProblem } from "@droptome/shared";
 import { Icon } from "@/components/Icons/Icon";
 import { cn } from "@/library/utils";
+import { useOverlayClose } from "@/hooks/useOverlayClose";
+import { describeRoomCodeProblem } from "@/utils/room.utils";
 
 interface JoinRoomModalProps {
   isOpen: boolean;
@@ -16,18 +18,16 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const setRoomCode = useRoomStore((s) => s.setRoomCode);
+  useOverlayClose(isOpen, onClose);
 
-  const handleSubmit: React.FormEventHandler<HTMLFormElement> = (e) => {
+  const handleSubmit: FormEventHandler<HTMLFormElement> = (e) => {
     e.preventDefault();
     setError(null);
 
     const trimmed = code.trim().toUpperCase();
-    if (!trimmed) {
-      setError("Please enter a room code");
-      return;
-    }
-    if (!validateRoomCode(trimmed)) {
-      setError("Code must be 6 characters (uppercase letters and numbers)");
+    const problem = getRoomCodeProblem(trimmed);
+    if (problem) {
+      setError(describeRoomCodeProblem(problem));
       return;
     }
 
@@ -42,7 +42,7 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+        className="bg-scrim fixed inset-0 z-50 flex items-center justify-center px-4 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -50,19 +50,18 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.95 }}
           transition={{ type: "spring", bounce: 0.2 }}
-          className="w-full max-w-md rounded-xl border-2 border-slate-700 bg-slate-900 p-6 shadow-xl"
+          className="border-cream bg-night w-full max-w-md border p-6"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="mb-4 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-white">
-              Enter a room
-            </h3>
+            <h3 className="text-xl font-semibold italic">Enter a room</h3>
             <button
               type="button"
               onClick={onClose}
-              className="rounded p-1 text-slate-400 transition-colors hover:bg-slate-700 hover:text-white"
+              aria-label="Close"
+              className="text-ash hover:text-moon -mr-4 grid size-11 cursor-pointer place-items-center transition-colors"
             >
-              <Icon.close className="text-xl" />
+              <Icon.close className="size-7 text-current" />
             </button>
           </div>
 
@@ -70,7 +69,7 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
             <div>
               <label
                 htmlFor="join-code"
-                className="mb-2 block text-sm text-slate-400"
+                className="text-ash mb-2 block font-mono text-xs"
               >
                 Room code (6 characters)
               </label>
@@ -84,13 +83,16 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
                 }}
                 placeholder="ABC123"
                 maxLength={6}
+                autoFocus
+                autoComplete="off"
+                autoCapitalize="characters"
                 className={cn(
-                  "w-full rounded-lg border-2 bg-slate-800 px-4 py-2 font-mono text-lg tracking-widest text-white placeholder:text-slate-500",
-                  error ? "border-red-500" : "border-slate-600",
+                  "placeholder:text-ash/75 w-full border bg-transparent px-4 py-2 font-mono text-lg tracking-widest focus-visible:outline-offset-0",
+                  error ? "border-alert" : "border-ash",
                 )}
               />
               {error && (
-                <p className="mt-1 text-sm text-red-400">{error}</p>
+                <p className="text-alert mt-2 font-mono text-xs">{error}</p>
               )}
             </div>
 
@@ -98,13 +100,13 @@ export function JoinRoomModal({ isOpen, onClose }: JoinRoomModalProps) {
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 rounded-lg border-2 border-slate-600 py-2 text-slate-400 transition-colors hover:bg-slate-800"
+                className="border-ash text-ash text-label hover:border-cream hover:text-cream min-h-11 flex-1 cursor-pointer rounded-full border font-mono tracking-wider uppercase transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 rounded-lg border-2 border-primary-blue bg-primary-blue/20 py-2 font-semibold text-white transition-colors hover:bg-primary-blue/40"
+                className="bg-moon text-night text-label min-h-11 flex-1 cursor-pointer rounded-full font-mono font-medium tracking-wider uppercase"
               >
                 Enter
               </button>

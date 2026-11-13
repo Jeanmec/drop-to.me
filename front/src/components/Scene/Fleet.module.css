@@ -1,0 +1,246 @@
+@keyframes fly {
+  from {
+    transform: skewY(-2.5deg);
+  }
+  to {
+    transform: skewY(2deg);
+  }
+}
+
+@keyframes dash {
+  to {
+    background-position: 22px 0;
+  }
+}
+
+@keyframes acknowledge {
+  0%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.fleet {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.west {
+  --dx: -31vw;
+  --rise: 0.15;
+  --s: 0.95;
+  --from: -30vw;
+  --room: calc(27vw - 184px);
+}
+
+.east {
+  --dx: 29vw;
+  --rise: 0.08;
+  --s: 1.05;
+  --from: 32vw;
+  --room: calc(21vw - 34px);
+}
+
+.cove {
+  --dx: calc(-150px - 4vw);
+  --rise: 0.19;
+  --s: 0.72;
+  --from: -40vw;
+  --room: calc(4vw + 93px);
+}
+
+.boat {
+  position: absolute;
+  left: calc(50% + var(--dx));
+  bottom: calc(var(--scene-h) * var(--rise));
+  width: 0;
+  height: 0;
+  translate: var(--from) 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    translate 1.6s cubic-bezier(0.2, 0.7, 0.2, 1),
+    opacity 0.5s ease-out,
+    visibility 0s linear 0.5s;
+}
+
+.moored {
+  translate: 0 0;
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+@starting-style {
+  .moored {
+    translate: var(--from) 0;
+    opacity: 0;
+  }
+}
+
+.rig {
+  position: absolute;
+  left: -60px;
+  bottom: 0;
+  width: 120px;
+  max-width: none;
+  height: 132px;
+  scale: var(--s);
+  transform-origin: 50% 100%;
+}
+
+.masthead {
+  position: absolute;
+  left: calc(-0.65px * var(--s));
+  bottom: calc(116px * var(--s));
+  height: var(--mast);
+  border-left: calc(var(--pen) * var(--s)) solid var(--color-cream);
+}
+
+.lamp {
+  position: absolute;
+  left: calc(-12px - 0.65px * var(--s));
+  top: -16px;
+  width: 24px;
+  height: 24px;
+  scale: var(--s);
+}
+
+.flag {
+  position: absolute;
+  left: 0;
+  top: 5px;
+  display: grid;
+  align-content: center;
+  width: max-content;
+  height: calc(var(--mast) - 10px);
+  padding: 0 22px 1px 8px;
+  isolation: isolate;
+  white-space: nowrap;
+  transform-origin: 0 50%;
+  animation: fly 3.4s ease-in-out infinite alternate;
+}
+
+.east .flag {
+  animation-delay: -1.2s;
+}
+
+.cove .flag {
+  animation-delay: -2.3s;
+}
+
+.cloth {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.name,
+.line {
+  max-width: min(11rem, var(--room));
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.line {
+  grid-area: 2 / 1;
+}
+
+.signal {
+  visibility: hidden;
+}
+
+.furled {
+  visibility: hidden;
+}
+
+.hoisted {
+  visibility: inherit;
+}
+
+.acknowledged {
+  animation: acknowledge 3.4s ease-out forwards;
+}
+
+.percent {
+  display: inline-block;
+  min-width: 4ch;
+}
+
+.ray {
+  --dy: calc(
+    var(--scene-h) * (0.4164 - var(--rise)) - 116px * var(--s) - var(--mast) -
+      4px
+  );
+  position: absolute;
+  left: 50%;
+  bottom: var(--lamp);
+  width: hypot(var(--dx), var(--dy));
+  height: 2px;
+  background: repeating-linear-gradient(
+    to right,
+    var(--color-moon) 0 10px,
+    transparent 10px 22px
+  );
+  rotate: atan2(var(--dy), var(--dx));
+  transform-origin: 0 50%;
+  animation: dash 0.5s linear infinite;
+}
+
+@media (width <= 1100px) {
+  .west {
+    --rise: 0.17;
+    --room: calc(31vw - 57px);
+  }
+
+  .east {
+    --dx: 31vw;
+    --rise: 0.16;
+    --s: 0.85;
+    --room: calc(19vw - 34px);
+  }
+
+  .cove {
+    --dx: 10vw;
+    --rise: 0.22;
+    --s: 0.66;
+    --from: 46vw;
+    --room: calc(21vw - 42px);
+  }
+}
+
+@media (width < 768px) {
+  .west {
+    --dx: -26vw;
+    --room: calc(26vw - 47px);
+  }
+
+  .east {
+    --dx: 31.5vw;
+    --rise: 0.15;
+    --s: 0.7;
+    --room: calc(18.5vw - 25px);
+  }
+
+  .cove {
+    --dx: 14vw;
+    --rise: 0.253;
+    --s: 0.5;
+    --room: calc(36vw - 28px);
+  }
+
+  .flag {
+    padding: 0 16px 0 6px;
+  }
+
+  .line {
+    display: none;
+  }
+}

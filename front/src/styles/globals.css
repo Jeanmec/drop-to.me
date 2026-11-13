@@ -11,12 +11,54 @@
   --color-secondary-blue: #3caaed;
   --color-white: #ffffff;
   --color-description: #b0b0b0;
+  --color-muted: oklch(55.1% 0.027 264.364);
+  --color-icon-muted: oklch(70.4% 0.04 256.788);
+  --color-control-hover: oklch(37.2% 0.044 257.287);
+  --color-danger: oklch(70.4% 0.191 22.216);
+  --color-room-code: oklch(76.5% 0.177 163.223);
+  --color-room-code-label: oklch(70.4% 0.04 256.788);
+  --color-toast-close: oklch(37.3% 0.034 259.733);
+  --color-toast-close-hover: oklch(44.6% 0.03 256.802);
+  --color-toast-close-icon: oklch(70.7% 0.022 261.325);
   --font-inter: "Inter", sans-serif;
   --font-poppins: "Poppins", sans-serif;
   --font-plus-jakarta-sans: "Plus Jakarta Sans", sans-serif;
-
   --aspect-card-illustration: 10 / 7;
   --aspect-card-banner: 25 / 9;
+}
+
+@theme static {
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-mono: var(--font-dm-mono), ui-monospace, Menlo, monospace;
+
+  --color-night: #0d1a3a;
+  --color-cream: #f4ecd6;
+  --color-moon: #ffd98a;
+  --color-moon-glow: rgb(255 217 138 / 0.22);
+  --color-moon-soft: rgb(255 217 138 / 0.5);
+  --color-ash: #aab4d8;
+  --color-dim: #2c4380;
+  --color-sea-line: #1f5670;
+  --color-horizon: #3a9fb4;
+  --color-rock: #8a6748;
+  --color-grass: #6fae52;
+  --color-coral: #ff6b57;
+  --color-alert: #ff9483;
+  --color-blush: #f29bd0;
+  --color-lilac: #b39cff;
+  --color-chart-grid: rgb(170 180 216 / 0.09);
+  --color-scrim: rgb(5 10 26 / 0.6);
+
+  --text-micro: 0.65625rem;
+  --text-caption: 0.71875rem;
+  --text-label: 0.8125rem;
+  --text-action: 0.9375rem;
+  --text-lead: 1.1875rem;
+  --text-sign: 1.75rem;
+  --text-tally: clamp(1.875rem, 3.2vw, 2.75rem);
+  --text-title: clamp(3.75rem, 9.8vw, 10.25rem);
+
+  --pen: 1.3px;
 }
 
 .animate-border {
@@ -36,6 +78,18 @@
       transform: translate(-50%, -50%) scale(0.9);
     }
   }
+}
+
+@utility pen {
+  fill: none;
+  stroke-width: var(--pen);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@utility inked {
+  stroke-width: var(--pen);
+  stroke-linejoin: round;
 }
 
 @layer utilities {
@@ -94,36 +148,23 @@
 html {
   scroll-behavior: smooth;
   scroll-margin: 200px;
-  background-color: black;
+  /* always-on scrollbar: the scene keeps its width when the page replaces the loading scene */
+  overflow-y: scroll;
+  background-color: var(--color-night);
+  color-scheme: dark;
 }
 
-p,
-span {
-  font-family: var(--font-plus-jakarta-sans);
+body {
+  background-color: var(--color-night);
+  color: var(--color-cream);
+  font-family: var(--font-serif);
+  font-size: 1.0625rem;
+  line-height: 1.5;
 }
 
-h1 {
-  font-family: var(--font-poppins);
-  font-size: 3.75rem;
-  font-weight: 700;
-  color: white;
-}
-
-h2 {
-  font-family: var(--font-poppins);
-  font-size: 1.875rem;
-  font-weight: 600;
-  color: white;
-}
-
-@media (min-width: 640px) {
-  h1 {
-    font-size: 4.5rem;
-  }
-}
-
-@media (min-width: 768px) {
-  h2 {
-    font-size: 3rem;
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-moon);
+    outline-offset: 4px;
   }
 }

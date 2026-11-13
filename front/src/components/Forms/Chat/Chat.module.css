@@ -1,0 +1,55 @@
+.hoist {
+  position: fixed;
+  z-index: 50;
+  right: 28px;
+  bottom: 16px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: 380px;
+  height: min(480px, calc(100dvh - 32px));
+  padding-bottom: 12px;
+  background: var(--color-night);
+}
+
+.hoist::before {
+  content: "";
+  position: absolute;
+  inset: 0 -10px auto;
+  border-top: 2px solid var(--color-cream);
+}
+
+.hoist::after {
+  content: "";
+  position: absolute;
+  inset: 2px 0 66px;
+  border-inline: var(--pen) solid var(--color-cream);
+  pointer-events: none;
+}
+
+.flags {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 6px var(--pen) 14px;
+  overflow-y: auto;
+}
+
+.composer {
+  margin: 0 var(--pen);
+  border-top: var(--pen) solid var(--color-cream);
+}
+
+@media (width < 768px) {
+  .hoist {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 76dvh;
+  }
+
+  .hoist::before {
+    inset: 0 0 auto;
+  }
+}
