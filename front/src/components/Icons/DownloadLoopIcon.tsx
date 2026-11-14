@@ -1,6 +1,7 @@
 import type { SVGProps } from "react";
 
-export function DownloadLoopIcon(props: SVGProps<SVGSVGElement>) {
+// Icon from Material Line Icons by Vjacheslav Trushkin - https://github.com/cyberalien/line-md/blob/master/license.txt
+export default function DownloadLoopIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -9,7 +10,6 @@ export function DownloadLoopIcon(props: SVGProps<SVGSVGElement>) {
       viewBox="0 0 24 24"
       {...props}
     >
-      {/* Icon from Material Line Icons by Vjacheslav Trushkin - https://github.com/cyberalien/line-md/blob/master/license.txt */}
       <g
         fill="none"
         stroke="currentColor"

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="beam-west" x1="32" y1="0" x2="3" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#ffd98a" stop-opacity=".08"/>
+    </linearGradient>
+    <linearGradient id="beam-east" x1="32" y1="0" x2="61" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd98a" stop-opacity=".85"/>
+      <stop offset="1" stop-color="#ffd98a" stop-opacity=".08"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#0d1a3a"/>
+  <path d="M32 21L3 12V30Z" fill="url(#beam-west)"/>
+  <path d="M32 21L61 12V30Z" fill="url(#beam-east)"/>
+  <path d="M8 54H56" stroke="#3a9fb4" stroke-width="3" stroke-linecap="round"/>
+  <path d="M24 54L27.5 28H36.5L40 54Z" fill="#f4ecd6"/>
+  <path d="M25.35 44H38.65L39.33 49H24.67Z" fill="#ff6b57"/>
+  <path d="M26.62 34.5H37.38L37.98 39H26.02Z" fill="#ff6b57"/>
+  <path d="M25 26H39V29H25Z" fill="#f4ecd6"/>
+  <path d="M27.5 16H36.5V26H27.5Z" fill="#ffd98a"/>
+  <path d="M26 16H38L32 9Z" fill="#ff6b57"/>
+  <circle cx="51" cy="13" r="10" fill="#ff6b57" stroke="#0d1a3a" stroke-width="4"/>
+</svg>

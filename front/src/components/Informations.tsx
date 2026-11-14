@@ -1,12 +1,17 @@
-import QuestionFleet, { type FleetQuestion } from "./LandingPage/QuestionFleet";
-import VoyageChart from "./LandingPage/VoyageChart";
+import Link from "next/link";
+import { env } from "@/env";
+import { QuestionBoatKind } from "@/types/scene.t";
+import QuestionFleet, {
+  type FleetQuestion,
+} from "@/components/LandingPage/QuestionFleet";
+import VoyageChart from "@/components/LandingPage/VoyageChart";
 
 export default function Informations() {
   const questions: FleetQuestion[] = [
     {
       value: "what-is-it",
-      boat: "cutter",
-      title: `What is ${process.env.NEXT_PUBLIC_WEBSITE_NAME} ?`,
+      boat: QuestionBoatKind.CUTTER,
+      title: `What is ${env.NEXT_PUBLIC_WEBSITE_NAME} ?`,
       content: (
         <>
           <p>
@@ -19,26 +24,35 @@ export default function Informations() {
     },
     {
       value: "data-collection",
-      boat: "periscope",
+      boat: QuestionBoatKind.PERISCOPE,
       title: "What data are collected?",
       content: (
         <>
           <p>
-            We only collect the necessary data to establish a peer-to-peer
-            connection into a temporary database, such as your device&#39;s peer
-            ID and socket ID. No personal data is collected or stored.
+            The server only handles what it needs to connect your devices: a
+            random ID drawn by your browser, and your IP address, used to group
+            you with the devices of your network. Neither is saved: they only
+            live in the memory of the server. There is no cookie and no tracker.
           </p>
           <p>
-            For statistical purposes, we may collect the file size, number of
-            messages sent, and the number of users connected. The content of the
-            files or messages you send is not stored or logged.
+            For statistics, it counts connections, messages and files, with the
+            size of each file. The content of the files or messages you send
+            never reaches the server. The{" "}
+            <Link
+              href="/terms"
+              target="_blank"
+              className="text-moon underline underline-offset-4"
+            >
+              terms of use
+            </Link>{" "}
+            give the details.
           </p>
         </>
       ),
     },
     {
       value: "security",
-      boat: "galleon",
+      boat: QuestionBoatKind.GALLEON,
       title: "Is it secure?",
       content: (
         <>
@@ -58,7 +72,7 @@ export default function Informations() {
     },
     {
       value: "like-airdrop",
-      boat: "airdrop",
+      boat: QuestionBoatKind.AIRDROP,
       title: `Is it like AirDrop?`,
       content: (
         <>
@@ -75,14 +89,14 @@ export default function Informations() {
     },
     {
       value: "free-and-open-source",
-      boat: "coins",
+      boat: QuestionBoatKind.COINS,
       title: "Is it free ?",
-      content: process.env.NEXT_PUBLIC_GITHUB_URL ? (
+      content: env.NEXT_PUBLIC_GITHUB_URL ? (
         <p>
           Yes, this application is completely free and open-source. You can
           access the source code on
           <a
-            href={process.env.NEXT_PUBLIC_GITHUB_URL}
+            href={env.NEXT_PUBLIC_GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="text-moon ml-1 underline underline-offset-4"

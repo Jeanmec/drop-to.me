@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { cn } from "@/library/utils";
-import type { TQuestionBoat } from "@/types/scene.t";
+import clsx from "clsx";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { QuestionBoatKind } from "@/types/scene.t";
 import MiniLighthouse from "./MiniLighthouse";
 import QuestionBoat from "./QuestionBoat";
 import styles from "./QuestionFleet.module.css";
 
 export interface FleetQuestion {
   value: string;
-  boat: TQuestionBoat;
+  boat: QuestionBoatKind;
   title: string;
   content: ReactNode;
 }
@@ -32,16 +33,14 @@ export default function QuestionFleet({ questions }: QuestionFleetProps) {
 
   return (
     <section>
-      <h2 className="text-moon mb-5.5 font-mono text-xs tracking-widest uppercase">
-        Questions
-      </h2>
+      <SectionHeading className="mb-5.5">Questions</SectionHeading>
       <div className={styles.strip}>
         <MiniLighthouse className={styles.mini} />
         <span
-          className={cn(
+          className={clsx(
             styles.aim,
             POSITION_CLASSES[activeIndex],
-            activeBoat === "periscope" && styles.aimLow,
+            activeBoat === QuestionBoatKind.PERISCOPE && styles.aimLow,
           )}
           aria-hidden
         />
@@ -49,13 +48,13 @@ export default function QuestionFleet({ questions }: QuestionFleetProps) {
           {questions.map((question, index) => (
             <li
               key={question.value}
-              className={cn(styles.question, POSITION_CLASSES[index])}
+              className={clsx(styles.question, POSITION_CLASSES[index])}
             >
               <button
                 type="button"
                 aria-pressed={index === activeIndex}
                 onClick={() => setActiveIndex(index)}
-                className={cn(
+                className={clsx(
                   styles.ask,
                   "hover:text-cream cursor-pointer italic",
                   index === activeIndex ? "text-cream" : "text-ash",
@@ -75,7 +74,7 @@ export default function QuestionFleet({ questions }: QuestionFleetProps) {
         {questions.map((question, index) => (
           <div
             key={question.value}
-            className={cn(
+            className={clsx(
               styles.answer,
               index === activeIndex && styles.answerShown,
               "text-lead",

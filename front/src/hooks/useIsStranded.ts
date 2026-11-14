@@ -1,14 +1,12 @@
+import { selectHasReachablePeer, usePeersStore } from "@/stores/usePeersStore";
 import {
   selectIsServerUnreachable,
-  useConnectionStore,
-} from "@/stores/useConnectionStore";
-import { usePeersStore } from "@/stores/usePeersStore";
+  useSessionStore,
+} from "@/stores/useSessionStore";
 
 export function useIsStranded(): boolean {
-  const isServerUnreachable = useConnectionStore(selectIsServerUnreachable);
-  const hasReachablePeer = usePeersStore((state) =>
-    state.targetPeers.some((peer) => peer.isReachable),
-  );
+  const isServerUnreachable = useSessionStore(selectIsServerUnreachable);
+  const hasReachablePeer = usePeersStore(selectHasReachablePeer);
 
   return isServerUnreachable && !hasReachablePeer;
 }

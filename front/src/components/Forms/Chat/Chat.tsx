@@ -1,27 +1,25 @@
 "use client";
 
-import React from "react";
-import { AnimatePresence, motion } from "motion/react";
-import MessageInput from "./MessageInput";
-import Messages from "./Messages";
-import { Icon } from "../../Icons/Icon";
+import clsx from "clsx";
+import CloseButton from "@/components/ui/CloseButton";
 import Pennon from "@/components/ui/Pennon";
 import Seamark from "@/components/ui/Seamark";
-import { useDragFileStore } from "@/stores/useDragFileStore";
-import { useChatStore } from "@/stores/useChatStore";
 import { useOverlayClose } from "@/hooks/useOverlayClose";
-import { useUnreadTabNotice } from "@/hooks/useUnreadTabNotice";
-import styles from "./Chat.module.css";
+import { useChatStore } from "@/stores/useChatStore";
+import { PennonTone } from "@/types/ui.t";
+import MessageInput from "./MessageInput";
+import Messages from "./Messages";
 
 interface ChatProps {
   isBuoyStowed: boolean;
 }
 
-export function Chat({ isBuoyStowed }: ChatProps) {
-  const { isChatOpen, setChatOpen, closeChat, unreadCount } = useChatStore();
-  const { isDragFileActive } = useDragFileStore();
+export default function Chat({ isBuoyStowed }: ChatProps) {
+  const isChatOpen = useChatStore((state) => state.isChatOpen);
+  const unreadCount = useChatStore((state) => state.unreadCount);
+  const openChat = useChatStore((state) => state.openChat);
+  const closeChat = useChatStore((state) => state.closeChat);
   useOverlayClose(isChatOpen, closeChat);
-  useUnreadTabNotice();
 
   const unreadLabel =
     unreadCount === 1 ? "1 unread message" : `${unreadCount} unread messages`;
@@ -31,23 +29,23 @@ export function Chat({ isBuoyStowed }: ChatProps) {
       <span role="status" className="sr-only">
         {unreadCount > 0 ? unreadLabel : ""}
       </span>
-      {!isChatOpen && !isDragFileActive && !isBuoyStowed && (
+      {!isChatOpen && !isBuoyStowed && (
         <button
           type="button"
           aria-label={
             unreadCount > 0 ? `Open chat, ${unreadLabel}` : "Open chat"
           }
           className="group absolute right-7 bottom-4 block cursor-pointer text-left max-md:right-3 max-md:bottom-3"
-          onClick={() => setChatOpen(true)}
+          onClick={openChat}
         >
-          <Seamark isOffbeat>
-            <Pennon className="group-hover:text-moon text-label min-h-7.5 w-max py-1.5 pr-6 pl-2.5 font-mono leading-4.5 tracking-wider whitespace-nowrap max-md:text-xs">
+          <Seamark isOffbeat signalCount={unreadCount}>
+            <Pennon className="group-hover:text-moon text-label block min-h-7.5 w-max py-1.5 pr-6 pl-2.5 font-mono leading-4.5 tracking-wider whitespace-nowrap max-md:text-xs">
               Chat
             </Pennon>
             {unreadCount > 0 && (
               <Pennon
-                tone="solid"
-                className="text-night text-caption mt-0.75 min-h-5.5 w-max py-0.5 pr-5 pl-2 font-mono leading-4.5 whitespace-nowrap"
+                tone={PennonTone.SIGNAL}
+                className="text-night text-caption mt-0.75 block min-h-5.5 w-max py-0.5 pr-5 pl-2 font-mono leading-4.5 whitespace-nowrap"
               >
                 {unreadCount} new
               </Pennon>
@@ -56,44 +54,30 @@ export function Chat({ isBuoyStowed }: ChatProps) {
         </button>
       )}
 
-      <AnimatePresence>
-        {isChatOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="bg-scrim fixed inset-0 z-40 cursor-pointer"
-              onClick={closeChat}
-            />
-            <motion.div
-              role="dialog"
-              aria-label="Chat"
-              initial={{ opacity: 0, y: 22 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 22 }}
-              transition={{ duration: 0.35, ease: "easeOut" }}
-              className={styles.hoist}
-            >
-              <div className="flex items-center justify-between pt-1.5 pr-1.5 pb-0.5 pl-4">
-                <b className="text-moon font-mono text-xs font-normal tracking-widest uppercase">
-                  Chat
-                </b>
-                <button
-                  type="button"
-                  aria-label="Close chat"
-                  onClick={closeChat}
-                  className="text-ash hover:text-moon grid size-11 cursor-pointer place-items-center"
-                >
-                  <Icon.close className="size-7 text-current" />
-                </button>
-              </div>
-              <Messages />
-              <MessageInput />
-            </motion.div>
-          </>
+      <div
+        aria-hidden
+        onClick={closeChat}
+        className={clsx(
+          "bg-scrim fixed inset-0 z-40 cursor-pointer transition-opacity duration-300",
+          isChatOpen ? "opacity-100" : "pointer-events-none opacity-0",
         )}
-      </AnimatePresence>
+      />
+      <div className="pointer-events-none fixed inset-y-4 right-7 left-4 z-50 flex items-end justify-end max-md:inset-3">
+        <dialog
+          open={isChatOpen}
+          aria-label="Chat"
+          className="border-cream bg-night text-cream pointer-events-auto static m-0 h-120 max-h-full w-95 max-w-full translate-y-5.5 flex-col border p-0 opacity-0 transition transition-discrete duration-350 ease-out open:flex open:translate-y-0 open:opacity-100 max-md:h-3/4 max-md:w-full starting:open:translate-y-5.5 starting:open:opacity-0"
+        >
+          <div className="border-cream flex items-center justify-between border-b pr-1.5 pl-4">
+            <b className="text-moon font-mono text-xs font-normal tracking-widest uppercase">
+              Chat
+            </b>
+            <CloseButton label="Close chat" onClick={closeChat} />
+          </div>
+          <Messages />
+          <MessageInput />
+        </dialog>
+      </div>
     </>
   );
 }

@@ -10,7 +10,7 @@ export function useScreenWakeLock(isActive: boolean): void {
     let isCleanedUp = false;
 
     const acquire = async () => {
-      if (document.visibilityState !== "visible") {
+      if (document.hidden) {
         return;
       }
 

@@ -1,5 +1,6 @@
-export type RoomCodeProblem =
-  | 'empty'
-  | 'length'
-  | 'excluded-character'
-  | 'invalid-character';
+export enum RoomCodeProblem {
+  EMPTY = 'EMPTY',
+  LENGTH = 'LENGTH',
+  EXCLUDED_CHARACTER = 'EXCLUDED_CHARACTER',
+  INVALID_CHARACTER = 'INVALID_CHARACTER',
+}

@@ -1,8 +1,8 @@
 import { useId } from "react";
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import { CloudSize, Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./Scene.module.css";
-
-type CloudSize = "wide" | "mid" | "small";
 
 interface Bump {
   x: number;
@@ -26,7 +26,7 @@ interface CloudProps {
 
 const shapeOf = (size: CloudSize): CloudShape => {
   switch (size) {
-    case "wide":
+    case CloudSize.WIDE:
       return {
         className: styles.cloudWide,
         width: 230,
@@ -41,7 +41,7 @@ const shapeOf = (size: CloudSize): CloudShape => {
           { x: 208, y: 88, radius: 23 },
         ],
       };
-    case "mid":
+    case CloudSize.MID:
       return {
         className: styles.cloudMid,
         width: 150,
@@ -56,7 +56,7 @@ const shapeOf = (size: CloudSize): CloudShape => {
           { x: 136, y: 56, radius: 13 },
         ],
       };
-    case "small":
+    case CloudSize.SMALL:
       return {
         className: styles.cloudSmall,
         width: 118,
@@ -85,24 +85,28 @@ export default function Cloud({ size, isLit }: CloudProps) {
   const sheen = `M${crest.x} ${crest.y}${moonward.slice(0, 2).map(arcTo).join("")}`;
 
   return (
-    <svg
-      className={cn(styles.cloud, shape.className)}
-      viewBox={`0 0 ${shape.width} ${shape.height}`}
-      aria-hidden
-    >
-      <clipPath id={clipId}>
-        <path d={outline} />
-      </clipPath>
-      <path className="fill-night" d={outline} />
-      <g className={styles.veil} clipPath={`url(#${clipId})`}>
+    <div className={clsx(styles.cloud, shape.className)} aria-hidden>
+      <svg
+        className={styles.cloudShape}
+        viewBox={`0 0 ${shape.width} ${shape.height}`}
+      >
+        <clipPath id={clipId}>
+          <path d={outline} />
+        </clipPath>
+        <path className="fill-night" d={outline} />
+        <g className={styles.veil} clipPath={`url(#${clipId})`}>
+          <path
+            d={outline}
+            transform="translate(-7 11)"
+            fill={hatchFill(Hatch.VEIL)}
+          />
+        </g>
+        <path className={styles.rim} d={outline} pathLength={1} />
         <path
-          d={outline}
-          transform="translate(-7 11)"
-          fill="url(#hatch-veil)"
+          className={clsx(styles.sheen, !isLit && styles.sheenOut)}
+          d={sheen}
         />
-      </g>
-      <path className={styles.rim} d={outline} pathLength={1} />
-      <path className={cn(styles.sheen, !isLit && styles.sheenOut)} d={sheen} />
-    </svg>
+      </svg>
+    </div>
   );
 }

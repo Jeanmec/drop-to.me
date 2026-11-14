@@ -20,14 +20,6 @@
   );
 }
 
-.notchStart {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 12px 50%);
-}
-
-.notchStart::before {
-  clip-path: polygon(1px 0, 100% 0, 100% 100%, 1px 100%, 10.9px 50%);
-}
-
 .moon {
   --edge: var(--color-moon);
 }
@@ -36,7 +28,7 @@
   --edge: var(--color-alert);
 }
 
-.solid {
-  --edge: var(--color-moon);
-  --fill: var(--color-moon);
+.signal {
+  --edge: var(--color-coral);
+  --fill: var(--color-coral);
 }

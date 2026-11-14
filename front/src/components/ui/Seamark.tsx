@@ -1,21 +1,26 @@
+import clsx from "clsx";
 import type { ReactNode } from "react";
-import { cn } from "@/library/utils";
+import { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./Seamark.module.css";
 
 interface SeamarkProps {
   children: ReactNode;
   isSteady?: boolean;
   isOffbeat?: boolean;
+  // the lantern flares each time the count grows
+  signalCount?: number;
 }
 
 export default function Seamark({
   children,
   isSteady,
   isOffbeat,
+  signalCount = 0,
 }: SeamarkProps) {
   return (
     <span
-      className={cn(
+      className={clsx(
         styles.bobber,
         isOffbeat && styles.offbeat,
         isSteady && styles.steady,
@@ -28,11 +33,25 @@ export default function Seamark({
         <path
           className="inked stroke-cream"
           d="M15 44H29L34 70H10Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
         />
         <path className="inked fill-night stroke-cream" d="M5 70H39L35 79H9Z" />
         <path className="pen stroke-horizon" d="M0 82H13M31 83H44" />
       </svg>
+      {signalCount > 0 && (
+        <svg
+          key={signalCount}
+          className={styles.flare}
+          viewBox="-24 -24 48 48"
+          aria-hidden
+        >
+          <circle className="pen stroke-coral" r="8" />
+          <path
+            className="pen stroke-moon"
+            d="M0-12V-19M0 12V19M-12 0H-19M12 0H19M-8.5-8.5L-13.4-13.4M8.5-8.5L13.4-13.4M-8.5 8.5L-13.4 13.4M8.5 8.5L13.4 13.4"
+          />
+        </svg>
+      )}
       {children}
     </span>
   );

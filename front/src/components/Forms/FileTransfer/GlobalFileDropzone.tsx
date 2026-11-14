@@ -1,43 +1,34 @@
 "use client";
 
-import { useCallback } from "react";
+import clsx from "clsx";
 import { useDropzone } from "react-dropzone";
 
 interface GlobalFileDropzoneProps {
-  onFileSelected: (files: File[] | null) => void;
-  disabled?: boolean;
-  isDragging: boolean;
+  onFilesSelected: (files: File[]) => void;
+  disabled: boolean;
+  isDropTarget: boolean;
 }
 
 export default function GlobalFileDropzone({
-  onFileSelected,
+  onFilesSelected,
   disabled,
-  isDragging,
+  isDropTarget,
 }: GlobalFileDropzoneProps) {
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      onFileSelected(acceptedFiles.length > 0 ? acceptedFiles : null);
-    },
-    [onFileSelected],
-  );
-
   const { getRootProps, getInputProps } = useDropzone({
-    onDrop,
+    onDrop: onFilesSelected,
     noClick: true,
     noKeyboard: true,
     multiple: true,
-    disabled: disabled ?? !isDragging,
+    disabled,
   });
 
   return (
     <div
       {...getRootProps()}
-      id="global-dropzone"
-      className="fixed inset-0 z-20 transition-colors duration-200"
-      style={{
-        pointerEvents: isDragging ? "auto" : "none",
-        backgroundColor: isDragging ? "rgba(0,0,0,0.05)" : "transparent",
-      }}
+      className={clsx(
+        "fixed inset-0 z-20 transition-colors duration-200",
+        isDropTarget ? "bg-veil pointer-events-auto" : "pointer-events-none",
+      )}
     >
       <input {...getInputProps()} />
     </div>

@@ -7,6 +7,17 @@
   }
 }
 
+@keyframes flare {
+  from {
+    opacity: 1;
+    scale: 0.3;
+  }
+  to {
+    opacity: 0;
+    scale: 1.15;
+  }
+}
+
 .bobber {
   position: relative;
   display: block;
@@ -40,4 +51,15 @@
   bottom: 0;
   width: 44px;
   height: 84px;
+}
+
+.flare {
+  position: absolute;
+  left: -2px;
+  bottom: 57px;
+  width: 48px;
+  height: 48px;
+  overflow: visible;
+  pointer-events: none;
+  animation: flare 0.9s ease-out 2 both;
 }

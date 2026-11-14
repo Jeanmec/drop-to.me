@@ -1,17 +1,30 @@
-export interface File {
+// the values are stored in the chat history
+export enum MessageDelivery {
+  PENDING = "pending",
+  DELIVERED = "delivered",
+  FAILED = "failed",
+}
+
+export type TMessageFile = {
   fileName: string;
   fileSize: number;
   fileUrl?: string;
-}
+};
 
-export type MessageDelivery = "pending" | "delivered" | "failed";
+export type TNewMessage = {
+  received: boolean;
+  content: string;
+  file?: TMessageFile;
+  system?: boolean;
+  delivery?: MessageDelivery;
+};
 
-export interface Message {
+export type TMessage = {
   id: string;
   received: boolean;
   content: string;
   timestamp: Date;
-  file?: File;
+  file?: TMessageFile;
   system?: boolean;
   delivery?: MessageDelivery;
-}
+};

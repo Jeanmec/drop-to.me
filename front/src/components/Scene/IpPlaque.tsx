@@ -1,12 +1,12 @@
 "use client";
 
 import { useIsStranded } from "@/hooks/useIsStranded";
-import { cn } from "@/library/utils";
-import { useUserStore } from "@/stores/useUserStore";
+import clsx from "clsx";
+import { useSessionStore } from "@/stores/useSessionStore";
 import styles from "./Scene.module.css";
 
 export default function IpPlaque() {
-  const ip = useUserStore((state) => state.ip);
+  const ip = useSessionStore((state) => state.ip);
   const isStranded = useIsStranded();
 
   if (!ip || isStranded) {
@@ -15,7 +15,7 @@ export default function IpPlaque() {
 
   return (
     <span
-      className={cn(
+      className={clsx(
         styles.plaque,
         "text-ash max-md:text-micro font-mono text-xs",
       )}

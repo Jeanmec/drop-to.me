@@ -2,7 +2,7 @@ interface EnteringRoomNoteProps {
   roomCode: string;
 }
 
-export function EnteringRoomNote({ roomCode }: EnteringRoomNoteProps) {
+export default function EnteringRoomNote({ roomCode }: EnteringRoomNoteProps) {
   return (
     <>
       Entering room{" "}

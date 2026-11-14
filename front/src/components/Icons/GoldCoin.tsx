@@ -1,3 +1,6 @@
+import { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
+
 interface GoldCoinProps {
   x: number;
   y: number;
@@ -13,7 +16,7 @@ export default function GoldCoin({ x, y, radius }: GoldCoinProps) {
         cx={x}
         cy={y}
         r={radius}
-        fill="url(#hatch-gold)"
+        fill={hatchFill(Hatch.GOLD)}
       />
     </>
   );

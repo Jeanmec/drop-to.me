@@ -1,17 +1,16 @@
+import AnimationTimer from "@/components/ui/AnimationTimer";
 import ProgressBar from "@/components/ui/ProgressBar";
 import StatusLine from "@/components/ui/StatusLine";
-import type { TTransferPhase } from "@/types/file.t";
+import { giveUpWaiting } from "@/services/transferService";
+import { useTransferStore } from "@/stores/useTransferStore";
+import { TransferPhase } from "@/types/transfer.t";
 import { getTruncatedFileName } from "@/utils/file.utils";
-import styles from "./TransferStatus.module.css";
+import { formatRemainingTime } from "@/utils/time.utils";
 
 interface TransferStatusProps {
-  phase: TTransferPhase;
+  isDropping: boolean;
   peerCount: number;
   connectedCount: number;
-  waitingMessage: string;
-  fileName: string;
-  progress: number;
-  onDoneShown: () => void;
 }
 
 const describePeers = (peerCount: number, connectedCount: number): string => {
@@ -26,16 +25,26 @@ const describePeers = (peerCount: number, connectedCount: number): string => {
 };
 
 export default function TransferStatus({
-  phase,
+  isDropping,
   peerCount,
   connectedCount,
-  waitingMessage,
-  fileName,
-  progress,
-  onDoneShown,
 }: TransferStatusProps) {
+  const {
+    phase,
+    zippedFileCount,
+    waitingMessage,
+    fileName,
+    progress,
+    remainingSeconds,
+    reset,
+  } = useTransferStore();
+
+  if (isDropping) {
+    return <StatusLine title="Release the files to send them" />;
+  }
+
   switch (phase) {
-    case "idle":
+    case TransferPhase.IDLE:
       return (
         <StatusLine
           title={describePeers(peerCount, connectedCount)}
@@ -53,12 +62,20 @@ export default function TransferStatus({
           }
         />
       );
-    case "drag":
-      return <StatusLine title="Release the files to send them" />;
-    case "waiting":
-      return <StatusLine title={waitingMessage} />;
-    case "sending": {
-      const { displayName, isTruncated } = getTruncatedFileName(fileName, 25);
+    case TransferPhase.ZIPPING:
+      return <StatusLine title={`Zipping ${zippedFileCount} files...`} />;
+    case TransferPhase.WAITING:
+      return (
+        <>
+          <StatusLine title={waitingMessage} />
+          <AnimationTimer
+            className="animate-peer-wait"
+            onElapsed={giveUpWaiting}
+          />
+        </>
+      );
+    case TransferPhase.SENDING: {
+      const { displayName, isTruncated } = getTruncatedFileName(fileName);
       return (
         <>
           <StatusLine
@@ -71,9 +88,17 @@ export default function TransferStatus({
               </>
             }
             detail={
-              <span title={isTruncated ? fileName : undefined}>
-                {displayName}
-              </span>
+              <>
+                <span title={isTruncated ? fileName : undefined}>
+                  {displayName}
+                </span>
+                {remainingSeconds !== null && (
+                  <span aria-hidden>
+                    {" "}
+                    · about {formatRemainingTime(remainingSeconds)} left
+                  </span>
+                )}
+              </>
             }
           />
           <ProgressBar
@@ -84,9 +109,9 @@ export default function TransferStatus({
         </>
       );
     }
-    case "done":
+    case TransferPhase.DONE:
       return (
-        <div className={styles.passing} onAnimationEnd={onDoneShown}>
+        <div className="animate-pass" onAnimationEnd={reset}>
           <StatusLine title="File transfer completed successfully" />
         </div>
       );

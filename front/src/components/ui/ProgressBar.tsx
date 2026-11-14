@@ -1,4 +1,5 @@
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import { COMPLETE_PERCENT } from "@/utils/percent.utils";
 
 interface ProgressBarProps {
   value: number;
@@ -17,8 +18,8 @@ export default function ProgressBar({
       aria-label={label}
       aria-valuenow={value}
       aria-valuemin={0}
-      aria-valuemax={100}
-      className={cn("bg-dim block h-0.75", className)}
+      aria-valuemax={COMPLETE_PERCENT}
+      className={clsx("bg-dim block h-0.75", className)}
     >
       <span className="bg-moon block h-full" style={{ width: `${value}%` }} />
     </span>

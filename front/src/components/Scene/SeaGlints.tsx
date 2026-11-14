@@ -1,36 +1,23 @@
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import type { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./Scene.module.css";
 
-type GlintKind = "scattered" | "lit";
-
 interface SeaGlintsProps {
-  kind: GlintKind;
+  far: Hatch;
+  near: Hatch;
   className: string;
 }
 
-interface GlintFills {
-  far: string;
-  near: string;
-}
-
-const fillsOf = (kind: GlintKind): GlintFills => {
-  switch (kind) {
-    case "scattered":
-      return { far: "url(#hatch-glint-far)", near: "url(#hatch-glint)" };
-    case "lit":
-      return { far: "url(#hatch-lit-far)", near: "url(#hatch-lit)" };
-  }
-};
-
-export default function SeaGlints({ kind, className }: SeaGlintsProps) {
-  const fills = fillsOf(kind);
-
+export default function SeaGlints({ far, near, className }: SeaGlintsProps) {
   return (
-    <div className={cn(styles.glints, className)}>
-      <svg className={styles.glintsDrift}>
-        <rect width="100%" height="24%" fill={fills.far} />
-        <rect y="24%" width="100%" height="76%" fill={fills.near} />
-      </svg>
+    <div className={clsx(styles.glints, className)}>
+      <div className={styles.glintsDrift}>
+        <svg className={styles.glintsSheet}>
+          <rect width="100%" height="24%" fill={hatchFill(far)} />
+          <rect y="24%" width="100%" height="76%" fill={hatchFill(near)} />
+        </svg>
+      </div>
     </div>
   );
 }

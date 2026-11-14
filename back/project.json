@@ -3,7 +3,9 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "back/src",
   "projectType": "application",
-  "tags": ["scope:back"],
+  "tags": [
+    "scope:back"
+  ],
   "targets": {
     "build": {
       "executor": "nx:run-commands",
@@ -13,14 +15,20 @@
       },
       "configurations": {
         "production": {}
-      }
+      },
+      "dependsOn": [
+        "^build"
+      ]
     },
     "dev": {
       "executor": "nx:run-commands",
       "options": {
         "command": "yarn nest start --watch",
         "cwd": "back"
-      }
+      },
+      "dependsOn": [
+        "^build"
+      ]
     },
     "lint": {
       "executor": "nx:run-commands",

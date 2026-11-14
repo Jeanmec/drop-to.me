@@ -1,4 +1,6 @@
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./Scene.module.css";
 
 interface IsleProps {
@@ -7,7 +9,7 @@ interface IsleProps {
 
 export default function Isle({ isLit }: IsleProps) {
   const lampClass = isLit ? "inked stroke-moon" : "inked fill-night stroke-dim";
-  const lampFill = isLit ? "url(#hatch-lamp)" : undefined;
+  const lampFill = isLit ? hatchFill(Hatch.LAMP) : undefined;
 
   return (
     <svg className={styles.isle} viewBox="0 0 420 520" aria-hidden>
@@ -17,9 +19,9 @@ export default function Isle({ isLit }: IsleProps) {
           d="M0 520L34 470L70 452L104 414L150 398H300L332 420L360 462L396 486L420 520Z"
         />
         <path
-          className={cn("inked stroke-rock", styles.hatch)}
+          className={clsx("inked stroke-rock", styles.hatch)}
           d="M0 520L34 470L70 452L104 414L150 398H300L332 420L360 462L396 486L420 520Z"
-          fill="url(#hatch-rock)"
+          fill={hatchFill(Hatch.ROCK)}
           pathLength={1}
         />
         <path
@@ -27,9 +29,9 @@ export default function Isle({ isLit }: IsleProps) {
           d="M104 414L150 398H300L332 420L296 411H152Z"
         />
         <path
-          className={cn("inked stroke-grass", styles.hatch)}
+          className={clsx("inked stroke-grass", styles.hatch)}
           d="M104 414L150 398H300L332 420L296 411H152Z"
-          fill="url(#hatch-grass)"
+          fill={hatchFill(Hatch.GRASS)}
           pathLength={1}
         />
       </g>
@@ -43,17 +45,17 @@ export default function Isle({ isLit }: IsleProps) {
         <path
           className={styles.hatch}
           d="M176 400H244L241.2 350H178.8Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
         />
         <path
           className={styles.hatch}
           d="M181.6 300H238.4L235.6 250H184.4Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
         />
         <path
           className={styles.hatch}
           d="M187.2 200H232.8L230 150H190Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
         />
         <path
           className="pen stroke-coral"
@@ -107,7 +109,7 @@ export default function Isle({ isLit }: IsleProps) {
         />
         <circle className="fill-night" cx="210" cy="119" r="9" />
         <circle
-          className={cn(lampClass, styles.hatch, styles.lamp)}
+          className={clsx(lampClass, styles.hatch, styles.lamp)}
           cx="210"
           cy="119"
           r="7"
@@ -119,9 +121,9 @@ export default function Isle({ isLit }: IsleProps) {
       <g className={styles.cap}>
         <path className="fill-night" d="M188 100H232L210 76Z" />
         <path
-          className={cn("inked stroke-coral", styles.hatch)}
+          className={clsx("inked stroke-coral", styles.hatch)}
           d="M188 100H232L210 76Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
           pathLength={1}
         />
         <path className="pen stroke-cream" d="M210 76V64" pathLength={1} />
@@ -138,13 +140,13 @@ export default function Isle({ isLit }: IsleProps) {
         />
         <path className="fill-night" d="M249 370L274 351L299 370Z" />
         <path
-          className={cn("inked stroke-coral", styles.hatch)}
+          className={clsx("inked stroke-coral", styles.hatch)}
           d="M249 370L274 351L299 370Z"
-          fill="url(#hatch-coral)"
+          fill={hatchFill(Hatch.CORAL)}
           pathLength={1}
         />
         <rect
-          className={cn(lampClass, styles.hatch)}
+          className={clsx(lampClass, styles.hatch)}
           x="262"
           y="378"
           width="9"

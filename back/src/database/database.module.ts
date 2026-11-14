@@ -1,30 +1,22 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { parse } from 'pg-connection-string';
 
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const dbUrl = configService.get<string>('DATABASE_URL');
-        const parsed = parse(dbUrl || '');
-
-        if (!parsed.host || !parsed.port || !parsed.database || !parsed.user) {
-          throw new Error('Invalid DATABASE_URL');
+      useFactory: () => {
+        const url = process.env.DATABASE_URL;
+        if (!url) {
+          throw new Error(
+            'DATABASE_URL is not defined in environment variables',
+          );
         }
 
         return {
           type: 'postgres',
-          host: parsed.host,
-          port: parseInt(parsed.port, 10),
-          username: parsed.user,
-          password: parsed.password,
-          database: parsed.database,
+          url,
           entities: [__dirname + '/../**/*.entity.{js,ts}'],
-          synchronize: configService.get<string>('NODE_ENV') !== 'production',
+          synchronize: process.env.NODE_ENV !== 'production',
         };
       },
     }),

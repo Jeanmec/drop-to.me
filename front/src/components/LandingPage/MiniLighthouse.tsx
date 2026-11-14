@@ -1,3 +1,6 @@
+import { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
+
 interface MiniLighthouseProps {
   className?: string;
 }
@@ -9,8 +12,8 @@ export default function MiniLighthouse({ className }: MiniLighthouseProps) {
         className="inked fill-night stroke-cream"
         d="M21 150L27 40H37L43 150Z"
       />
-      <path d="M22.6 120H41.4L40 96H24Z" fill="url(#hatch-coral)" />
-      <path d="M25.4 70H38.6L37 40H27Z" fill="url(#hatch-coral)" />
+      <path d="M22.6 120H41.4L40 96H24Z" fill={hatchFill(Hatch.CORAL)} />
+      <path d="M25.4 70H38.6L37 40H27Z" fill={hatchFill(Hatch.CORAL)} />
       <path className="pen stroke-cream" d="M22 40H42" />
       <rect
         className="inked fill-night stroke-cream"
@@ -24,7 +27,7 @@ export default function MiniLighthouse({ className }: MiniLighthouseProps) {
       <path
         className="inked stroke-coral"
         d="M22 14H42L32 3Z"
-        fill="url(#hatch-coral)"
+        fill={hatchFill(Hatch.CORAL)}
       />
     </svg>
   );

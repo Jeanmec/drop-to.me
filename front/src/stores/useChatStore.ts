@@ -1,66 +1,52 @@
-import type { Message, MessageDelivery } from "@/types/message.t";
 import { create } from "zustand";
-
-let messageCounter = 0;
+import {
+  storedHistorySchema,
+  storedMessageSchema,
+} from "@/schemas/chatHistory.schema";
+import {
+  MessageDelivery,
+  type TMessage,
+  type TNewMessage,
+} from "@/types/message.t";
 
 const HISTORY_KEY_PREFIX = "drop-to-me:chat:";
 
-interface StoredMessage {
-  id: string;
-  received: boolean;
-  content: string;
-  timestamp: string;
-  system?: boolean;
-  delivery?: MessageDelivery;
-}
+let addedMessageCount = 0;
 
-const isMessageDelivery = (value: unknown): value is MessageDelivery =>
-  value === "pending" || value === "delivered" || value === "failed";
-
-const isStoredMessage = (value: unknown): value is StoredMessage =>
-  typeof value === "object" &&
-  value !== null &&
-  "id" in value &&
-  typeof value.id === "string" &&
-  "received" in value &&
-  typeof value.received === "boolean" &&
-  "content" in value &&
-  typeof value.content === "string" &&
-  "timestamp" in value &&
-  typeof value.timestamp === "string" &&
-  (!("delivery" in value) || isMessageDelivery(value.delivery));
-
-const readHistory = (roomKey: string): Message[] => {
+const readHistory = (roomKey: string): TMessage[] => {
   try {
-    const raw = sessionStorage.getItem(HISTORY_KEY_PREFIX + roomKey);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    if (!Array.isArray(parsed)) {
-      return [];
-    }
-    return parsed.filter(isStoredMessage).map(
-      (message): Message => ({
-        ...message,
-        timestamp: new Date(message.timestamp),
-        // a pending message read back from storage has lost the acknowledgement that would confirm it
-        delivery: message.delivery === "pending" ? "failed" : message.delivery,
-      }),
+    const stored: unknown = JSON.parse(
+      sessionStorage.getItem(HISTORY_KEY_PREFIX + roomKey) ?? "[]",
     );
+
+    return storedHistorySchema.parse(stored).flatMap((entry) => {
+      const message = storedMessageSchema.safeParse(entry);
+      if (!message.success) {
+        return [];
+      }
+      // a pending message read back from storage has lost the acknowledgement that would confirm it
+      const delivery =
+        message.data.delivery === MessageDelivery.PENDING
+          ? MessageDelivery.FAILED
+          : message.data.delivery;
+      return [{ ...message.data, delivery }];
+    });
   } catch {
     return [];
   }
 };
 
-const writeHistory = (roomKey: string | null, messages: Message[]) => {
+const writeHistory = (roomKey: string | null, messages: TMessage[]): void => {
   if (!roomKey) {
     return;
   }
-  const stored: StoredMessage[] = messages
+  const stored = messages
     .filter((message) => !message.file)
     .map(({ id, received, content, timestamp, system, delivery }) => ({
       id,
       received,
       content,
-      timestamp: timestamp.toISOString(),
+      timestamp,
       system,
       delivery,
     }));
@@ -74,35 +60,51 @@ const writeHistory = (roomKey: string | null, messages: Message[]) => {
   }
 };
 
+const revokeFileUrls = (messages: TMessage[]): void => {
+  messages.forEach((message) => {
+    if (message.file?.fileUrl) {
+      URL.revokeObjectURL(message.file.fileUrl);
+    }
+  });
+};
+
 interface ChatStore {
   roomKey: string | null;
-  messages: Message[] | null;
+  messages: TMessage[];
   unreadCount: number;
   isChatOpen: boolean;
   openRoom: (roomKey: string) => void;
-  addMessage: (message: Omit<Message, "id">) => string;
+  addMessage: (message: TNewMessage) => string;
   setMessageDelivery: (id: string, delivery: MessageDelivery) => void;
-  setChatOpen: (open: boolean) => void;
+  openChat: () => void;
   closeChat: () => void;
   markChatRead: () => void;
 }
 
-export const useChatStore = create<ChatStore>((set) => ({
+export const useChatStore = create<ChatStore>((set, get) => ({
   roomKey: null,
-  messages: null,
+  messages: [],
   unreadCount: 0,
   isChatOpen: false,
-  openRoom: (roomKey) =>
-    set({ roomKey, messages: readHistory(roomKey), unreadCount: 0 }),
+
+  openRoom: (roomKey) => {
+    revokeFileUrls(get().messages);
+    set({ roomKey, messages: readHistory(roomKey), unreadCount: 0 });
+  },
+
   addMessage: (message) => {
-    const id = `msg-${Date.now()}-${++messageCounter}`;
+    addedMessageCount += 1;
+    const id = `msg-${Date.now()}-${addedMessageCount}`;
+
     set((state) => {
-      const entry = { ...message, id };
       const isUnread =
-        message.received === true &&
+        message.received &&
         !message.system &&
-        (!state.isChatOpen || document.visibilityState !== "visible");
-      const messages = state.messages ? [...state.messages, entry] : [entry];
+        (!state.isChatOpen || document.hidden);
+      const messages = [
+        ...state.messages,
+        { ...message, id, timestamp: new Date() },
+      ];
       writeHistory(state.roomKey, messages);
       return {
         messages,
@@ -111,22 +113,26 @@ export const useChatStore = create<ChatStore>((set) => ({
     });
     return id;
   },
+
   setMessageDelivery: (id, delivery) =>
     set((state) => {
-      if (!state.messages) {
-        return state;
-      }
       const messages = state.messages.map((message) =>
         message.id === id ? { ...message, delivery } : message,
       );
       writeHistory(state.roomKey, messages);
       return { messages };
     }),
-  setChatOpen: (open) =>
-    set((state) => ({
-      isChatOpen: open,
-      unreadCount: open ? 0 : state.unreadCount,
-    })),
+
+  openChat: () => set({ isChatOpen: true, unreadCount: 0 }),
   closeChat: () => set({ isChatOpen: false }),
   markChatRead: () => set({ unreadCount: 0 }),
 }));
+
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    const { isChatOpen, markChatRead } = useChatStore.getState();
+    if (isChatOpen && !document.hidden) {
+      markChatRead();
+    }
+  });
+}

@@ -1,4 +1,6 @@
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import { CloudSize, Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import Cloud from "./Cloud";
 import styles from "./Scene.module.css";
 
@@ -47,25 +49,29 @@ export default function NightSky({ isLit }: NightSkyProps) {
       </svg>
       <svg className={styles.moon} viewBox="-62 -62 124 124" aria-hidden>
         <circle
-          className={cn("inked stroke-ash", styles.hatch, isLit && "opacity-0")}
+          className={clsx(
+            "inked stroke-ash",
+            styles.hatch,
+            isLit && "opacity-0",
+          )}
           r="50"
-          fill="url(#hatch-ashen)"
+          fill={hatchFill(Hatch.ASHEN)}
           pathLength={1}
         />
         <circle
-          className={cn(
+          className={clsx(
             "inked stroke-moon",
             styles.hatch,
             !isLit && "opacity-0",
           )}
           r="50"
-          fill="url(#hatch-moon)"
+          fill={hatchFill(Hatch.MOON)}
           pathLength={1}
         />
       </svg>
-      <Cloud size="wide" isLit={isLit} />
-      <Cloud size="mid" isLit={isLit} />
-      <Cloud size="small" isLit={isLit} />
+      <Cloud size={CloudSize.WIDE} isLit={isLit} />
+      <Cloud size={CloudSize.MID} isLit={isLit} />
+      <Cloud size={CloudSize.SMALL} isLit={isLit} />
     </>
   );
 }

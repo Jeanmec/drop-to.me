@@ -1,12 +1,14 @@
 import { create } from "zustand";
-import type { TStatistics } from "@droptome/shared";
+import {
+  StatUpdateType,
+  type TStatUpdate,
+  type TStatistics,
+} from "@droptome/shared";
 
 interface StatsStore {
   statistics: TStatistics;
   setStatistics: (statistics: TStatistics) => void;
-  updateMessageCount: (count: number) => void;
-  updateUserCount: (count: number) => void;
-  updateFileStats: (count: number, size: number) => void;
+  applyUpdate: (update: TStatUpdate) => void;
 }
 
 const DEFAULT_STATISTICS: TStatistics = {
@@ -16,27 +18,31 @@ const DEFAULT_STATISTICS: TStatistics = {
   messagesSent: 0,
 };
 
+const applyStatUpdate = (
+  statistics: TStatistics,
+  update: TStatUpdate,
+): TStatistics => {
+  switch (update.type) {
+    case StatUpdateType.MESSAGES:
+      return { ...statistics, messagesSent: update.count };
+    case StatUpdateType.USERS:
+      return { ...statistics, users: update.count };
+    case StatUpdateType.FILES:
+      return {
+        ...statistics,
+        totalTransfers: update.count,
+        sizeTransferred: update.size ?? statistics.sizeTransferred,
+      };
+  }
+};
+
 export const useStatsStore = create<StatsStore>((set) => ({
   statistics: DEFAULT_STATISTICS,
 
   setStatistics: (statistics) => set({ statistics }),
 
-  updateMessageCount: (count) =>
+  applyUpdate: (update) =>
     set((state) => ({
-      statistics: { ...state.statistics, messagesSent: count },
-    })),
-
-  updateUserCount: (count) =>
-    set((state) => ({
-      statistics: { ...state.statistics, users: count },
-    })),
-
-  updateFileStats: (count, size) =>
-    set((state) => ({
-      statistics: {
-        ...state.statistics,
-        totalTransfers: count,
-        sizeTransferred: size,
-      },
+      statistics: applyStatUpdate(state.statistics, update),
     })),
 }));

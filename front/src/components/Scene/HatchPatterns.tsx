@@ -1,5 +1,7 @@
-interface Hatch {
-  id: string;
+import { Hatch } from "@/types/scene.t";
+
+interface HatchPattern {
+  id: Hatch;
   stroke: string;
   gap: number;
   angle: number;
@@ -7,7 +9,7 @@ interface Hatch {
 }
 
 interface GlintField {
-  id: string;
+  id: Hatch;
   width: number;
   rows: number;
   gap: number;
@@ -17,50 +19,50 @@ interface GlintField {
   seed: number;
 }
 
-const HATCHES: Hatch[] = [
-  { id: "hatch-veil", stroke: "stroke-dim", gap: 5, angle: 0, width: 1.15 },
-  { id: "hatch-rose", stroke: "stroke-dim", gap: 6, angle: -35, width: 1.15 },
-  { id: "hatch-sea", stroke: "stroke-sea-line", gap: 9, angle: 0, width: 1.15 },
-  { id: "hatch-far", stroke: "stroke-sea-line", gap: 5, angle: 0, width: 1.15 },
-  { id: "hatch-lit", stroke: "stroke-moon", gap: 9, angle: 0, width: 1.4 },
-  { id: "hatch-lit-far", stroke: "stroke-moon", gap: 5, angle: 0, width: 1.1 },
-  { id: "hatch-moon", stroke: "stroke-moon", gap: 3.6, angle: 0, width: 1.3 },
-  { id: "hatch-ashen", stroke: "stroke-ash", gap: 3.6, angle: 0, width: 1.3 },
-  { id: "hatch-rock", stroke: "stroke-rock", gap: 7, angle: -35, width: 1.15 },
+const HATCHES: HatchPattern[] = [
+  { id: Hatch.VEIL, stroke: "stroke-dim", gap: 5, angle: 0, width: 1.15 },
+  { id: Hatch.ROSE, stroke: "stroke-dim", gap: 6, angle: -35, width: 1.15 },
+  { id: Hatch.SEA, stroke: "stroke-sea-line", gap: 9, angle: 0, width: 1.15 },
+  { id: Hatch.FAR, stroke: "stroke-sea-line", gap: 5, angle: 0, width: 1.15 },
+  { id: Hatch.LIT, stroke: "stroke-moon", gap: 9, angle: 0, width: 1.4 },
+  { id: Hatch.LIT_FAR, stroke: "stroke-moon", gap: 5, angle: 0, width: 1.1 },
+  { id: Hatch.MOON, stroke: "stroke-moon", gap: 3.6, angle: 0, width: 1.3 },
+  { id: Hatch.ASHEN, stroke: "stroke-ash", gap: 3.6, angle: 0, width: 1.3 },
+  { id: Hatch.ROCK, stroke: "stroke-rock", gap: 7, angle: -35, width: 1.15 },
   {
-    id: "hatch-wood",
+    id: Hatch.WOOD,
     stroke: "stroke-rock",
     gap: 3.4,
     angle: -35,
     width: 1.15,
   },
-  { id: "hatch-gold", stroke: "stroke-moon", gap: 2.4, angle: 0, width: 1.1 },
+  { id: Hatch.GOLD, stroke: "stroke-moon", gap: 2.4, angle: 0, width: 1.1 },
   {
-    id: "hatch-grass",
+    id: Hatch.GRASS,
     stroke: "stroke-grass",
     gap: 3.6,
     angle: 0,
     width: 1.15,
   },
-  { id: "hatch-coral", stroke: "stroke-coral", gap: 3, angle: 0, width: 1.15 },
-  { id: "hatch-lamp", stroke: "stroke-moon", gap: 2.4, angle: 0, width: 1.15 },
-  { id: "hatch-hull", stroke: "stroke-cream", gap: 3.6, angle: 0, width: 1.15 },
+  { id: Hatch.CORAL, stroke: "stroke-coral", gap: 3, angle: 0, width: 1.15 },
+  { id: Hatch.LAMP, stroke: "stroke-moon", gap: 2.4, angle: 0, width: 1.15 },
+  { id: Hatch.HULL, stroke: "stroke-cream", gap: 3.6, angle: 0, width: 1.15 },
   {
-    id: "hatch-sail-blush",
+    id: Hatch.SAIL_BLUSH,
     stroke: "stroke-blush",
     gap: 3.4,
     angle: -35,
     width: 1.15,
   },
   {
-    id: "hatch-sail-lilac",
+    id: Hatch.SAIL_LILAC,
     stroke: "stroke-lilac",
     gap: 3.4,
     angle: -35,
     width: 1.15,
   },
   {
-    id: "hatch-sail-moon",
+    id: Hatch.SAIL_MOON,
     stroke: "stroke-moon",
     gap: 3.4,
     angle: -35,
@@ -70,7 +72,7 @@ const HATCHES: Hatch[] = [
 
 const GLINT_FIELDS: GlintField[] = [
   {
-    id: "hatch-glint",
+    id: Hatch.GLINT,
     width: 240,
     rows: 6,
     gap: 9,
@@ -80,7 +82,7 @@ const GLINT_FIELDS: GlintField[] = [
     seed: 7,
   },
   {
-    id: "hatch-glint-far",
+    id: Hatch.GLINT_FAR,
     width: 160,
     rows: 4,
     gap: 5,

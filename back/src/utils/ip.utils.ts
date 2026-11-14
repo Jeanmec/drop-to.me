@@ -1,9 +1,10 @@
 import * as crypto from 'crypto';
 import { IncomingMessage } from 'http';
+import { Logger } from '@nestjs/common';
 
 const secret = process.env.IP_HASH_SECRET;
 if (!secret) {
-  console.warn(
+  new Logger('IpUtils').warn(
     'IP_HASH_SECRET is not set — using a random secret (will change on restart)',
   );
 }

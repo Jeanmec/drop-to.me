@@ -1,71 +1,82 @@
-import type { TDevice } from "@/types/peer.t";
+import { UAParser } from "ua-parser-js";
+import type { TDevice } from "@/schemas/device.schema";
 
-interface BrowserSignature {
-  label: string;
-  tokens: string[];
+// the values are the names ua-parser-js reports
+enum OperatingSystem {
+  MAC_OS = "Mac OS",
+  CHROMIUM_OS = "Chromium OS",
 }
 
-// first match wins: Edge, Opera and Samsung Internet also carry "Chrome/" and "Safari/"
-const BROWSERS: BrowserSignature[] = [
-  { label: "Edge", tokens: ["Edg/", "EdgA/", "EdgiOS/"] },
-  { label: "Opera", tokens: ["OPR/", "OPT/"] },
-  { label: "Samsung Internet", tokens: ["SamsungBrowser/"] },
-  { label: "Firefox", tokens: ["Firefox/", "FxiOS/"] },
-  { label: "Chrome", tokens: ["Chrome/", "CriOS/"] },
-  { label: "Safari", tokens: ["Safari/"] },
-];
+enum HandheldType {
+  MOBILE = "mobile",
+  TABLET = "tablet",
+}
 
-// Chrome freezes the model to "K"; Firefox puts "Mobile" or "Tablet" in its place
-const GENERIC_ANDROID_MODELS = ["K", "Mobile", "Tablet"];
+const IPAD_MODEL = "iPad";
+const IPAD_SYSTEM = "iPadOS";
+const MOBILE_BROWSER_PREFIX = "Mobile ";
+// Chrome freezes the Android model to "K"
+const GENERIC_MODELS = ["K"];
 
-const describeBrowser = (userAgent: string): string =>
-  BROWSERS.find((browser) =>
-    browser.tokens.some((token) => userAgent.includes(token)),
-  )?.label ?? "Browser";
-
-const describeAndroid = (userAgent: string): string => {
-  const model = /Android [\d.]+; ([^;)]+)/
-    .exec(userAgent)?.[1]
-    ?.replace(/^SAMSUNG /, "")
-    .replace(/ Build\/.*$/, "")
-    .trim();
-
-  if (model && !GENERIC_ANDROID_MODELS.includes(model)) {
-    return model;
+const describeSystem = (system: string | undefined): string => {
+  switch (system) {
+    case OperatingSystem.MAC_OS:
+      return "macOS";
+    case OperatingSystem.CHROMIUM_OS:
+      return "ChromeOS";
+    default:
+      return system ?? "";
   }
-  return userAgent.includes("Mobile") ? "Phone" : "Tablet";
+};
+
+const describeComputer = (system: string | undefined): string => {
+  switch (system) {
+    case undefined:
+      return "Device";
+    case OperatingSystem.MAC_OS:
+      return "Mac";
+    case OperatingSystem.CHROMIUM_OS:
+      return "Chromebook";
+    default:
+      return "PC";
+  }
+};
+
+const describeHandheld = (
+  type: string | undefined,
+  model: string | undefined,
+): string | null => {
+  const isNamed = model !== undefined && !GENERIC_MODELS.includes(model);
+
+  switch (type) {
+    case HandheldType.MOBILE:
+      return isNamed ? model : "Phone";
+    case HandheldType.TABLET:
+      return isNamed ? model : "Tablet";
+    default:
+      return null;
+  }
 };
 
 export const describeDevice = (
   userAgent: string,
   maxTouchPoints: number,
 ): TDevice => {
-  const browser = describeBrowser(userAgent);
+  const { browser, device, os } = new UAParser(userAgent).getResult();
+  const browserName =
+    browser.name?.replace(MOBILE_BROWSER_PREFIX, "") ?? "Browser";
 
-  if (userAgent.includes("iPhone")) {
-    return { name: "iPhone", browser, system: "iOS" };
-  }
   // iPadOS Safari sends a Mac user agent
-  if (
-    userAgent.includes("iPad") ||
-    (userAgent.includes("Macintosh") && maxTouchPoints > 1)
-  ) {
-    return { name: "iPad", browser, system: "iPadOS" };
+  const isDesktopModeIpad =
+    os.name === OperatingSystem.MAC_OS && maxTouchPoints > 1;
+  if (isDesktopModeIpad || device.model === IPAD_MODEL) {
+    return { name: IPAD_MODEL, browser: browserName, system: IPAD_SYSTEM };
   }
-  if (userAgent.includes("Android")) {
-    return { name: describeAndroid(userAgent), browser, system: "Android" };
-  }
-  if (userAgent.includes("Windows")) {
-    return { name: "PC", browser, system: "Windows" };
-  }
-  if (userAgent.includes("Macintosh")) {
-    return { name: "Mac", browser, system: "macOS" };
-  }
-  if (userAgent.includes("CrOS")) {
-    return { name: "Chromebook", browser, system: "ChromeOS" };
-  }
-  if (userAgent.includes("Linux")) {
-    return { name: "PC", browser, system: "Linux" };
-  }
-  return { name: "Device", browser, system: "" };
+
+  return {
+    name:
+      describeHandheld(device.type, device.model) ?? describeComputer(os.name),
+    browser: browserName,
+    system: describeSystem(os.name),
+  };
 };

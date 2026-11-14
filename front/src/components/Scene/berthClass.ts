@@ -1,13 +1,13 @@
-import type { TBerth } from "@/types/scene.t";
+import { Berth } from "@/types/scene.t";
 import styles from "./Fleet.module.css";
 
-export const berthClass = (berth: TBerth): string => {
+export const berthClass = (berth: Berth): string => {
   switch (berth) {
-    case "west":
+    case Berth.WEST:
       return styles.west;
-    case "east":
+    case Berth.EAST:
       return styles.east;
-    case "cove":
+    case Berth.COVE:
       return styles.cove;
   }
 };

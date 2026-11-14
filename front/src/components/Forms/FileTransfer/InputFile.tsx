@@ -1,33 +1,27 @@
-import { useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { Icon } from "@/components/Icons/Icon";
+import Icon from "@/components/Icons/Icon";
 import BeaconButton from "@/components/ui/BeaconButton";
 
 interface InputFileProps {
-  callback?: (files: File[] | null) => void;
-  disabled?: boolean;
-  hasNoRecipient?: boolean;
-  isDropTarget?: boolean;
+  onFilesSelected: (files: File[]) => void;
+  disabled: boolean;
+  hasNoRecipient: boolean;
+  isDropTarget: boolean;
   label: string;
 }
 
 export default function InputFile({
-  callback,
+  onFilesSelected,
   disabled,
   hasNoRecipient,
   isDropTarget,
   label,
 }: InputFileProps) {
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      callback?.(acceptedFiles.length > 0 ? acceptedFiles : null);
-    },
-    [callback],
-  );
-
+  // a file the Android picker returns after the last peer left must still reach onDrop
   const { getRootProps, getInputProps } = useDropzone({
-    onDrop,
+    onDrop: onFilesSelected,
     disabled,
+    noClick: hasNoRecipient,
     noKeyboard: true,
     multiple: true,
   });
@@ -35,7 +29,8 @@ export default function InputFile({
   return (
     <div {...getRootProps()}>
       <BeaconButton
-        disabled={disabled || hasNoRecipient}
+        disabled={disabled}
+        isUnavailable={hasNoRecipient}
         isRaised={isDropTarget}
       >
         <Icon.upload className="text-night size-5.5" />

@@ -1,31 +1,4 @@
 @import "tailwindcss";
-@plugin "@midudev/tailwind-animations";
-@tailwind utilities;
-
-@theme {
-  --font-sans:
-    var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-
-  --color-primary-blue: #389cde;
-  --color-secondary-blue: #3caaed;
-  --color-white: #ffffff;
-  --color-description: #b0b0b0;
-  --color-muted: oklch(55.1% 0.027 264.364);
-  --color-icon-muted: oklch(70.4% 0.04 256.788);
-  --color-control-hover: oklch(37.2% 0.044 257.287);
-  --color-danger: oklch(70.4% 0.191 22.216);
-  --color-room-code: oklch(76.5% 0.177 163.223);
-  --color-room-code-label: oklch(70.4% 0.04 256.788);
-  --color-toast-close: oklch(37.3% 0.034 259.733);
-  --color-toast-close-hover: oklch(44.6% 0.03 256.802);
-  --color-toast-close-icon: oklch(70.7% 0.022 261.325);
-  --font-inter: "Inter", sans-serif;
-  --font-poppins: "Poppins", sans-serif;
-  --font-plus-jakarta-sans: "Plus Jakarta Sans", sans-serif;
-  --aspect-card-illustration: 10 / 7;
-  --aspect-card-banner: 25 / 9;
-}
 
 @theme static {
   --font-serif: var(--font-fraunces), Georgia, serif;
@@ -48,6 +21,7 @@
   --color-lilac: #b39cff;
   --color-chart-grid: rgb(170 180 216 / 0.09);
   --color-scrim: rgb(5 10 26 / 0.6);
+  --color-veil: rgb(0 0 0 / 0.05);
 
   --text-micro: 0.65625rem;
   --text-caption: 0.71875rem;
@@ -59,23 +33,44 @@
   --text-title: clamp(3.75rem, 9.8vw, 10.25rem);
 
   --pen: 1.3px;
-}
 
-.animate-border {
-  animation: rotate-border 4s linear infinite;
-}
+  --animate-intro: elapse 2.5s;
+  --animate-patience: elapse 15s;
+  --animate-wash: elapse 2s;
+  --animate-peer-wait: elapse 60s;
+  --animate-pass: pass 3.4s ease-out forwards;
+  --animate-refuse: refuse 0.4s ease-in-out;
 
-@theme inline {
-  --animate-ripple: ripple var(--duration, 2s) ease calc(var(--i, 0) * 0.2s)
-    infinite;
-
-  @keyframes ripple {
-    0%,
-    100% {
-      transform: translate(-50%, -50%) scale(1);
+  @keyframes elapse {
+    from {
+      opacity: 0;
     }
-    50% {
-      transform: translate(-50%, -50%) scale(0.9);
+  }
+
+  @keyframes pass {
+    0% {
+      opacity: 0;
+      translate: 0 -8px;
+    }
+    8%,
+    88% {
+      opacity: 1;
+      translate: 0 0;
+    }
+    100% {
+      opacity: 0;
+      translate: 0 -8px;
+    }
+  }
+
+  @keyframes refuse {
+    20%,
+    60% {
+      translate: -6px 0;
+    }
+    40%,
+    80% {
+      translate: 6px 0;
     }
   }
 }
@@ -90,59 +85,6 @@
 @utility inked {
   stroke-width: var(--pen);
   stroke-linejoin: round;
-}
-
-@layer utilities {
-  @property --border-angle {
-    syntax: "<angle>";
-    inherits: false;
-    initial-value: 0deg;
-  }
-
-  @keyframes rotate-border {
-    from {
-      --border-angle: 0deg;
-    }
-    to {
-      --border-angle: 360deg;
-    }
-  }
-
-  @keyframes radar-spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(180deg);
-    }
-  }
-
-  .animate-radar-spin {
-    animation: radar-spin 10s linear infinite alternate;
-  }
-
-  .custom-primary-shadow {
-    --tw-shadow-color: theme("colors.primary-blue");
-    box-shadow:
-      inset 0 0 0.5em 0 var(--tw-shadow-color),
-      0 0 0.5em 0 var(--tw-shadow-color);
-    text-shadow:
-      0 0 0.125em hsl(0 0% 100% / 0.3),
-      0 0 0.45em var(--tw-shadow-color);
-  }
-
-  .custom-primary-shadow-hover:hover {
-    box-shadow:
-      inset 0 0 0.5em 0 var(--tw-shadow-color),
-      0 0 0.5em 0 var(--tw-shadow-color),
-      0 0 1em 0 var(--tw-shadow-color);
-  }
-
-  .text-primary-shadow {
-    --tw-shadow-color: theme("colors.primary-blue");
-    filter: drop-shadow(0 0 0.5em var(--tw-shadow-color))
-      drop-shadow(0 0 0.125em var(--tw-shadow-color));
-  }
 }
 
 html {

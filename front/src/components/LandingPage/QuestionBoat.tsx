@@ -1,10 +1,11 @@
 import GoldCoin from "@/components/Icons/GoldCoin";
-import { cn } from "@/library/utils";
-import type { TQuestionBoat } from "@/types/scene.t";
+import clsx from "clsx";
+import { Hatch, QuestionBoatKind } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./QuestionFleet.module.css";
 
 interface QuestionBoatProps {
-  kind: TQuestionBoat;
+  kind: QuestionBoatKind;
   isLit: boolean;
 }
 
@@ -23,24 +24,24 @@ const COIN_PILE: CoinSpot[] = [
 ];
 
 export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
-  const gear = cn(
+  const gear = clsx(
     "transition-opacity duration-300 ease-out",
     isLit ? "opacity-100" : "opacity-55",
   );
-  const lantern = cn(
+  const lantern = clsx(
     "transition-colors duration-300 ease-out",
     isLit ? "fill-moon" : "fill-dim",
   );
 
   switch (kind) {
-    case "cutter":
+    case QuestionBoatKind.CUTTER:
       return (
         <svg className={styles.skiff} viewBox="0 0 96 88" aria-hidden>
           <path className="fill-night" d="M18 62H78L70 78H26Z" />
           <path
             className="inked stroke-cream"
             d="M18 62H78L70 78H26Z"
-            fill="url(#hatch-hull)"
+            fill={hatchFill(Hatch.HULL)}
           />
           <path className="pen stroke-cream" d="M48 62V9" />
           <g className={gear}>
@@ -48,7 +49,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             <path
               className="inked stroke-blush"
               d="M51 20V57H77Z"
-              fill="url(#hatch-sail-blush)"
+              fill={hatchFill(Hatch.SAIL_BLUSH)}
             />
             <path
               className="inked fill-night stroke-moon"
@@ -58,14 +59,14 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             <path
               className="inked stroke-cream"
               d="M23 46H39V62H23Z"
-              fill="url(#hatch-wood)"
+              fill={hatchFill(Hatch.WOOD)}
             />
             <path className="pen stroke-cream" d="M23 46L39 62M39 46L23 62" />
           </g>
           <circle className={lantern} cx="48" cy="5" r="3" />
         </svg>
       );
-    case "periscope":
+    case QuestionBoatKind.PERISCOPE:
       return (
         <svg className={styles.skiff} viewBox="0 0 96 88" aria-hidden>
           <path
@@ -76,7 +77,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
           <path
             className="inked stroke-cream"
             d="M43 46H53V84H43Z"
-            fill="url(#hatch-hull)"
+            fill={hatchFill(Hatch.HULL)}
           />
           <g className={gear}>
             <path
@@ -88,7 +89,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
           <circle className={lantern} cx="60" cy="24" r="3.2" />
         </svg>
       );
-    case "galleon":
+    case QuestionBoatKind.GALLEON:
       return (
         <svg className={styles.skiff} viewBox="0 0 96 88" aria-hidden>
           <path className="pen stroke-cream" d="M14 52L2 45" />
@@ -99,7 +100,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
           <path
             className="inked stroke-cream"
             d="M8 50L22 78H74L86 62V46H72V56H24L14 52Z"
-            fill="url(#hatch-hull)"
+            fill={hatchFill(Hatch.HULL)}
           />
           <path
             className="inked fill-night stroke-cream"
@@ -141,14 +142,14 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
           <circle className={lantern} cx="48" cy="5" r="3" />
         </svg>
       );
-    case "airdrop":
+    case QuestionBoatKind.AIRDROP:
       return (
         <svg className={styles.skiff} viewBox="0 0 96 88" aria-hidden>
           <path className="fill-night" d="M18 62H78L70 78H26Z" />
           <path
             className="inked stroke-cream"
             d="M18 62H78L70 78H26Z"
-            fill="url(#hatch-hull)"
+            fill={hatchFill(Hatch.HULL)}
           />
           <path className="pen stroke-cream" d="M48 62V9" />
           <g className={gear}>
@@ -156,7 +157,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             <path
               className="inked stroke-lilac"
               d="M51 20V57H77Z"
-              fill="url(#hatch-sail-lilac)"
+              fill={hatchFill(Hatch.SAIL_LILAC)}
             />
             <path
               className="inked fill-night stroke-cream"
@@ -164,11 +165,11 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             />
             <path
               d="M28 18Q22 23 23.3 30Q18.7 26.5 14 30A14 12 0 0 1 28 18Z"
-              fill="url(#hatch-coral)"
+              fill={hatchFill(Hatch.CORAL)}
             />
             <path
               d="M28 18Q34 23 32.7 30Q37.3 26.5 42 30A14 12 0 0 0 28 18Z"
-              fill="url(#hatch-coral)"
+              fill={hatchFill(Hatch.CORAL)}
             />
             <path
               className="pen stroke-cream"
@@ -182,20 +183,20 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             <path
               className="inked stroke-cream"
               d="M22 44H34V54H22Z"
-              fill="url(#hatch-wood)"
+              fill={hatchFill(Hatch.WOOD)}
             />
           </g>
           <circle className={lantern} cx="48" cy="5" r="3" />
         </svg>
       );
-    case "coins":
+    case QuestionBoatKind.COINS:
       return (
         <svg className={styles.skiff} viewBox="0 0 96 88" aria-hidden>
           <path className="fill-night" d="M18 62H78L70 78H26Z" />
           <path
             className="inked stroke-cream"
             d="M18 62H78L70 78H26Z"
-            fill="url(#hatch-hull)"
+            fill={hatchFill(Hatch.HULL)}
           />
           <path className="pen stroke-cream" d="M48 62V9" />
           <g className={gear}>
@@ -203,7 +204,7 @@ export default function QuestionBoat({ kind, isLit }: QuestionBoatProps) {
             <path
               className="inked stroke-moon"
               d="M51 20V57H77Z"
-              fill="url(#hatch-sail-moon)"
+              fill={hatchFill(Hatch.SAIL_MOON)}
             />
             <path
               className="inked fill-night stroke-moon"

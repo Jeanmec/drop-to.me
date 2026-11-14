@@ -1,10 +1,11 @@
 "use client";
 
+import clsx from "clsx";
 import type { ReactNode } from "react";
 import { useIsStranded } from "@/hooks/useIsStranded";
-import { cn } from "@/library/utils";
-import { usePeersStore } from "@/stores/usePeersStore";
-import type { TBeamState, TScenePhase } from "@/types/scene.t";
+import { useSessionStore } from "@/stores/useSessionStore";
+import { selectIsBeamHeld, useTransferStore } from "@/stores/useTransferStore";
+import { BeamState, ScenePhase } from "@/types/scene.t";
 import BoatFleet from "./BoatFleet";
 import IpPlaque from "./IpPlaque";
 import Isle from "./Isle";
@@ -16,24 +17,24 @@ import styles from "./Scene.module.css";
 
 interface LighthouseSceneProps {
   children: ReactNode;
-  phase: TScenePhase;
+  phase: ScenePhase;
 }
 
-const beamOf = (isCutOff: boolean, isSending: boolean): TBeamState => {
+const beamOf = (isCutOff: boolean, isHeld: boolean): BeamState => {
   if (isCutOff) {
-    return "dark";
+    return BeamState.DARK;
   }
-  return isSending ? "held" : "sweeping";
+  return isHeld ? BeamState.HELD : BeamState.SWEEPING;
 };
 
-const phaseClass = (phase: TScenePhase): string => {
+const phaseClass = (phase: ScenePhase): string | undefined => {
   switch (phase) {
-    case "sketched":
-      return `${styles.pencil} ${styles.drawing}`;
-    case "washed":
+    case ScenePhase.SKETCHED:
+      return clsx(styles.pencil, styles.drawing);
+    case ScenePhase.WASHED:
       return styles.pencil;
-    case "painted":
-      return "";
+    case ScenePhase.PAINTED:
+      return undefined;
   }
 };
 
@@ -41,26 +42,26 @@ export default function LighthouseScene({
   children,
   phase,
 }: LighthouseSceneProps) {
-  const isDisconnected = usePeersStore((state) => state.isPeerDisconnected);
-  const isStranded = useIsStranded();
-  const isSending = usePeersStore((state) =>
-    state.targetPeers.some((peer) => peer.isSending),
+  const isWebRtcUnsupported = useSessionStore(
+    (state) => state.isWebRtcUnsupported,
   );
-  const beam = beamOf(isDisconnected || isStranded, isSending);
-  const isLit = beam !== "dark";
-  const isPainted = phase === "painted";
+  const isStranded = useIsStranded();
+  const isBeamHeld = useTransferStore(selectIsBeamHeld);
+  const beam = beamOf(isWebRtcUnsupported || isStranded, isBeamHeld);
+  const isLit = beam !== BeamState.DARK;
+  const isPainted = phase === ScenePhase.PAINTED;
 
   return (
-    <div className={cn(styles.scene, phaseClass(phase))}>
+    <div className={clsx(styles.scene, phaseClass(phase))}>
       <NightSky isLit={isLit} />
       <LighthouseBeam beam={beam} />
       <Sea beam={beam} />
-      {isPainted && <BoatFleet />}
+      {isPainted && <BoatFleet isBeamHeld={isBeamHeld} />}
       <Isle isLit={isLit} />
       {isPainted && isLit && <span className={styles.ignition} aria-hidden />}
       <LampHalo beam={beam} />
       <span
-        className={cn(
+        className={clsx(
           "bg-scrim pointer-events-none absolute inset-0 transition-opacity duration-700 ease-out",
           (isLit || !isPainted) && "opacity-0",
         )}

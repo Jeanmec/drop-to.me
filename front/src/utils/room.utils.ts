@@ -1,14 +1,14 @@
-import type { RoomCodeProblem } from "@droptome/shared";
+import { RoomCodeProblem } from "@droptome/shared";
 
 export const describeRoomCodeProblem = (problem: RoomCodeProblem): string => {
   switch (problem) {
-    case "empty":
+    case RoomCodeProblem.EMPTY:
       return "Enter a room code.";
-    case "length":
+    case RoomCodeProblem.LENGTH:
       return "A room code has 6 characters.";
-    case "excluded-character":
+    case RoomCodeProblem.EXCLUDED_CHARACTER:
       return "Room codes never use the letters I and O or the digits 0 and 1.";
-    case "invalid-character":
+    case RoomCodeProblem.INVALID_CHARACTER:
       return "Use letters and digits only.";
   }
 };

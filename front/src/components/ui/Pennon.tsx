@@ -1,46 +1,34 @@
+import clsx from "clsx";
 import type { ReactNode } from "react";
-import { cn } from "@/library/utils";
+import { PennonTone } from "@/types/ui.t";
 import styles from "./Pennon.module.css";
-
-type PennonTone = "plain" | "moon" | "alert" | "solid";
-type PennonNotch = "end" | "start";
 
 interface PennonProps {
   children: ReactNode;
   tone?: PennonTone;
-  notch?: PennonNotch;
   className?: string;
 }
 
-const toneClass = (tone: PennonTone): string => {
+const toneClass = (tone: PennonTone): string | undefined => {
   switch (tone) {
-    case "plain":
-      return "";
-    case "moon":
+    case PennonTone.PLAIN:
+      return undefined;
+    case PennonTone.MOON:
       return styles.moon;
-    case "alert":
+    case PennonTone.ALERT:
       return styles.alert;
-    case "solid":
-      return styles.solid;
+    case PennonTone.SIGNAL:
+      return styles.signal;
   }
 };
 
 export default function Pennon({
   children,
-  tone = "plain",
-  notch = "end",
+  tone = PennonTone.PLAIN,
   className,
 }: PennonProps) {
   return (
-    <span
-      className={cn(
-        "block",
-        styles.pennon,
-        toneClass(tone),
-        notch === "start" && styles.notchStart,
-        className,
-      )}
-    >
+    <span className={clsx(styles.pennon, toneClass(tone), className)}>
       {children}
     </span>
   );

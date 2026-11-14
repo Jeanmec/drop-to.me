@@ -1,23 +1,15 @@
 import "@/styles/globals.css";
 
-import { type Metadata } from "next";
+import clsx from "clsx";
+import type { Metadata } from "next";
 import { DM_Mono, Fraunces } from "next/font/google";
-
-import { SocketProvider } from "@/contexts/SocketProvider";
-import { PeerProvider } from "@/contexts/PeerProvider";
-import { ConnectionProvider } from "@/contexts/ConnectionProvider";
-import { ToastProvider } from "@/contexts/ToastContext";
-import Footer from "@/components/Footer";
-import HatchPatterns from "@/components/Scene/HatchPatterns";
-import { StrictMode } from "react";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Drop to me | Peer to peer transfer",
   description:
     "Send files online via secure peer to peer transfer. Free, unlimited size, no logs.",
   keywords:
     "peer to peer, file transfer, secure sharing, fast transfer, free, unlimited",
-  icons: [{ rel: "icon", url: "/favicon.svg" }],
 };
 
 const fraunces = Fraunces({
@@ -34,26 +26,14 @@ const dmMono = DM_Mono({
   display: "swap",
 });
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+interface RootLayoutProps {
+  children: ReactNode;
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <StrictMode>
-      <html lang="en" className={`${fraunces.variable} ${dmMono.variable}`}>
-        <body>
-          <HatchPatterns />
-          <ToastProvider>
-            <PeerProvider>
-              <SocketProvider>
-                <ConnectionProvider>
-                  {children}
-                  <Footer />
-                </ConnectionProvider>
-              </SocketProvider>
-            </PeerProvider>
-          </ToastProvider>
-        </body>
-      </html>
-    </StrictMode>
+    <html lang="en" className={clsx(fraunces.variable, dmMono.variable)}>
+      <body>{children}</body>
+    </html>
   );
 }

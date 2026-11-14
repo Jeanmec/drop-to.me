@@ -1,3 +1,4 @@
+// Icon from Material Line Icons by Vjacheslav Trushkin - https://github.com/cyberalien/line-md/blob/master/license.txt
 export default function IconCheck() {
   return (
     <svg
@@ -6,7 +7,6 @@ export default function IconCheck() {
       height="1em"
       viewBox="0 0 24 24"
     >
-      {/* Icon from Material Line Icons by Vjacheslav Trushkin - https://github.com/cyberalien/line-md/blob/master/license.txt */}
       <path
         fill="none"
         stroke="currentColor"

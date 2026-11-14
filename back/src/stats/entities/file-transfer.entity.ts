@@ -10,8 +10,9 @@ export class FileTransferEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  fileSize: number; // octets
+  // bytes; pg hands a bigint back as a string when a row is read
+  @Column({ type: 'bigint' })
+  fileSize: number;
 
   @CreateDateColumn()
   createdAt: Date;

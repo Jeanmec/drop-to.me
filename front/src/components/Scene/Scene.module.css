@@ -105,14 +105,20 @@
   translate: -50% -50%;
 }
 
+/* Chromium composites an animated HTML box, never an animated svg element */
 .cloud {
   position: absolute;
   left: var(--x);
   top: var(--y);
   width: var(--w);
+  animation: roam var(--pace) ease-in-out infinite alternate;
+}
+
+.cloudShape {
+  display: block;
+  width: 100%;
   height: auto;
   overflow: visible;
-  animation: roam var(--pace) ease-in-out infinite alternate;
 }
 
 .cloudWide {
@@ -281,6 +287,12 @@
   width: calc(100% + 480px);
   height: 100%;
   animation: drift 90s linear infinite;
+}
+
+.glintsSheet {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .moonlit {

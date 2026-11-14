@@ -1,21 +1,20 @@
 # 🌐 Frontend [Drop-to.me](https://drop-to.me/)
 
 This project is built with **Next.js** (React framework) in **TypeScript**.  
-It communicates with the NestJS backend via **WebSocket** and uses **PeerJS** for peer-to-peer connections.
+It talks to the NestJS backend over **Socket.IO** and connects browsers to each other with native **WebRTC** data channels.
 
 ## 🚀 Prerequisites
 
-- Node.js (version 18+ recommended, 22.04 if using Nixpacks)
-- npm or yarn
-- Backend URL (NestJS WebSocket server)
-- PeerJS server URL
+- Node.js 20 or later (22.04 if using Nixpacks)
+- Yarn 1 (the repository is a Yarn workspace)
+- Backend URL (NestJS Socket.IO server)
 
 ## ⚙️ Installation
 
-Install dependencies:
+Install the dependencies of the whole workspace, from the repository root:
 
 ```
-npm install
+yarn install
 ```
 
 ## 🛠 Environment Variables Configuration
@@ -30,9 +29,11 @@ Fill in the environment variables with your values:
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
-NEXT_PUBLIC_PEERJS_URL=http://localhost:9000
-NEXT_PUBLIC_LOADING_SCREEN_DURATION=3000
-NEXT_PUBLIC_WEBSITE_NAME=
+NEXT_PUBLIC_STUN_URLS=stun:stun.l.google.com:19302,stun:global.stun.twilio.com:3478
+NEXT_PUBLIC_TURN_URL=
+NEXT_PUBLIC_TURN_USERNAME=
+NEXT_PUBLIC_TURN_CREDENTIAL=
+NEXT_PUBLIC_WEBSITE_NAME=drop-to.me
 NEXT_PUBLIC_GITHUB_URL=https://github.com/Jeanmec/drop-to.me
 NEXT_PUBLIC_AUTHOR_GITHUB_URL=https://github.com/Jeanmec
 NIXPACKS_NODE_VERSION=22.04
@@ -40,22 +41,26 @@ NIXPACKS_NODE_VERSION=22.04
 
 All `NEXT_PUBLIC_*` values are inlined at build time (`next build`, Docker, Nixpacks): changing one requires a rebuild, not a restart.
 
+The build is a static export written to `out/`; `yarn start` serves it on the port given by `PORT` (3000 by default).
+
 ### Environment Variables Explanation
 
 - **NEXT_PUBLIC_BACKEND_URL**  
-  URL of the NestJS backend server (WebSocket signaling).
+  URL of the NestJS backend server (Socket.IO signaling).
 
-- **NEXT_PUBLIC_PEERJS_URL**  
-  URL of the PeerJS broker (required: the app refuses to start without it).
-
-- **NEXT_PUBLIC_LOADING_SCREEN_DURATION**  
-  Time in milliseconds that the loading animation will be displayed before triggering the rest of the animations.
+- **NEXT_PUBLIC_STUN_URLS**  
+  Comma-separated STUN servers the browsers use to find a route to each other. The terms of use name them.
 
 - **NEXT_PUBLIC_WEBSITE_NAME**  
-  Name of the website (used in titles, metadata, and branding).
+  Name of the website (used in the page and in the terms of use).
+
+The build fails when one of the three variables above is missing or malformed.
+
+- **NEXT_PUBLIC_TURN_URL**, **NEXT_PUBLIC_TURN_USERNAME**, **NEXT_PUBLIC_TURN_CREDENTIAL** (optional)  
+  TURN relay used when two browsers cannot reach each other directly. The credentials are visible in the bundle.
 
 - **NEXT_PUBLIC_GITHUB_URL**  
-  GitHub repository URL of the project, used by the footer "Get the source code" link, the landing open-source card and the FAQ. When empty, the footer and FAQ links are hidden and the card is not clickable.
+  GitHub repository URL of the project, used by the footer "Get the source code" link, the FAQ and the terms of use (license and issue links). When empty, these links are hidden.
 
 - **NEXT_PUBLIC_AUTHOR_GITHUB_URL**  
   Author profile URL, used by the "My Github" footer link. The link is hidden when empty.
@@ -65,42 +70,45 @@ All `NEXT_PUBLIC_*` values are inlined at build time (`next build`, Docker, Nixp
 
 ## ▶️ Running the Project
 
-Development mode:
+From the repository root, development mode:
 
 ```
-npm run dev
+yarn dev:front
 ```
 
 Production mode:
 
 ```
-npm run build
-npm run start
+yarn build:front
+yarn workspace front start
 ```
 
 ### Running with Docker:
 
-A `Dockerfile` is included to run the frontend in a container.
+A `Dockerfile` is included to run the frontend in a container. Its build context is the repository root, and the build reads `front/.env`.
 
-Build the Docker image:
+Build the Docker image, from the repository root:
 
 ```
-docker build -t droptome-frontend .
+docker build -f front/Dockerfile -t droptome-frontend .
 ```
 
 Run the container:
 
 ```
-docker run -p 3000:3000 --env-file .env droptome-frontend
+docker run -p 3000:3000 droptome-frontend
 ```
 
 ## 🗂 Project Structure
 
-- src/app/ : Next.js app router pages and routes
-- src/components/ : Reusable UI components
-- src/contexts/ : React contexts (WebSocket, PeerJS providers)
-- src/services/ : Service layer for WebSocket and peer communication
+- src/app/ : Next.js app router pages (the application and the terms of use)
+- src/components/ : UI components, one folder per domain
+- src/hooks/ : React hooks
+- src/services/ : Socket.IO session, WebRTC connections and transfers
 - src/stores/ : State management stores
-- src/styles/ : Global and component-specific styles
+- src/schemas/ : Validation of the messages exchanged between browsers
+- src/styles/ : Theme and global styles
+- src/types/ : Shared types and enums
+- src/utils/ : Pure helpers
 - .env : Local environment variables
 - .env.example : Example configuration

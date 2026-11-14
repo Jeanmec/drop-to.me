@@ -1,15 +1,17 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FileTransferEntity } from './entities/file-transfer.entity';
 import { UserEntity } from './entities/user.entity';
 import { MessageEntity } from './entities/message.entity';
 import {
-  TStatistics,
-  TStatType,
-  TUpdateStatPayload,
-} from '../types/statistics.t';
-import { SignalService } from 'src/signal/signal.service';
+  StatType,
+  StatUpdateType,
+  type TStatistics,
+  type TStatUpdate,
+} from '@droptome/shared';
+
+const MAX_DECLARED_FILE_SIZE = 1024 ** 4;
 
 @Injectable()
 export class StatsService {
@@ -24,9 +26,6 @@ export class StatsService {
 
     @InjectRepository(MessageEntity)
     private readonly messageRepository: Repository<MessageEntity>,
-
-    @Inject(forwardRef(() => SignalService))
-    private readonly signalService: SignalService,
   ) {}
 
   async addUser(): Promise<boolean> {
@@ -51,8 +50,13 @@ export class StatsService {
     }
   }
 
-  async addTransfer(fileSize: number): Promise<boolean> {
-    if (!Number.isFinite(fileSize) || fileSize <= 0) {
+  async addTransfer(fileSize: number | undefined): Promise<boolean> {
+    if (
+      fileSize === undefined ||
+      !Number.isInteger(fileSize) ||
+      fileSize <= 0 ||
+      fileSize > MAX_DECLARED_FILE_SIZE
+    ) {
       this.logger.warn(`Invalid fileSize rejected: ${fileSize}`);
       return false;
     }
@@ -107,38 +111,34 @@ export class StatsService {
   }
 
   async updateStats(
-    type: TStatType,
+    type: StatType,
     fileSize?: number,
-  ): Promise<TUpdateStatPayload | null> {
+  ): Promise<TStatUpdate | null> {
     let success = false;
 
     switch (type) {
-      case 'user':
+      case StatType.USER:
         success = await this.addUser();
         if (success) {
           const count = await this.getNumberUsers();
-          return { type: 'users', count };
+          return { type: StatUpdateType.USERS, count };
         }
         break;
 
-      case 'message':
+      case StatType.MESSAGE:
         success = await this.addMessage();
         if (success) {
           const count = await this.getNumberMessagesSent();
-          return { type: 'messages', count };
+          return { type: StatUpdateType.MESSAGES, count };
         }
         break;
 
-      case 'file':
-        if (fileSize === undefined) {
-          this.logger.error('File size is required for file type');
-          return null;
-        }
+      case StatType.FILE:
         success = await this.addTransfer(fileSize);
         if (success) {
           const count = await this.getNumberFileTransfers();
           const size = await this.getSizeTransferred();
-          return { type: 'files', count, size };
+          return { type: StatUpdateType.FILES, count, size };
         }
         break;
 

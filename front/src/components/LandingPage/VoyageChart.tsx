@@ -1,44 +1,53 @@
-import { cn } from "@/library/utils";
+import clsx from "clsx";
+import SectionHeading from "@/components/ui/SectionHeading";
+import { env } from "@/env";
+import { Hatch } from "@/types/scene.t";
+import { hatchFill } from "@/utils/hatch.utils";
 import styles from "./VoyageChart.module.css";
 
 const ROSE_POINTS = [0, 1, 2, 3, 4, 5, 6, 7];
 
 const STEPS = [
-  `On connection, ${process.env.NEXT_PUBLIC_WEBSITE_NAME} creates a secure peer-to-peer connection between devices on the same network.`,
+  `On connection, ${env.NEXT_PUBLIC_WEBSITE_NAME} creates a secure peer-to-peer connection between devices on the same network.`,
   "Once the connection is established, you can start sending and receiving data between devices.",
-  `${process.env.NEXT_PUBLIC_WEBSITE_NAME} allows you to transfer files and messages securely and efficiently to all connected users.`,
+  `${env.NEXT_PUBLIC_WEBSITE_NAME} allows you to transfer files and messages securely and efficiently to all connected users.`,
 ];
 
 export default function VoyageChart() {
   return (
     <section>
-      <h2 className="text-moon mb-5.5 font-mono text-xs tracking-widest uppercase">
-        How does it work?
-      </h2>
+      <SectionHeading className="mb-5.5">How does it work?</SectionHeading>
       <div className={styles.sheet}>
-        <svg className={styles.rose} viewBox="-66 -66 132 132" aria-hidden>
-          <circle className="pen stroke-ash opacity-50" r="58" />
-          <circle className="pen stroke-ash opacity-50" r="38" />
-          <g className={styles.needle}>
-            {ROSE_POINTS.map((point) => {
-              const reach = point % 2 ? 30 : 52;
-              return (
-                <g key={point} transform={`rotate(${point * 45})`}>
-                  <path
-                    className="pen stroke-ash"
-                    d={`M0 ${-reach}L7 -7L0 0L-7 -7Z`}
-                  />
-                  <path d={`M0 ${-reach}L7 -7L0 0Z`} fill="url(#hatch-rose)" />
-                </g>
-              );
-            })}
-          </g>
-          <text className={styles.north} y="-56" dy="-2">
-            N
-          </text>
-        </svg>
+        <div className={styles.rose} aria-hidden>
+          <svg className={styles.roseLayer} viewBox="-66 -66 132 132">
+            <circle className="pen stroke-ash opacity-50" r="58" />
+            <circle className="pen stroke-ash opacity-50" r="38" />
+            <text className={styles.north} y="-56" dy="-2">
+              N
+            </text>
+          </svg>
+          <div className={styles.needle}>
+            <svg className={styles.roseLayer} viewBox="-66 -66 132 132">
+              {ROSE_POINTS.map((point) => {
+                const reach = point % 2 ? 30 : 52;
+                return (
+                  <g key={point} transform={`rotate(${point * 45})`}>
+                    <path
+                      className="pen stroke-ash"
+                      d={`M0 ${-reach}L7 -7L0 0L-7 -7Z`}
+                    />
+                    <path
+                      d={`M0 ${-reach}L7 -7L0 0Z`}
+                      fill={hatchFill(Hatch.ROSE)}
+                    />
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        </div>
 
-        <div className={cn(styles.end, "text-ash text-caption font-mono")}>
+        <div className={clsx(styles.end, "text-ash text-caption font-mono")}>
           <svg className={styles.endIcon} viewBox="0 0 44 44" aria-hidden>
             <path
               className="pen stroke-cream"
@@ -72,18 +81,18 @@ export default function VoyageChart() {
             {STEPS.map((step, index) => (
               <li key={step} className={styles.step}>
                 <span
-                  className={cn(styles.buoy, "text-xl font-semibold italic")}
+                  className={clsx(styles.buoy, "text-xl font-semibold italic")}
                   aria-hidden
                 >
                   {index + 1}
                 </span>
-                <p className={cn(styles.stepText, "text-lg")}>{step}</p>
+                <p className={clsx(styles.stepText, "text-lg")}>{step}</p>
               </li>
             ))}
           </ol>
         </div>
 
-        <div className={cn(styles.end, "text-ash text-caption font-mono")}>
+        <div className={clsx(styles.end, "text-ash text-caption font-mono")}>
           <svg className={styles.endIcon} viewBox="0 0 44 44" aria-hidden>
             <path
               className="pen stroke-cream"

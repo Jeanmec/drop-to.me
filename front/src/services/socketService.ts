@@ -1,44 +1,29 @@
-import type { Socket } from "socket.io-client";
+import { SocketEvent } from "@droptome/shared";
+import { io } from "socket.io-client";
+import { env } from "@/env";
+import type { TSignal } from "@/schemas/signal.schema";
+import type { TRoomSocket } from "@/types/socket.t";
 
-let socketInstance: Socket | null = null;
+let socketInstance: TRoomSocket | null = null;
 
-export const setSocketInstance = (socket: Socket) => {
-  socketInstance = socket;
+export const openSocket = (): TRoomSocket => {
+  socketInstance = io(env.NEXT_PUBLIC_BACKEND_URL, {
+    transports: ["websocket"],
+  });
+  return socketInstance;
 };
 
-export const emitSocket = <T = unknown>(event: string, payload?: T) => {
-  if (!socketInstance) {
-    return;
-  }
-  socketInstance.emit(event, payload);
+export const closeSocket = (): void => {
+  socketInstance?.removeAllListeners();
+  socketInstance?.disconnect();
+  socketInstance = null;
 };
 
-export const onSocket = <T = unknown>(
-  event: string,
-  callback: (payload: T) => void,
-) => {
-  if (!socketInstance) {
-    return;
-  }
-  socketInstance.on(event, callback);
-};
+export const getSocket = (): TRoomSocket | null => socketInstance;
 
-export const offSocket = (
-  event: string,
-  callback?: (...args: unknown[]) => void,
-) => {
-  if (!socketInstance) return;
-  if (callback) {
-    socketInstance.off(event, callback);
-  } else {
-    socketInstance.off(event);
+// dropped while disconnected: the rejoin after the reconnection renegotiates every link
+export const sendSignal = (to: string, signal: TSignal): void => {
+  if (socketInstance?.connected) {
+    socketInstance.emit(SocketEvent.SIGNAL, { to, signal });
   }
 };
-
-export const disconnectSocket = () => {
-  if (socketInstance) {
-    socketInstance.disconnect();
-  }
-};
-
-export const getSocket = () => socketInstance;

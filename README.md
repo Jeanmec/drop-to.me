@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://drop-to.me" target="_blank">
-    <img src="https://drop-to.me/favicon.svg" width="120" alt="DropToMe Logo" />
+    <img src="./front/public/favicon.svg" width="120" alt="Drop-to.me logo" />
   </a>
 </p>
 
@@ -16,10 +16,10 @@ DropToMe lets users send files and messages directly between browsers with no ac
 
 ## How It Works
 
-1. **You open the app** — a PeerJS connection is established to get a unique peer ID.
+1. **You open the app** — the browser draws a random peer ID and connects to the server over Socket.IO.
 2. **You join a room** — either automatically (users on the same public IP are grouped together) or manually via a 6-character room code.
-3. **The server introduces peers** — Socket.IO tells each browser which peer IDs are in the room.
-4. **Browsers connect directly** — WebRTC data channels are opened between peers using the PeerJS IDs.
+3. **The server introduces peers** — Socket.IO tells each browser which peer IDs are in the room, and relays the WebRTC offers, answers and ICE candidates between them.
+4. **Browsers connect directly** — WebRTC data channels are opened between peers.
 5. **Files and messages flow peer-to-peer** — all data goes directly between browsers. The server is not involved.
 
 ```
@@ -33,8 +33,8 @@ DropToMe lets users send files and messages directly between browsers with no ac
 └──────────┘
 ```
 
-**Socket.IO** is used only for: joining/leaving rooms, discovering other peers, and anonymous statistics.
-**WebRTC (PeerJS)** carries all the actual data: files (chunked in 16 KB pieces), chat messages, and acknowledgements.
+**Socket.IO** is used only for: joining/leaving rooms, discovering other peers, relaying WebRTC signaling, and anonymous statistics.
+**WebRTC** carries all the actual data: files (chunked in 16 KB pieces), chat messages, and acknowledgements.
 
 ## Key Features
 
@@ -44,7 +44,7 @@ DropToMe lets users send files and messages directly between browsers with no ac
 - **Room codes** — create or join a room with a 6-character code. Shareable via URL (`?room=XXXXXX`).
 - **Chunked file transfer** — large files are split into 16 KB chunks with progress tracking and acknowledgements.
 - **Real-time chat** — text messaging alongside file sharing, all peer-to-peer.
-- **Reconnection handling** — automatic PeerJS reconnection with user feedback.
+- **Reconnection handling** — automatic reconnection with user feedback.
 - **Anonymous statistics** — the server tracks aggregate counters only (number of connections, transfers, total size, messages). No content is ever stored.
 
 ## Network Usage
@@ -59,18 +59,16 @@ This is an Nx monorepo with Yarn workspaces, containing three packages:
 
 | Package | Stack | Role |
 |---------|-------|------|
-| **`front/`** | Next.js 15, React 19, TypeScript | UI, PeerJS client, Socket.IO client |
-| **`back/`** | NestJS 11, TypeScript | Socket.IO gateway, PeerJS server, statistics API |
-| **`libs/shared/`** | TypeScript | Shared types and utility functions |
+| **`front/`** | Next.js 15 (static export), React 19, TypeScript | UI, WebRTC connections, Socket.IO client |
+| **`back/`** | NestJS 11, TypeScript | Socket.IO gateway (rooms, signaling relay), statistics API |
+| **`libs/shared/`** | TypeScript | Socket.IO contract shared by the front and the back, room code utilities |
 
 ### Backend services
 
 | Service | Purpose |
 |---------|---------|
-| **NestJS** (port 3000) | Socket.IO gateway for room signaling + anonymous stats |
-| **PeerJS server** (port 9000) | WebRTC signaling server for peer discovery |
+| **NestJS** (port 3000) | Socket.IO gateway for rooms, WebRTC signaling relay and anonymous stats. Room membership and peer ID ownership tokens only live in its memory |
 | **PostgreSQL** | Stores aggregate statistics only (connection count, transfer count, total size, message count) |
-| **Redis** | Temporary room membership mapping (socket ID → peer ID, TTL 1 hour) |
 
 ### What the server stores
 
@@ -87,3 +85,7 @@ For setup instructions, environment variables, and deployment:
 
 - [Backend README](./back/README.md)
 - [Frontend README](./front/README.md)
+
+## License
+
+Released under the [MIT License](./LICENSE).

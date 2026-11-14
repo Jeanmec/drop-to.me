@@ -1,45 +1,35 @@
 @keyframes march {
   to {
-    background-position: 16px 0;
+    translate: 16px 0;
   }
 }
 
 @keyframes marchDown {
   to {
-    background-position: 0 16px;
+    translate: 0 16px;
   }
 }
 
 @keyframes voyage {
-  from {
-    left: 0;
-  }
   to {
-    left: 100%;
+    translate: 100% 0;
   }
 }
 
 @keyframes voyageDown {
-  from {
-    top: 0;
-  }
   to {
-    top: 100%;
+    translate: 0 100%;
   }
 }
 
 @keyframes pass {
   0%,
   10% {
-    background-color: var(--color-moon);
-    box-shadow: 0 0 0 7px var(--color-moon-glow);
-    color: var(--color-night);
+    opacity: 1;
   }
   18%,
   100% {
-    background-color: var(--color-night);
-    box-shadow: 0 0 0 0 transparent;
-    color: var(--color-moon);
+    opacity: 0;
   }
 }
 
@@ -87,6 +77,12 @@
   height: 132px;
 }
 
+.roseLayer {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .north {
   fill: var(--color-ash);
   font-family: var(--font-mono);
@@ -95,6 +91,8 @@
 }
 
 .needle {
+  position: absolute;
+  inset: 0;
   animation: sway 5s ease-in-out infinite alternate;
 }
 
@@ -125,6 +123,13 @@
   right: -56px;
   top: 21px;
   height: 2px;
+  overflow: clip;
+}
+
+.wake::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 -16px;
   background: repeating-linear-gradient(
     90deg,
     var(--color-moon-soft) 0 8px,
@@ -133,12 +138,13 @@
   animation: march 1.4s linear infinite;
 }
 
+/* as long as the track: a translate of 100% carries the boat to its far end */
 .voyager {
   position: absolute;
   z-index: 2;
   left: 0;
   top: 22px;
-  width: 0;
+  width: 100%;
   height: 0;
   animation: voyage 15s linear infinite;
 }
@@ -156,6 +162,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 28px;
+  counter-reset: step;
 }
 
 .step {
@@ -163,6 +170,7 @@
   align-content: start;
   justify-items: start;
   gap: 16px;
+  counter-increment: step;
 }
 
 .buoy {
@@ -176,6 +184,19 @@
   border-radius: 50%;
   background-color: var(--color-night);
   color: var(--color-moon);
+}
+
+.buoy::before {
+  content: counter(step);
+  position: absolute;
+  inset: -1.6px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background-color: var(--color-moon);
+  box-shadow: 0 0 0 7px var(--color-moon-glow);
+  color: var(--color-night);
+  opacity: 0;
   animation: pass 15s linear infinite;
 }
 
@@ -185,12 +206,12 @@
   animation: read 15s linear infinite;
 }
 
-.step:nth-child(2) .buoy,
+.step:nth-child(2) .buoy::before,
 .step:nth-child(2) .stepText {
   animation-delay: 5s;
 }
 
-.step:nth-child(3) .buoy,
+.step:nth-child(3) .buoy::before,
 .step:nth-child(3) .stepText {
   animation-delay: 10s;
 }
@@ -223,6 +244,10 @@
     bottom: -20px;
     width: 2px;
     height: auto;
+  }
+
+  .wake::before {
+    inset: -16px 0 0;
     background: repeating-linear-gradient(
       180deg,
       var(--color-moon-soft) 0 8px,
@@ -234,6 +259,8 @@
   .voyager {
     left: 22px;
     top: 0;
+    width: 0;
+    height: 100%;
     animation-name: voyageDown;
   }
 

@@ -1,55 +1,35 @@
-import { zip, type AsyncZippable } from "fflate";
+import { downloadZip } from "client-zip";
+import { splitFileName } from "@/utils/file.utils";
+import { formatFileTimestamp } from "@/utils/time.utils";
 
-export const createZipFromFiles = (files: File[]): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    Promise.all(
-      files.map(async (file) => ({
-        name: file.name,
-        data: new Uint8Array(await file.arrayBuffer()),
-      })),
-    )
-      .then((entries) => {
-        const zippable: AsyncZippable = {};
-        const usedNames = new Set<string>();
-        for (const entry of entries) {
-          let name = entry.name;
-          let counter = 1;
-          while (usedNames.has(name)) {
-            const dot = entry.name.lastIndexOf(".");
-            const base = dot > 0 ? entry.name.slice(0, dot) : entry.name;
-            const ext = dot > 0 ? entry.name.slice(dot) : "";
-            name = `${base} (${counter})${ext}`;
-            counter++;
-          }
-          usedNames.add(name);
-          zippable[name] = entry.data;
-        }
-        // fflate level 0 stores the entries without compression
-        zip(zippable, { level: 0 }, (err, data) => {
-          if (err) {
-            reject(err);
-            return;
-          }
-          if (!(data.buffer instanceof ArrayBuffer)) {
-            reject(new Error("Unexpected zip buffer"));
-            return;
-          }
-          const blob = new Blob(
-            [new Uint8Array(data.buffer, data.byteOffset, data.byteLength)],
-            { type: "application/zip" },
-          );
-          const timestamp = new Date()
-            .toISOString()
-            .replace(/[:T]/g, "-")
-            .slice(0, 19);
-          const zipFile = new File(
-            [blob],
-            `drop-${files.length}-files-${timestamp}.zip`,
-            { type: "application/zip" },
-          );
-          resolve(zipFile);
-        });
-      })
-      .catch(reject);
+const ZIP_MIME_TYPE = "application/zip";
+
+const uniqueEntryName = (fileName: string, usedNames: Set<string>): string => {
+  const { baseName, extension } = splitFileName(fileName);
+  let entryName = fileName;
+  let duplicateCount = 0;
+
+  while (usedNames.has(entryName)) {
+    duplicateCount += 1;
+    entryName = `${baseName} (${duplicateCount})${extension}`;
+  }
+  return entryName;
+};
+
+export const createZipFromFiles = async (files: File[]): Promise<File> => {
+  const usedNames = new Set<string>();
+  const entries = files.map((file) => {
+    const name = uniqueEntryName(file.name, usedNames);
+    usedNames.add(name);
+    return { name, input: file };
   });
+
+  // the entries are stored uncompressed and streamed into a Blob the browser keeps
+  const archive = await downloadZip(entries).blob();
+
+  return new File(
+    [archive],
+    `drop-${files.length}-files-${formatFileTimestamp(new Date())}.zip`,
+    { type: ZIP_MIME_TYPE },
+  );
 };

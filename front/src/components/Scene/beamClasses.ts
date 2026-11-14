@@ -1,23 +1,24 @@
-import type { TBeamState } from "@/types/scene.t";
+import clsx from "clsx";
+import { BeamState } from "@/types/scene.t";
 import styles from "./Scene.module.css";
 
-export const turnClass = (beam: TBeamState): string => {
+export const turnClass = (beam: BeamState): string => {
   switch (beam) {
-    case "sweeping":
+    case BeamState.SWEEPING:
       return styles.turning;
-    case "held":
-    case "dark":
-      return `${styles.turning} ${styles.held}`;
+    case BeamState.HELD:
+    case BeamState.DARK:
+      return clsx(styles.turning, styles.held);
   }
 };
 
-export const lightClass = (beam: TBeamState): string => {
+export const lightClass = (beam: BeamState): string | undefined => {
   switch (beam) {
-    case "sweeping":
-      return "";
-    case "held":
+    case BeamState.SWEEPING:
+      return undefined;
+    case BeamState.HELD:
       return styles.dimmed;
-    case "dark":
+    case BeamState.DARK:
       return styles.dark;
   }
 };

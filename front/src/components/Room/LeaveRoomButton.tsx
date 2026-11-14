@@ -1,12 +1,10 @@
 "use client";
 
+import { notify } from "@/services/toastService";
 import { useRoomStore } from "@/stores/useRoomStore";
-import { cn } from "@/library/utils";
-import { notify } from "@/library/toastService";
-import styles from "./Room.module.css";
 
-export function LeaveRoomButton() {
-  const setRoomCode = useRoomStore((s) => s.setRoomCode);
+export default function LeaveRoomButton() {
+  const setRoomCode = useRoomStore((state) => state.setRoomCode);
 
   const handleLeave = () => {
     setRoomCode(null);
@@ -19,17 +17,10 @@ export function LeaveRoomButton() {
     <button
       type="button"
       onClick={handleLeave}
-      className="group ml-0.5 h-11 cursor-pointer"
       aria-label="Leave room"
+      className="border-cream text-moon text-micro hover:bg-moon hover:text-night relative cursor-pointer self-stretch border-l px-2.5 font-mono tracking-widest uppercase before:absolute before:inset-x-0 before:-inset-y-1.5"
     >
-      <span
-        className={cn(
-          styles.tab,
-          "bg-night text-moon text-micro group-hover:bg-moon group-hover:text-night font-mono tracking-widest uppercase",
-        )}
-      >
-        Leave
-      </span>
+      Leave
     </button>
   );
 }

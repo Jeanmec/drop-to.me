@@ -3,23 +3,14 @@ version: '3.8'
 services:
   nest:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: back/Dockerfile
     env_file:
       - ./.env
     ports:
       - '3000:3000'
-      - '9000:9000'
     labels:
       # Coolify also generates a router for the service domain, with priority = rule length (~42)
-      - 'traefik.http.routers.custom-peerjs.rule=Host(`back.drop-to.me`) && PathPrefix(`/peerjs`)'
-      - 'traefik.http.routers.custom-peerjs.entrypoints=https'
-      - 'traefik.http.routers.custom-peerjs.tls=true'
-      - 'traefik.http.routers.custom-peerjs.tls.certresolver=letsencrypt'
-      - 'traefik.http.routers.custom-peerjs.service=custom-peerjs-svc'
-      - 'traefik.http.routers.custom-peerjs.priority=200'
-      - 'traefik.http.services.custom-peerjs-svc.loadbalancer.server.port=9000'
-
       - 'traefik.http.routers.custom-nest.rule=Host(`back.drop-to.me`)'
       - 'traefik.http.routers.custom-nest.entrypoints=https'
       - 'traefik.http.routers.custom-nest.tls=true'

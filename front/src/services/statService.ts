@@ -1,62 +1,31 @@
-import { emitSocket, getSocket } from "./socketService";
-import type { TStatistics, TAddStatPayload } from "@droptome/shared";
+import { SocketEvent, StatType } from "@droptome/shared";
+import { getSocket } from "@/services/socketService";
+import { useStatsStore } from "@/stores/useStatsStore";
 
-class StatService {
-  formatSize(size: number): { value: number; suffix: string } {
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    let unitIndex = 0;
+const STATISTICS_TIMEOUT_MS = 10_000;
 
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024;
-      unitIndex++;
+export const loadStatistics = async (): Promise<void> => {
+  const socket = getSocket();
+  if (!socket) {
+    return;
+  }
+
+  try {
+    const statistics = await socket
+      .timeout(STATISTICS_TIMEOUT_MS)
+      .emitWithAck(SocketEvent.GET_STAT, null);
+    if (statistics) {
+      useStatsStore.getState().setStatistics(statistics);
     }
-
-    const suffix = units[unitIndex] ?? "";
-
-    let value: number;
-
-    if (suffix === "TB") {
-      const intPart = Math.floor(size);
-      const decimals = intPart <= 99 ? 1 : 0;
-      value = parseFloat(size.toFixed(decimals));
-    } else {
-      value = parseFloat(size.toPrecision(3));
-    }
-
-    return { value, suffix };
+  } catch {
+    return;
   }
+};
 
-  async fetchStatistics(): Promise<TStatistics> {
-    const socket = getSocket();
-    if (!socket) {
-      throw new Error("Socket not connected");
-    }
+export const addMessageStat = (): void => {
+  getSocket()?.emit(SocketEvent.ADD_STAT, { type: StatType.MESSAGE });
+};
 
-    return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error("Statistics request timed out"));
-      }, 10_000);
-
-      socket.emit("get-stat", null, (response: TStatistics) => {
-        clearTimeout(timeoutId);
-        if (response) {
-          resolve(response);
-        } else {
-          reject(new Error("Failed to fetch statistics"));
-        }
-      });
-    });
-  }
-
-  addMessageStat(): void {
-    const payload: TAddStatPayload = { type: "message" };
-    emitSocket("add-stat", payload);
-  }
-
-  addFileStat(fileSize: number): void {
-    const payload: TAddStatPayload = { type: "file", fileSize };
-    emitSocket("add-stat", payload);
-  }
-}
-
-export const statService = new StatService();
+export const addFileStat = (fileSize: number): void => {
+  getSocket()?.emit(SocketEvent.ADD_STAT, { type: StatType.FILE, fileSize });
+};

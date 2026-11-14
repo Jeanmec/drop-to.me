@@ -3,14 +3,17 @@ FROM node:22
 WORKDIR /app
 
 COPY package.json yarn.lock ./
+COPY back/package.json ./back/
+COPY front/package.json ./front/
+COPY libs/shared/package.json ./libs/shared/
 
 RUN yarn install --frozen-lockfile
 
-COPY . .
+COPY libs/shared ./libs/shared
+COPY back ./back
 
-RUN yarn build
+RUN yarn workspace @droptome/shared build && yarn workspace back build
 
 EXPOSE 3000
-EXPOSE 9000
 
-CMD ["yarn", "start:prod"]
+CMD ["node", "back/dist/main"]

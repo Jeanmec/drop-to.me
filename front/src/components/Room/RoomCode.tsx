@@ -1,42 +1,21 @@
-"use client";
-
-import { useRoomStore } from "@/stores/useRoomStore";
-import { cn } from "@/library/utils";
 import Seamark from "@/components/ui/Seamark";
-import { LeaveRoomButton } from "./LeaveRoomButton";
-import styles from "./Room.module.css";
+import LeaveRoomButton from "./LeaveRoomButton";
 
-export function RoomCode() {
-  const roomCode = useRoomStore((s) => s.roomCode);
+interface RoomCodeProps {
+  roomCode: string;
+}
 
-  if (!roomCode) return null;
-
+export default function RoomCode({ roomCode }: RoomCodeProps) {
   return (
     <Seamark isSteady>
-      <span className={styles.roomline}>
-        <span
-          className={cn(
-            styles.tab,
-            styles.tabLabel,
-            "bg-night text-ash text-micro mr-1.5 font-mono tracking-widest uppercase",
-          )}
-        >
-          Room
-        </span>
-        <span className="sr-only">{roomCode}</span>
-        <span className={styles.bunting} aria-hidden>
-          {[...roomCode].map((letter, index) => (
-            <span
-              key={index}
-              className={cn(
-                styles.pennant,
-                styles.letter,
-                "text-label font-mono max-md:text-xs",
-              )}
-            >
-              {letter}
-            </span>
-          ))}
+      <span className="border-cream bg-night flex w-max items-center border font-mono">
+        <span className="flex items-baseline gap-2 py-1.5 pr-3 pl-2.5">
+          <span className="text-ash text-micro tracking-widest uppercase max-md:hidden">
+            Room
+          </span>
+          <span className="text-moon text-label leading-4.5 tracking-wider max-md:text-xs">
+            {roomCode}
+          </span>
         </span>
         <LeaveRoomButton />
       </span>

@@ -1,43 +1,42 @@
 import type { ReactNode } from "react";
-import { cn } from "@/library/utils";
-import type { TScenePhase } from "@/types/scene.t";
+import clsx from "clsx";
+import { env } from "@/env";
+import { ScenePhase } from "@/types/scene.t";
 import styles from "./Hero.module.css";
 
 interface HeroProps {
-  phase: TScenePhase;
+  phase: ScenePhase;
   note?: ReactNode;
   children?: ReactNode;
 }
 
-const titleClass = (phase: TScenePhase): string => {
+const titleClass = (phase: ScenePhase): string | undefined => {
   switch (phase) {
-    case "sketched":
-      return `${styles.outlined} ${styles.unrolling}`;
-    case "washed":
+    case ScenePhase.SKETCHED:
+      return clsx(styles.outlined, styles.unrolling);
+    case ScenePhase.WASHED:
       return styles.outlined;
-    case "painted":
-      return "";
+    case ScenePhase.PAINTED:
+      return undefined;
   }
 };
 
 export default function Hero({ phase, note, children }: HeroProps) {
-  const isStowed = phase !== "painted";
+  const isStowed = phase !== ScenePhase.PAINTED;
 
   return (
     <div className={styles.headline}>
-      <h1 className={cn(styles.title, titleClass(phase))}>
+      <h1 className={clsx(styles.title, titleClass(phase))}>
         <span className={styles.titleShadow} aria-hidden>
-          {process.env.NEXT_PUBLIC_WEBSITE_NAME}
+          {env.NEXT_PUBLIC_WEBSITE_NAME}
         </span>
-        <span className={styles.titleInk}>
-          {process.env.NEXT_PUBLIC_WEBSITE_NAME}
-        </span>
+        <span className={styles.titleInk}>{env.NEXT_PUBLIC_WEBSITE_NAME}</span>
       </h1>
       <div
-        className={cn(styles.deck, isStowed && styles.stowed)}
+        className={clsx(styles.deck, isStowed && styles.stowed)}
         inert={isStowed}
       >
-        <p className={cn(styles.tagline, "text-lead max-md:text-base")}>
+        <p className={clsx(styles.tagline, "text-lead max-md:text-base")}>
           Share large files over your local network with peer-to-peer
           technology.
         </p>
@@ -45,7 +44,7 @@ export default function Hero({ phase, note, children }: HeroProps) {
       </div>
       <p
         role="status"
-        className={cn(styles.note, "text-ash text-label font-mono")}
+        className={clsx(styles.note, "text-ash text-label font-mono")}
       >
         {note}
       </p>

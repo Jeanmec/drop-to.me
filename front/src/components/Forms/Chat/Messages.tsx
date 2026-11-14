@@ -1,90 +1,81 @@
 "use client";
 
-import { notify } from "@/library/toastService";
+import clsx from "clsx";
+import { notify } from "@/services/toastService";
 import { useChatStore } from "@/stores/useChatStore";
-import { useEffect, useRef } from "react";
+import { MessageDelivery } from "@/types/message.t";
+import { formatClockTime } from "@/utils/time.utils";
 import FileAttachment from "./FileAttachment";
-import Pennon from "@/components/ui/Pennon";
-import { cn } from "@/library/utils";
-import styles from "./Chat.module.css";
+
+const copyToClipboard = async (text: string): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(text);
+    notify.success("Text copied to clipboard!");
+  } catch {
+    notify.error("Failed to copy text.");
+  }
+};
 
 export default function Messages() {
-  const { messages } = useChatStore();
-  const chatContainerRef = useRef<HTMLDivElement>(null);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard
-      .writeText(text)
-      .then(() => notify.success("Text copied to clipboard!"))
-      .catch((err) => {
-        console.error("Failed to copy text: ", err);
-        notify.error("Failed to copy text.");
-      });
-  };
-
-  useEffect(() => {
-    const el = chatContainerRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [messages]);
+  const messages = useChatStore((state) => state.messages);
 
   return (
-    <div ref={chatContainerRef} className={styles.flags}>
-      {(messages ?? []).length === 0 ? (
-        <div className="text-ash m-auto px-4 text-center font-mono text-xs">
+    // a reversed column keeps the scroll pinned to the latest message
+    <div className="flex min-h-0 flex-1 flex-col-reverse overflow-y-auto px-3 py-3.5">
+      {messages.length === 0 ? (
+        <p className="text-ash m-auto px-4 text-center font-mono text-xs">
           Retrieve messages and files received here.
-        </div>
+        </p>
       ) : (
-        (messages ?? []).map((msg) =>
-          msg.system ? (
-            <div
-              key={msg.id}
-              className="text-ash text-caption self-center font-mono"
-            >
-              {msg.content}
-            </div>
-          ) : (
-            <div
-              key={msg.id}
-              className={cn(
-                "grid max-w-4/5 gap-0.5",
-                msg.received ? "self-start" : "justify-items-end self-end",
-                msg.delivery === "pending" && "opacity-60",
-              )}
-            >
-              <time className="text-ash text-caption px-2 font-mono">
-                {msg.timestamp.toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </time>
-              {msg.file ? (
-                <FileAttachment file={msg.file} received={msg.received} />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(msg.content)}
-                  className="max-w-full cursor-pointer text-left"
-                >
-                  <Pennon
-                    tone={msg.received ? "plain" : "moon"}
-                    notch={msg.received ? "end" : "start"}
-                    className={cn(
-                      "py-2 text-base leading-snug wrap-anywhere",
-                      msg.received ? "pr-6.5 pl-3" : "pr-3 pl-6.5",
+        <ol className="flex flex-col gap-3">
+          {messages.map((message) =>
+            message.system ? (
+              <li
+                key={message.id}
+                className="text-ash text-caption self-center font-mono"
+              >
+                {message.content}
+              </li>
+            ) : (
+              <li
+                key={message.id}
+                className={clsx(
+                  "grid max-w-4/5 gap-0.5",
+                  message.received
+                    ? "self-start"
+                    : "justify-items-end self-end",
+                  message.delivery === MessageDelivery.PENDING && "opacity-60",
+                )}
+              >
+                <time className="text-ash text-caption font-mono">
+                  {formatClockTime(message.timestamp)}
+                </time>
+                {message.file ? (
+                  <FileAttachment
+                    file={message.file}
+                    isReceived={message.received}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void copyToClipboard(message.content)}
+                    className={clsx(
+                      "max-w-full cursor-pointer border px-3 py-2 text-left text-base leading-snug wrap-anywhere",
+                      message.received ? "border-cream" : "border-moon",
                     )}
                   >
-                    {msg.content}
-                  </Pennon>
-                </button>
-              )}
-              {msg.delivery === "failed" && (
-                <span className="text-alert text-caption px-2 font-mono">
-                  Not delivered
-                </span>
-              )}
-            </div>
-          ),
-        )
+                    {message.content}
+                  </button>
+                )}
+                {message.delivery === MessageDelivery.FAILED && (
+                  <span className="text-alert text-caption font-mono">
+                    Not delivered
+                  </span>
+                )}
+              </li>
+            ),
+          )}
+        </ol>
       )}
     </div>
   );

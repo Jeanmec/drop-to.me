@@ -3,14 +3,12 @@ version: '3.8'
 services:
   nest:
     build:
-      context: .
-      dockerfile: Dockerfile.dev
+      context: ..
+      dockerfile: back/Dockerfile.dev
     env_file:
       - ./.env
     volumes:
-      - .:/app
-      - /app/node_modules
-    command: yarn start:dev
+      - .:/app/back
+      - /app/back/node_modules
     ports:
       - '3000:3000'
-      - '9000:9000'

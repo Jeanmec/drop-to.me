@@ -7,22 +7,56 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { DefaultEventsMap, Server, Socket } from 'socket.io';
-import { Injectable, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import {
+  SocketEvent,
+  StatType,
+  normalizeRoomCode,
+  validateRoomCode,
+  type ClientToServerEvents,
+  type ServerToClientEvents,
+  type TAddStat,
+  type TJoinRoom,
+  type TSignalToPeer,
+  type TStatistics,
+  type TStatUpdate,
+} from '@droptome/shared';
 import { StatsService } from '../stats/stats.service';
-import { RedisService } from 'src/redis/redis.service';
+import { PeerClaimsService } from './peer-claims.service';
 import { getHashedIp, extractIp } from 'src/utils/ip.utils';
-import { TAddStatPayload } from '../types/statistics.t';
 
 interface SocketData {
   roomId?: string;
+  peerId?: string;
 }
 
-type RoomSocket = Socket<
-  DefaultEventsMap,
-  DefaultEventsMap,
+type RoomServer = Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
   DefaultEventsMap,
   SocketData
 >;
+
+type RoomSocket = Socket<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  DefaultEventsMap,
+  SocketData
+>;
+
+const IDENTIFIER_MAX_LENGTH = 64;
+
+const isIdentifier = (value: unknown): boolean =>
+  typeof value === 'string' &&
+  value.length > 0 &&
+  value.length <= IDENTIFIER_MAX_LENGTH;
+
+const isValidJoin = ({ peerId, token, roomCode }: TJoinRoom): boolean =>
+  isIdentifier(peerId) &&
+  isIdentifier(token) &&
+  (roomCode === undefined ||
+    (typeof roomCode === 'string' &&
+      validateRoomCode(normalizeRoomCode(roomCode))));
 
 @Injectable()
 @WebSocketGateway({
@@ -33,23 +67,22 @@ type RoomSocket = Socket<
 })
 export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(SignalGateway.name);
-  private server: Server;
+  private server: RoomServer;
 
   constructor(
-    private redisService: RedisService,
-    @Inject(forwardRef(() => StatsService))
-    private statsService: StatsService,
+    private readonly statsService: StatsService,
+    private readonly peerClaims: PeerClaimsService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(server: RoomServer) {
     this.server = server;
   }
 
-  async handleConnection(client: Socket) {
+  async handleConnection(client: RoomSocket): Promise<void> {
     try {
-      const result = await this.statsService.updateStats('user');
+      const result = await this.statsService.updateStats(StatType.USER);
       if (result) {
-        this.server.emit('update-stat', result);
+        this.broadcastStatUpdate(result);
       }
     } catch (error) {
       this.logger.error(
@@ -59,45 +92,38 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  private getRoomId(socket: Socket, roomCode?: string): string {
-    if (roomCode && roomCode.trim().length > 0) {
-      return `room:${roomCode.trim().toUpperCase()}`;
-    }
-    return getHashedIp(socket.request);
-  }
-
-  @SubscribeMessage('join-room')
+  @SubscribeMessage(SocketEvent.JOIN_ROOM)
   async handleJoinRoom(
-    @MessageBody() data: { peerId: string; roomCode?: string },
+    @MessageBody() data: TJoinRoom,
     @ConnectedSocket() socket: RoomSocket,
-  ) {
+  ): Promise<void> {
     try {
-      if (!data?.peerId || typeof data.peerId !== 'string') {
+      if (!data || !isValidJoin(data)) {
         this.logger.warn(`Invalid join-room payload from ${socket.id}`);
         return;
       }
+      if (!this.claimPeerId(socket, data.peerId, data.token)) {
+        this.logger.warn(`Peer id refused for ${socket.id}`);
+        return;
+      }
 
-      const peerId = data.peerId.slice(0, 64);
-      const roomCode = data.roomCode;
-      const roomId = this.getRoomId(socket, roomCode);
+      const { peerId } = data;
+      const roomCode =
+        data.roomCode === undefined ? null : normalizeRoomCode(data.roomCode);
+      const roomId = roomCode
+        ? `room:${roomCode}`
+        : getHashedIp(socket.request);
 
       await this.leaveCurrentRoom(socket);
       socket.data.roomId = roomId;
       await socket.join(roomId);
 
-      await this.redisService.addPeer(roomId, socket.id, peerId);
-
-      const peersObj = await this.redisService.getClients(roomId);
-
-      const activePeers = await this.cleanDeadPeers(roomId, peersObj);
-      const targetPeers = activePeers.filter((p) => p !== peerId);
-
-      this.alertPeerJoined(roomId, peerId);
-
-      socket.emit('join-success', {
-        peers: targetPeers,
+      const peerIds = await this.getPeerIds(roomId);
+      this.server.to(roomId).emit(SocketEvent.PEER_JOINED, peerId);
+      socket.emit(SocketEvent.JOIN_SUCCESS, {
+        peers: peerIds.filter((id) => id !== peerId),
         ip: extractIp(socket.request),
-        roomCode: roomCode?.trim().toUpperCase() ?? null,
+        roomCode,
       });
     } catch (error) {
       this.logger.error(
@@ -107,63 +133,44 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('leave-room')
-  async handleLeaveRoom(@ConnectedSocket() socket: RoomSocket) {
+  @SubscribeMessage(SocketEvent.SIGNAL)
+  async handleSignal(
+    @MessageBody() data: TSignalToPeer,
+    @ConnectedSocket() socket: RoomSocket,
+  ): Promise<void> {
     try {
-      await this.leaveCurrentRoom(socket);
+      const { roomId, peerId } = socket.data;
+      if (!roomId || !peerId || typeof data?.to !== 'string') {
+        return;
+      }
+
+      const sockets = await this.server.in(roomId).fetchSockets();
+      sockets
+        .filter((target) => target.data.peerId === data.to)
+        .forEach((target) => {
+          target.emit(SocketEvent.SIGNAL, {
+            from: peerId,
+            signal: data.signal,
+          });
+        });
     } catch (error) {
       this.logger.error(
-        `handleLeaveRoom failed for ${socket.id}`,
+        `handleSignal failed for ${socket.id}`,
         error instanceof Error ? error.stack : error,
       );
     }
   }
 
-  private async leaveCurrentRoom(socket: RoomSocket): Promise<void> {
-    const roomId = socket.data.roomId;
-    if (!roomId) return;
-
-    const peerId = await this.redisService.getClient(roomId, socket.id);
-    await this.redisService.removeClient(roomId, socket.id);
-    await socket.leave(roomId);
-    socket.data.roomId = undefined;
-
-    if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
-      this.sendClientLeave(roomId, peerId);
-    }
-  }
-
-  private async cleanDeadPeers(
-    roomId: string,
-    peersObj: Record<string, string>,
-  ): Promise<string[]> {
-    const activePeerIds: string[] = [];
-    const socketsInRoom = await this.server.in(roomId).fetchSockets();
-    const activeSocketIds = new Set(socketsInRoom.map((s) => s.id));
-
-    const deadSocketIds: string[] = [];
-    for (const [socketId, peerId] of Object.entries(peersObj)) {
-      if (activeSocketIds.has(socketId)) {
-        activePeerIds.push(peerId);
-      } else {
-        deadSocketIds.push(socketId);
-      }
-    }
-
-    await Promise.all(
-      deadSocketIds.map((id) => this.redisService.removeClient(roomId, id)),
-    );
-
-    return activePeerIds;
-  }
-
-  async handleDisconnect(socket: RoomSocket) {
+  async handleDisconnect(socket: RoomSocket): Promise<void> {
     try {
-      const roomId = socket.data.roomId ?? getHashedIp(socket.request);
-      const peerId = await this.redisService.getClient(roomId, socket.id);
-      await this.redisService.removeClient(roomId, socket.id);
-      if (peerId && !(await this.isPeerStillInRoom(roomId, peerId))) {
-        this.sendClientLeave(roomId, peerId);
+      const { roomId, peerId } = socket.data;
+      if (!peerId) {
+        return;
+      }
+
+      this.peerClaims.release(peerId);
+      if (roomId) {
+        await this.announceIfPeerLeft(roomId, peerId);
       }
     } catch (error) {
       this.logger.error(
@@ -173,24 +180,8 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  private async isPeerStillInRoom(
-    roomId: string,
-    peerId: string,
-  ): Promise<boolean> {
-    const clients = await this.redisService.getClients(roomId);
-    return Object.values(clients).includes(peerId);
-  }
-
-  sendClientLeave(room: string, peerId: string): void {
-    this.server.to(room).emit('peer-left', peerId);
-  }
-
-  alertPeerJoined(room: string, peerId: string): void {
-    this.server.to(room).emit('peer-joined', peerId);
-  }
-
-  @SubscribeMessage('get-stat')
-  async handleGetStat() {
+  @SubscribeMessage(SocketEvent.GET_STAT)
+  async handleGetStat(): Promise<TStatistics | null> {
     try {
       return await this.statsService.getStats();
     } catch (error) {
@@ -202,27 +193,19 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('add-stat')
-  async handleAddStat(@MessageBody() data: TAddStatPayload) {
+  @SubscribeMessage(SocketEvent.ADD_STAT)
+  async handleAddStat(@MessageBody() data: TAddStat): Promise<void> {
     try {
-      if (!data?.type) return;
-
-      const { type, fileSize } = data;
-
-      if (
-        type === 'file' &&
-        (typeof fileSize !== 'number' ||
-          fileSize <= 0 ||
-          !Number.isFinite(fileSize))
-      ) {
-        this.logger.warn(`Invalid fileSize in add-stat: ${fileSize}`);
+      if (!data?.type) {
         return;
       }
 
-      const result = await this.statsService.updateStats(type, fileSize);
-
+      const result = await this.statsService.updateStats(
+        data.type,
+        data.fileSize,
+      );
       if (result) {
-        this.server.emit('update-stat', result);
+        this.broadcastStatUpdate(result);
       }
     } catch (error) {
       this.logger.error(
@@ -232,19 +215,52 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  sendSignalExcept(
-    room: string,
-    socketIdToSkip: string,
-    event: string,
-    data: object | string | number | boolean,
-  ): void {
-    this.server.in(room).except(socketIdToSkip).emit(event, data);
+  private claimPeerId(
+    socket: RoomSocket,
+    peerId: string,
+    token: string,
+  ): boolean {
+    if (socket.data.peerId !== undefined) {
+      return socket.data.peerId === peerId;
+    }
+    if (!this.peerClaims.acquire(peerId, token)) {
+      return false;
+    }
+    socket.data.peerId = peerId;
+    return true;
   }
 
-  sendSignalToAll(
-    event: string,
-    data: object | string | number | boolean,
-  ): void {
-    this.server.emit(event, data);
+  private async leaveCurrentRoom(socket: RoomSocket): Promise<void> {
+    const { roomId, peerId } = socket.data;
+    if (!roomId || !peerId) {
+      return;
+    }
+
+    await socket.leave(roomId);
+    socket.data.roomId = undefined;
+    await this.announceIfPeerLeft(roomId, peerId);
+  }
+
+  // a peer stays in the room while another of its sockets is there
+  private async announceIfPeerLeft(
+    roomId: string,
+    peerId: string,
+  ): Promise<void> {
+    const remainingPeerIds = await this.getPeerIds(roomId);
+    if (!remainingPeerIds.includes(peerId)) {
+      this.server.to(roomId).emit(SocketEvent.PEER_LEFT, peerId);
+    }
+  }
+
+  private async getPeerIds(roomId: string): Promise<string[]> {
+    const sockets = await this.server.in(roomId).fetchSockets();
+    const peerIds = sockets
+      .map((socket) => socket.data.peerId)
+      .filter((peerId) => peerId !== undefined);
+    return [...new Set(peerIds)];
+  }
+
+  private broadcastStatUpdate(update: TStatUpdate): void {
+    this.server.emit(SocketEvent.UPDATE_STAT, update);
   }
 }

@@ -1,8 +1,12 @@
 @keyframes drift {
   to {
-    background-position:
-      88px 4px,
-      -88px 13px;
+    translate: 88px 0;
+  }
+}
+
+@keyframes driftBack {
+  to {
+    translate: -88px 0;
   }
 }
 
@@ -10,25 +14,39 @@
   padding: 0 56px 26px;
 }
 
-.shore::before {
-  content: "";
-  display: block;
+.waves {
+  position: relative;
   height: 20px;
   margin: 0 -56px 18px;
-  background:
-    repeating-linear-gradient(
-        90deg,
-        var(--color-sea-line) 0 30px,
-        transparent 30px 44px
-      )
-      0 4px / 44px var(--pen) repeat-x,
-    repeating-linear-gradient(
-        90deg,
-        var(--color-sea-line) 0 22px,
-        transparent 22px 44px
-      )
-      0 13px / 44px var(--pen) repeat-x;
+  overflow: clip;
+}
+
+.waves::before,
+.waves::after {
+  content: "";
+  position: absolute;
+}
+
+.waves::before {
+  inset: 0 0 0 -88px;
+  background: repeating-linear-gradient(
+      90deg,
+      var(--color-sea-line) 0 30px,
+      transparent 30px 44px
+    )
+    0 4px / 44px var(--pen) repeat-x;
   animation: drift 9s linear infinite;
+}
+
+.waves::after {
+  inset: 0 -88px 0 0;
+  background: repeating-linear-gradient(
+      90deg,
+      var(--color-sea-line) 0 22px,
+      transparent 22px 44px
+    )
+    0 13px / 44px var(--pen) repeat-x;
+  animation: driftBack 9s linear infinite;
 }
 
 @media (width < 768px) {
@@ -36,7 +54,7 @@
     padding: 0 16px 22px;
   }
 
-  .shore::before {
+  .waves {
     margin: 0 -16px 16px;
   }
 }

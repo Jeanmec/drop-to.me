@@ -1,27 +1,27 @@
-import { cn } from "@/library/utils";
-import type { TDevice } from "@/types/peer.t";
-import type { TBerth, TBoatSignal } from "@/types/scene.t";
+import clsx from "clsx";
+import type { TDevice } from "@/schemas/device.schema";
+import { Berth, BoatSignal } from "@/types/scene.t";
 import BoatRig from "./BoatRig";
 import { berthClass } from "./berthClass";
 import styles from "./Fleet.module.css";
 
 interface BoatProps {
-  berth: TBerth;
+  berth: Berth;
   device: TDevice | undefined;
   isMoored: boolean;
   isReachable: boolean;
-  signal: TBoatSignal;
+  signal: BoatSignal;
   progress: number;
   onReceivedShown: () => void;
 }
 
-const clothStroke = (berth: TBerth): string => {
+const clothStroke = (berth: Berth): string => {
   switch (berth) {
-    case "west":
+    case Berth.WEST:
       return "stroke-blush";
-    case "east":
+    case Berth.EAST:
       return "stroke-lilac";
-    case "cove":
+    case Berth.COVE:
       return "stroke-moon";
   }
 };
@@ -50,7 +50,11 @@ export default function Boat({
 }: BoatProps) {
   return (
     <li
-      className={cn(styles.boat, berthClass(berth), isMoored && styles.moored)}
+      className={clsx(
+        styles.boat,
+        berthClass(berth),
+        isMoored && styles.moored,
+      )}
     >
       <BoatRig berth={berth} />
       <div className={styles.masthead}>
@@ -66,13 +70,13 @@ export default function Boat({
             aria-hidden
           >
             <path
-              className={cn("inked fill-night", clothStroke(berth))}
+              className={clsx("inked fill-night", clothStroke(berth))}
               vectorEffect="non-scaling-stroke"
               d="M0 0H100L90 50L100 100H0"
             />
           </svg>
           <b
-            className={cn(
+            className={clsx(
               styles.name,
               "text-sm leading-tight font-semibold italic max-md:text-xs",
             )}
@@ -80,31 +84,33 @@ export default function Boat({
             {device?.name ?? "Device"}
           </b>
           <span
-            className={cn(
+            className={clsx(
               styles.line,
-              signal !== "idle" && styles.furled,
+              signal !== BoatSignal.IDLE && styles.furled,
               "text-ash text-micro font-mono leading-snug",
             )}
           >
             {describeLink(device, isReachable)}
           </span>
           <span
-            className={cn(
+            className={clsx(
               styles.line,
               styles.signal,
-              signal === "receiving" && styles.hoisted,
+              signal === BoatSignal.RECEIVING && styles.hoisted,
               "text-moon text-micro font-mono leading-snug",
             )}
           >
             Receiving{" "}
-            <em className={cn(styles.percent, "not-italic")}>{progress}%</em>
+            <em className={clsx(styles.percent, "not-italic")}>{progress}%</em>
           </span>
           <span
-            className={cn(
+            className={clsx(
               styles.line,
               styles.signal,
-              signal === "received" && styles.hoisted,
-              signal === "received" && styles.acknowledged,
+              signal === BoatSignal.RECEIVED && [
+                styles.hoisted,
+                styles.acknowledged,
+              ],
               "text-moon text-micro font-mono leading-snug",
             )}
             onAnimationEnd={onReceivedShown}
