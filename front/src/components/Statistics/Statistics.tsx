@@ -23,14 +23,16 @@ interface StatisticItemProps {
 function StatisticItem({ icon, title, value, suffix }: StatisticItemProps) {
   return (
     <div className={styles.stat}>
-      <div className={styles.statIcon}>{icon}</div>
-      <dt
-        className={clsx(
-          styles.statLabel,
-          "text-ash text-caption font-mono tracking-widest uppercase",
-        )}
-      >
-        {title}
+      <dt className={styles.statTerm}>
+        <div className={styles.statIcon}>{icon}</div>
+        <span
+          className={clsx(
+            styles.statLabel,
+            "text-ash text-caption font-mono tracking-widest uppercase",
+          )}
+        >
+          {title}
+        </span>
       </dt>
       <dd
         className={clsx(styles.statValue, "text-tally font-light tabular-nums")}

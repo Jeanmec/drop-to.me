@@ -125,6 +125,9 @@
 
 .answerShown {
   display: grid;
+}
+
+.switched .answerShown {
   animation: surface 0.5s ease-out;
 }
 

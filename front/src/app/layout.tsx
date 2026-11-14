@@ -18,6 +18,7 @@ const fraunces = Fraunces({
   axes: ["opsz"],
   variable: "--font-fraunces",
   display: "swap",
+  preload: false,
 });
 const dmMono = DM_Mono({
   subsets: ["latin"],

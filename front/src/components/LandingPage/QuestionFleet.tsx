@@ -29,7 +29,16 @@ const POSITION_CLASSES = [
 
 export default function QuestionFleet({ questions }: QuestionFleetProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [hasSwitched, setHasSwitched] = useState(false);
   const activeBoat = questions[activeIndex]?.boat;
+
+  const showAnswer = (index: number): void => {
+    if (index === activeIndex) {
+      return;
+    }
+    setActiveIndex(index);
+    setHasSwitched(true);
+  };
 
   return (
     <section>
@@ -53,7 +62,7 @@ export default function QuestionFleet({ questions }: QuestionFleetProps) {
               <button
                 type="button"
                 aria-pressed={index === activeIndex}
-                onClick={() => setActiveIndex(index)}
+                onClick={() => showAnswer(index)}
                 className={clsx(
                   styles.ask,
                   "hover:text-cream cursor-pointer italic",
@@ -70,7 +79,10 @@ export default function QuestionFleet({ questions }: QuestionFleetProps) {
           ))}
         </ol>
       </div>
-      <div className={styles.answers} aria-live="polite">
+      <div
+        className={clsx(styles.answers, hasSwitched && styles.switched)}
+        aria-live="polite"
+      >
         {questions.map((question, index) => (
           <div
             key={question.value}

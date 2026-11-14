@@ -7,6 +7,15 @@
   }
 }
 
+@keyframes rise {
+  from {
+    clip-path: inset(calc(100% + 1em) -1em -1em);
+  }
+  to {
+    clip-path: inset(-1em);
+  }
+}
+
 .headline {
   position: absolute;
   inset: 7% 0 auto;
@@ -86,15 +95,17 @@
   justify-items: center;
   gap: inherit;
   width: 100%;
-  transition:
-    opacity 0.5s ease-out 0.3s,
-    top 0.5s ease-out 0.3s;
+  transition: top 0.5s ease-out 0.3s;
+  animation: rise 0.5s ease-out 0.3s backwards;
 }
 
 .stowed {
   top: 14px;
   opacity: 0;
-  transition-delay: 0s;
+  transition:
+    opacity 0.5s ease-out,
+    top 0.5s ease-out;
+  animation: none;
 }
 
 .note {
@@ -116,8 +127,7 @@
 }
 
 @starting-style {
-  .titleShadow,
-  .deck {
+  .titleShadow {
     opacity: 0;
   }
 

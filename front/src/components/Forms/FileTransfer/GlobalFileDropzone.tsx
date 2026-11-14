@@ -14,7 +14,7 @@ export default function GlobalFileDropzone({
   disabled,
   isDropTarget,
 }: GlobalFileDropzoneProps) {
-  const { getRootProps, getInputProps } = useDropzone({
+  const { getRootProps } = useDropzone({
     onDrop: onFilesSelected,
     noClick: true,
     noKeyboard: true,
@@ -29,8 +29,6 @@ export default function GlobalFileDropzone({
         "fixed inset-0 z-20 transition-colors duration-200",
         isDropTarget ? "bg-veil pointer-events-auto" : "pointer-events-none",
       )}
-    >
-      <input {...getInputProps()} />
-    </div>
+    />
   );
 }
