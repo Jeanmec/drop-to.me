@@ -21,9 +21,16 @@ const candidateSignalSchema = z.object({
   }),
 });
 
+const relaySignalSchema = z.object({
+  kind: z.literal(SignalKind.RELAY),
+  linkId: z.string(),
+  publicKey: z.array(z.number()),
+});
+
 export const signalSchema = z.discriminatedUnion("kind", [
   descriptionSignalSchema,
   candidateSignalSchema,
+  relaySignalSchema,
 ]);
 
 export type TSignal = z.infer<typeof signalSchema>;

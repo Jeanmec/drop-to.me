@@ -1,0 +1,24 @@
+{
+  "name": "relay",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "relay/src",
+  "projectType": "application",
+  "tags": ["scope:relay"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "yarn build",
+        "cwd": "relay"
+      },
+      "dependsOn": ["^build"]
+    },
+    "lint": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "yarn lint",
+        "cwd": "relay"
+      }
+    }
+  }
+}

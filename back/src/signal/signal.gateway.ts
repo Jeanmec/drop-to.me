@@ -23,6 +23,7 @@ import {
 } from '@droptome/shared';
 import { StatsService } from '../stats/stats.service';
 import { PeerClaimsService } from './peer-claims.service';
+import { RelayTokensService } from './relay-tokens.service';
 import { getHashedIp, extractIp } from 'src/utils/ip.utils';
 
 interface SocketData {
@@ -72,6 +73,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly statsService: StatsService,
     private readonly peerClaims: PeerClaimsService,
+    private readonly relayTokens: RelayTokensService,
   ) {}
 
   afterInit(server: RoomServer) {
@@ -213,6 +215,11 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
         error instanceof Error ? error.stack : error,
       );
     }
+  }
+
+  @SubscribeMessage(SocketEvent.GET_RELAY_TOKEN)
+  handleGetRelayToken(@ConnectedSocket() socket: RoomSocket): string | null {
+    return socket.data.roomId ? this.relayTokens.issue() : null;
   }
 
   private claimPeerId(

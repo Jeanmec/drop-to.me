@@ -35,6 +35,8 @@ DATABASE_URL=postgres://user:postgres@xxx:5432/xxx
 IP_HASH_SECRET=xxx
 
 CORS_ACCEPTED_ORIGINS=http://localhost:3001
+
+RELAY_AUTH_SECRET=
 ```
 
 The variables are read from the environment of the process: Docker Compose loads `.env`, a bare `node` or `nest` command does not.
@@ -57,6 +59,9 @@ The variables are read from the environment of the process: Docker Compose loads
 - **CORS_ACCEPTED_ORIGINS**  
   Defines the accepted origins for standard HTTP CORS requests.
 
+- **RELAY_AUTH_SECRET** (optional)  
+  Secret shared with the relay (`relay/`). When set, the server issues a relay token, valid for one minute, to each browser of a room that opens a relayed link; when empty, no relay is offered.
+
 - **PORT** (optional)  
   Port the server listens on, 3000 by default.
 
@@ -74,6 +79,12 @@ Alter the column in the database before starting the new version. A database cre
 ```sql
 ALTER TABLE file_transfers ALTER COLUMN "fileSize" TYPE bigint;
 ```
+
+## 📡 Relay (optional)
+
+Two browsers that cannot reach each other directly go through the [relay](../relay/README.md), which only sees what they encrypted.
+
+A browser asks the server for a token when it opens a relayed link: the expiry time in epoch milliseconds, one minute ahead, a dot, and the base64url HMAC-SHA256 of that expiry under `RELAY_AUTH_SECRET`. The relay checks it with the same secret. The front names the relay in `NEXT_PUBLIC_RELAY_URL`.
 
 ## ▶️ Run the Project
 
@@ -118,7 +129,7 @@ docker run --env-file .env -p 3000:3000 droptome-back
 
 ## 🗂 Project Structure
 
-- src/signal/ : Socket.IO gateway (rooms, signaling relay) and peer ID ownership
+- src/signal/ : Socket.IO gateway (rooms, signaling relay), peer ID ownership and relay tokens
 - src/stats/ : statistics entities and service
 - src/database/ : database connection
 - .env : Local environment variables

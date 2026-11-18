@@ -6,15 +6,17 @@
   "workspaces": [
     "front",
     "back",
+    "relay",
     "libs/*"
   ],
   "scripts": {
     "dev": "nx run-many --target=dev --projects=back,front --parallel",
     "dev:front": "nx dev front",
     "dev:back": "nx dev back",
-    "build": "nx run-many --target=build --projects=back,front --parallel",
+    "build": "nx run-many --target=build --projects=back,front,relay --parallel",
     "build:front": "nx build front",
     "build:back": "nx build back",
+    "build:relay": "nx build relay",
     "lint": "nx run-many --target=lint --all",
     "format": "prettier --write \"**/*.{ts,tsx,js,json}\""
   },

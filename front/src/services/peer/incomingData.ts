@@ -14,6 +14,7 @@ import {
   confirmFileReceived,
 } from "@/services/peer/fileSender";
 import { findTargetPeer, usePeersStore } from "@/stores/usePeersStore";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 import { PeerMessageType } from "@/types/peerMessage.t";
 
 const readJson = (text: string): unknown => {
@@ -27,7 +28,7 @@ const readJson = (text: string): unknown => {
 export const handleIncomingData = (
   data: unknown,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   if (!findTargetPeer(peerId)) {
     return;

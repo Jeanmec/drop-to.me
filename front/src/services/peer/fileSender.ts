@@ -2,7 +2,7 @@ import type {
   TFileProgressMessage,
   TFileStartAckMessage,
 } from "@/schemas/peerMessage.schema";
-import { isChannelOpen, sendPeerMessage } from "@/services/peer/peerChannel";
+import { sendPeerMessage } from "@/services/peer/peerChannel";
 import {
   recordTransferDuration,
   trackSendProgress,
@@ -10,6 +10,7 @@ import {
 } from "@/services/peer/sendProgress";
 import { notify } from "@/services/toastService";
 import { findTargetPeer, usePeersStore } from "@/stores/usePeersStore";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 import { PeerMessageType } from "@/types/peerMessage.t";
 import type { TSendProgress } from "@/types/transfer.t";
 import { getTruncatedFileName } from "@/utils/file.utils";
@@ -24,9 +25,6 @@ interface SendTransfer {
 }
 
 const CHUNK_SIZE = 16 * 1024;
-// bytes in flight beyond what the path can queue are dropped, and SCTP takes seconds to recover
-const INITIAL_SEND_WINDOW = 4 * CHUNK_SIZE;
-const MAX_SEND_WINDOW = 64 * CHUNK_SIZE;
 
 const activeSendTransfers = new Map<string, SendTransfer>();
 const pendingFileAcks = new Map<string, string>();
@@ -98,14 +96,11 @@ export const confirmFileReceived = (fileId: string): void => {
   }
 };
 
-const shouldStopTransfer = (
-  peerId: string,
-  channel: RTCDataChannel,
-): boolean => {
+const shouldStopTransfer = (peerId: string, channel: TPeerChannel): boolean => {
   if (!activeSendTransfers.has(peerId)) {
     return true;
   }
-  if (!isChannelOpen(channel)) {
+  if (!channel.isOpen()) {
     cancelSendTo(peerId);
     return true;
   }
@@ -115,13 +110,13 @@ const shouldStopTransfer = (
 const sendChunks = async (
   file: File,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
   sendTransfer: SendTransfer,
   reportBytes: ByteReporter,
 ): Promise<boolean> => {
   let sentBytes = 0;
   let acknowledgedBytes = 0;
-  let sendWindow = INITIAL_SEND_WINDOW;
+  let sendWindow = channel.initialSendWindow;
 
   while (acknowledgedBytes < file.size) {
     const sendableChunks = Math.floor(
@@ -144,7 +139,9 @@ const sendChunks = async (
         burstOffset < burst.byteLength;
         burstOffset += CHUNK_SIZE
       ) {
-        channel.send(burst.subarray(burstOffset, burstOffset + CHUNK_SIZE));
+        channel.sendBytes(
+          burst.subarray(burstOffset, burstOffset + CHUNK_SIZE),
+        );
       }
       sentBytes += burst.byteLength;
     } else {
@@ -158,7 +155,7 @@ const sendChunks = async (
     const newlyAcknowledgedBytes =
       sendTransfer.receivedBytes - acknowledgedBytes;
     sendWindow = Math.min(
-      MAX_SEND_WINDOW,
+      channel.maxSendWindow,
       sendWindow + (CHUNK_SIZE * newlyAcknowledgedBytes) / sendWindow,
     );
     acknowledgedBytes = sendTransfer.receivedBytes;
@@ -171,7 +168,7 @@ const sendChunks = async (
 const sendFileToPeer = async (
   file: File,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
   reportBytes: ByteReporter,
 ): Promise<boolean> => {
   const fileId = createRandomId();
@@ -184,7 +181,7 @@ const sendFileToPeer = async (
   const resumeSendTransfer = () => sendTransfer.resume();
 
   activeSendTransfers.set(peerId, sendTransfer);
-  channel.addEventListener("close", resumeSendTransfer);
+  channel.onClose(resumeSendTransfer);
 
   try {
     sendPeerMessage(channel, {
@@ -210,7 +207,7 @@ const sendFileToPeer = async (
     channel.close();
     return false;
   } finally {
-    channel.removeEventListener("close", resumeSendTransfer);
+    channel.offClose(resumeSendTransfer);
     if (activeSendTransfers.get(peerId) === sendTransfer) {
       activeSendTransfers.delete(peerId);
     }

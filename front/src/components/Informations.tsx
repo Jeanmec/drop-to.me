@@ -36,8 +36,11 @@ export default function Informations() {
           </p>
           <p>
             For statistics, it counts connections, messages and files, with the
-            size of each file. The content of the files or messages you send
-            never reaches the server. The{" "}
+            size of each file.{" "}
+            {env.NEXT_PUBLIC_RELAY_URL
+              ? "No server can read the files or messages you send."
+              : "The content of the files or messages you send never reaches the server."}{" "}
+            The{" "}
             <Link
               href="/terms"
               target="_blank"
@@ -57,9 +60,10 @@ export default function Informations() {
       content: (
         <>
           <p>
-            Files and messages travel from browser to browser over WebRTC, which
-            encrypts every connection. Nothing you send is stored on our
-            servers.
+            {env.NEXT_PUBLIC_RELAY_URL
+              ? "Files and messages travel from browser to browser, encrypted from end to end: over WebRTC when the devices can reach each other, through a relay that cannot read them otherwise."
+              : "Files and messages travel from browser to browser over WebRTC, which encrypts every connection."}{" "}
+            Nothing you send is stored on our servers.
           </p>
           <p>
             Anyone on the same network, or anyone who has your room code, shows

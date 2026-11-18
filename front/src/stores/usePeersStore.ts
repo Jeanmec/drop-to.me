@@ -1,9 +1,10 @@
 import { create } from "zustand";
 import type { TDevice } from "@/schemas/device.schema";
 import type { TPeer } from "@/types/peer.t";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 
 interface PeerUpdate {
-  channel?: RTCDataChannel | null;
+  channel?: TPeerChannel | null;
   isReachable?: boolean;
   isSending?: boolean;
   isReceiving?: boolean;

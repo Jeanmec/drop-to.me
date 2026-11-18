@@ -1,8 +1,9 @@
 import type { TDevice } from "@/schemas/device.schema";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 
 export type TPeer = {
   peerId: string;
-  channel: RTCDataChannel | null;
+  channel: TPeerChannel | null;
   isReachable: boolean;
   isSending: boolean;
   isReceiving: boolean;

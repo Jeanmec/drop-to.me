@@ -4,21 +4,47 @@ import { failMessagesPendingOn } from "@/services/peer/chatMessenger";
 import { abortReceiving } from "@/services/peer/fileReceiver";
 import { cancelSendTo } from "@/services/peer/fileSender";
 import { handleIncomingData } from "@/services/peer/incomingData";
-import { isChannelOpen, sendPeerMessage } from "@/services/peer/peerChannel";
+import { sendPeerMessage, wrapDataChannel } from "@/services/peer/peerChannel";
+import { getRelayUrl, requestRelayToken } from "@/services/peer/relayAccess";
+import { openRelayChannel } from "@/services/peer/relayChannel";
+import {
+  createRelayKeyPair,
+  deriveRelayCipher,
+  exportRelayPublicKey,
+} from "@/services/peer/relayCipher";
 import { SELF_PEER_ID } from "@/services/peer/selfPeer";
 import { sendSignal } from "@/services/socketService";
 import { findTargetPeer, usePeersStore } from "@/stores/usePeersStore";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 import { PeerMessageType } from "@/types/peerMessage.t";
 import { SignalKind } from "@/types/signal.t";
 import { describeDevice } from "@/utils/device.utils";
 import { createRandomId } from "@/utils/random.utils";
 
-interface PeerLink {
+enum LinkRoute {
+  DIRECT = "DIRECT",
+  RELAY = "RELAY",
+}
+
+interface DirectLink {
+  route: LinkRoute.DIRECT;
   linkId: string;
   peerConnection: RTCPeerConnection;
-  channel: RTCDataChannel | null;
+  channel: TPeerChannel | null;
+  hasOpened: boolean;
   unopenedPings: number;
 }
+
+interface RelayedLink {
+  route: LinkRoute.RELAY;
+  linkId: string;
+  keyPair: Promise<CryptoKeyPair>;
+  channel: TPeerChannel | null;
+  hasOpened: boolean;
+  unopenedPings: number;
+}
+
+type PeerLink = DirectLink | RelayedLink;
 
 const CHANNEL_LABEL = "drop-to-me";
 const UNOPENED_PINGS_BEFORE_RETRY = 2;
@@ -29,25 +55,9 @@ const CONNECTED_ICE_STATES: RTCIceConnectionState[] = [
 
 const links = new Map<string, PeerLink>();
 const signalQueues = new Map<string, Promise<void>>();
+const peersToRelay = new Set<string>();
 
 const isInitiator = (peerId: string): boolean => SELF_PEER_ID < peerId;
-
-const listIceServers = (): RTCIceServer[] => {
-  const stunServers: RTCIceServer[] = env.NEXT_PUBLIC_STUN_URLS.map((urls) => ({
-    urls,
-  }));
-  if (!env.NEXT_PUBLIC_TURN_URL) {
-    return stunServers;
-  }
-  return [
-    ...stunServers,
-    {
-      urls: env.NEXT_PUBLIC_TURN_URL,
-      username: env.NEXT_PUBLIC_TURN_USERNAME,
-      credential: env.NEXT_PUBLIC_TURN_CREDENTIAL,
-    },
-  ];
-};
 
 export const cancelTransfersWith = (peerId: string): void => {
   cancelSendTo(peerId);
@@ -60,8 +70,11 @@ export const closeConnectionTo = (peerId: string): void => {
     return;
   }
   links.delete(peerId);
-  link.peerConnection.close();
+  if (link.route === LinkRoute.DIRECT) {
+    link.peerConnection.close();
+  }
   if (link.channel) {
+    link.channel.close();
     failMessagesPendingOn(link.channel);
   }
   cancelTransfersWith(peerId);
@@ -80,23 +93,41 @@ const updateReachability = (peerId: string, link: PeerLink): void => {
   }
   const isReachable =
     link.channel !== null &&
-    isChannelOpen(link.channel) &&
-    CONNECTED_ICE_STATES.includes(link.peerConnection.iceConnectionState);
+    link.channel.isOpen() &&
+    (link.route === LinkRoute.RELAY ||
+      CONNECTED_ICE_STATES.includes(link.peerConnection.iceConnectionState));
   if (findTargetPeer(peerId)?.isReachable !== isReachable) {
     usePeersStore.getState().updatePeer(peerId, { isReachable });
   }
 };
 
-const sendHello = (channel: RTCDataChannel): void => {
+const sendHello = (channel: TPeerChannel): void => {
   sendPeerMessage(channel, {
     type: PeerMessageType.HELLO,
     device: describeDevice(navigator.userAgent, navigator.maxTouchPoints),
   });
 };
 
+const rerouteAfterFailedOpening = (peerId: string, link: PeerLink): void => {
+  switch (link.route) {
+    case LinkRoute.DIRECT:
+      // no answer from the peer: the negotiation stalled, not the route
+      if (link.peerConnection.remoteDescription) {
+        peersToRelay.add(peerId);
+      }
+      return;
+    case LinkRoute.RELAY:
+      peersToRelay.delete(peerId);
+      return;
+  }
+};
+
 const failLink = (peerId: string, link: PeerLink): void => {
   if (links.get(peerId) !== link) {
     return;
+  }
+  if (!link.hasOpened) {
+    rerouteAfterFailedOpening(peerId, link);
   }
   closeConnectionTo(peerId);
   if (findTargetPeer(peerId)) {
@@ -107,35 +138,37 @@ const failLink = (peerId: string, link: PeerLink): void => {
 const attachChannel = (
   peerId: string,
   link: PeerLink,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   const handleOpen = () => {
     if (links.get(peerId) !== link) {
       return;
     }
+    link.hasOpened = true;
     usePeersStore.getState().updatePeer(peerId, { channel });
     updateReachability(peerId, link);
     sendHello(channel);
   };
 
   link.channel = channel;
-  channel.binaryType = "arraybuffer";
-  if (isChannelOpen(channel)) {
+  if (channel.isOpen()) {
     handleOpen();
   } else {
-    channel.addEventListener("open", handleOpen);
+    channel.onOpen(handleOpen);
   }
-  channel.addEventListener("message", (event) =>
-    handleIncomingData(event.data, peerId, channel),
-  );
-  channel.addEventListener("close", () => failLink(peerId, link));
+  channel.onMessage((data) => handleIncomingData(data, peerId, channel));
+  channel.onClose(() => failLink(peerId, link));
 };
 
-const createLink = (peerId: string, linkId: string): PeerLink => {
-  const link: PeerLink = {
+const createDirectLink = (peerId: string, linkId: string): DirectLink => {
+  const link: DirectLink = {
+    route: LinkRoute.DIRECT,
     linkId,
-    peerConnection: new RTCPeerConnection({ iceServers: listIceServers() }),
+    peerConnection: new RTCPeerConnection({
+      iceServers: env.NEXT_PUBLIC_STUN_URLS.map((urls) => ({ urls })),
+    }),
     channel: null,
+    hasOpened: false,
     unopenedPings: 0,
   };
   const { peerConnection } = link;
@@ -159,12 +192,12 @@ const createLink = (peerId: string, linkId: string): PeerLink => {
     }
   });
   peerConnection.addEventListener("datachannel", ({ channel }) =>
-    attachChannel(peerId, link, channel),
+    attachChannel(peerId, link, wrapDataChannel(channel)),
   );
   return link;
 };
 
-const sendOffer = async (peerId: string, link: PeerLink): Promise<void> => {
+const sendOffer = async (peerId: string, link: DirectLink): Promise<void> => {
   try {
     const description = await link.peerConnection.createOffer();
     await link.peerConnection.setLocalDescription(description);
@@ -180,15 +213,86 @@ const sendOffer = async (peerId: string, link: PeerLink): Promise<void> => {
   }
 };
 
+const sendRelayKey = async (
+  peerId: string,
+  link: RelayedLink,
+): Promise<void> => {
+  try {
+    const publicKey = await exportRelayPublicKey(link.keyPair);
+    if (links.get(peerId) === link) {
+      sendSignal(peerId, {
+        kind: SignalKind.RELAY,
+        linkId: link.linkId,
+        publicKey,
+      });
+    }
+  } catch {
+    if (links.get(peerId) === link) {
+      closeConnectionTo(peerId);
+    }
+  }
+};
+
+const createRelayedLink = (peerId: string, linkId: string): RelayedLink => {
+  const link: RelayedLink = {
+    route: LinkRoute.RELAY,
+    linkId,
+    keyPair: createRelayKeyPair(),
+    channel: null,
+    hasOpened: false,
+    unopenedPings: 0,
+  };
+  links.set(peerId, link);
+  void sendRelayKey(peerId, link);
+  return link;
+};
+
+const joinRelay = async (
+  peerId: string,
+  link: RelayedLink,
+  peerPublicKey: number[],
+): Promise<void> => {
+  const relayUrl = getRelayUrl();
+  if (!relayUrl || link.channel) {
+    return;
+  }
+  const token = await requestRelayToken();
+  if (links.get(peerId) !== link || link.channel) {
+    return;
+  }
+  if (!token) {
+    failLink(peerId, link);
+    return;
+  }
+  attachChannel(
+    peerId,
+    link,
+    openRelayChannel(
+      relayUrl,
+      { linkId: link.linkId, token },
+      deriveRelayCipher(
+        link.keyPair,
+        peerPublicKey,
+        link.linkId,
+        isInitiator(peerId),
+      ),
+    ),
+  );
+};
+
 export const connectTo = (peerId: string): void => {
   if (links.has(peerId) || !isInitiator(peerId)) {
     return;
   }
-  const link = createLink(peerId, createRandomId());
+  if (peersToRelay.has(peerId) && getRelayUrl()) {
+    createRelayedLink(peerId, createRandomId());
+    return;
+  }
+  const link = createDirectLink(peerId, createRandomId());
   attachChannel(
     peerId,
     link,
-    link.peerConnection.createDataChannel(CHANNEL_LABEL),
+    wrapDataChannel(link.peerConnection.createDataChannel(CHANNEL_LABEL)),
   );
   void sendOffer(peerId, link);
 };
@@ -202,7 +306,7 @@ export const connectToMissingPeers = (): void => {
 // a negotiation in which a browser gathers no candidate never reaches "failed" and fires no event
 export const retryStalledLinks = (): void => {
   [...links].forEach(([peerId, link]) => {
-    if (!isInitiator(peerId) || (link.channel && isChannelOpen(link.channel))) {
+    if (!isInitiator(peerId) || link.channel?.isOpen()) {
       return;
     }
     link.unopenedPings += 1;
@@ -219,11 +323,23 @@ const answerOffer = async (
   offer: RTCSessionDescriptionInit,
 ): Promise<void> => {
   closeConnectionTo(peerId);
-  const { peerConnection } = createLink(peerId, linkId);
+  const { peerConnection } = createDirectLink(peerId, linkId);
   await peerConnection.setRemoteDescription(offer);
   const description = await peerConnection.createAnswer();
   await peerConnection.setLocalDescription(description);
   sendSignal(peerId, { kind: SignalKind.DESCRIPTION, linkId, description });
+};
+
+const acceptRelay = (
+  peerId: string,
+  linkId: string,
+  peerPublicKey: number[],
+): void => {
+  if (!getRelayUrl()) {
+    return;
+  }
+  closeConnectionTo(peerId);
+  void joinRelay(peerId, createRelayedLink(peerId, linkId), peerPublicKey);
 };
 
 const findLink = (peerId: string, linkId: string): PeerLink | undefined => {
@@ -232,22 +348,30 @@ const findLink = (peerId: string, linkId: string): PeerLink | undefined => {
 };
 
 const applySignal = async (peerId: string, signal: TSignal): Promise<void> => {
+  const link = findLink(peerId, signal.linkId);
+
   switch (signal.kind) {
     case SignalKind.DESCRIPTION:
-      if (isInitiator(peerId)) {
-        await findLink(
-          peerId,
-          signal.linkId,
-        )?.peerConnection.setRemoteDescription(signal.description);
-        return;
+      if (!isInitiator(peerId)) {
+        await answerOffer(peerId, signal.linkId, signal.description);
+      } else if (link?.route === LinkRoute.DIRECT) {
+        await link.peerConnection.setRemoteDescription(signal.description);
       }
-      await answerOffer(peerId, signal.linkId, signal.description);
       return;
     case SignalKind.CANDIDATE:
-      // a candidate the engine rejects leaves the others usable
-      await findLink(peerId, signal.linkId)
-        ?.peerConnection.addIceCandidate(signal.candidate)
-        .catch(() => undefined);
+      if (link?.route === LinkRoute.DIRECT) {
+        // a candidate the engine rejects leaves the others usable
+        await link.peerConnection
+          .addIceCandidate(signal.candidate)
+          .catch(() => undefined);
+      }
+      return;
+    case SignalKind.RELAY:
+      if (!isInitiator(peerId)) {
+        acceptRelay(peerId, signal.linkId, signal.publicKey);
+      } else if (link?.route === LinkRoute.RELAY) {
+        void joinRelay(peerId, link, signal.publicKey);
+      }
       return;
   }
 };

@@ -10,6 +10,7 @@ export enum SocketEvent {
   GET_STAT = 'get-stat',
   ADD_STAT = 'add-stat',
   UPDATE_STAT = 'update-stat',
+  GET_RELAY_TOKEN = 'get-relay-token',
 }
 
 export type TJoinRoom = {
@@ -52,4 +53,8 @@ export interface ClientToServerEvents {
     reply: (statistics: TStatistics | null) => void,
   ) => void;
   [SocketEvent.ADD_STAT]: (addStat: TAddStat) => void;
+  [SocketEvent.GET_RELAY_TOKEN]: (
+    payload: null,
+    reply: (relayToken: string | null) => void,
+  ) => void;
 }

@@ -29,10 +29,8 @@ Fill in the environment variables with your values:
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
-NEXT_PUBLIC_STUN_URLS=stun:stun.l.google.com:19302,stun:global.stun.twilio.com:3478
-NEXT_PUBLIC_TURN_URL=
-NEXT_PUBLIC_TURN_USERNAME=
-NEXT_PUBLIC_TURN_CREDENTIAL=
+NEXT_PUBLIC_STUN_URLS=
+NEXT_PUBLIC_RELAY_URL=
 NEXT_PUBLIC_WEBSITE_NAME=drop-to.me
 NEXT_PUBLIC_GITHUB_URL=https://github.com/Jeanmec/drop-to.me
 NEXT_PUBLIC_AUTHOR_GITHUB_URL=https://github.com/Jeanmec
@@ -56,8 +54,8 @@ The build is a static export written to `out/`; `yarn start` serves it on the po
 
 The build fails when one of the three variables above is missing or malformed.
 
-- **NEXT_PUBLIC_TURN_URL**, **NEXT_PUBLIC_TURN_USERNAME**, **NEXT_PUBLIC_TURN_CREDENTIAL** (optional)  
-  TURN relay used when two browsers cannot reach each other directly. The credentials are visible in the bundle.
+- **NEXT_PUBLIC_RELAY_URL** (optional)  
+  WebSocket address of the relay used when two browsers cannot reach each other directly, for example `wss://relay.example.org` (see [`relay/`](../relay/README.md)). The backend issues the tokens (`RELAY_AUTH_SECRET`); without one the relay is not used. The browsers encrypt what they send through it. The terms of use name the relay.
 
 - **NEXT_PUBLIC_GITHUB_URL**  
   GitHub repository URL of the project, used by the footer "Get the source code" link, the FAQ and the terms of use (license and issue links). When empty, these links are hidden.

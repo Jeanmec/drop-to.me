@@ -4,12 +4,13 @@ import { addMessageStat } from "@/services/statService";
 import { useChatStore } from "@/stores/useChatStore";
 import { usePeersStore } from "@/stores/usePeersStore";
 import { MessageDelivery } from "@/types/message.t";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 import { PeerMessageType } from "@/types/peerMessage.t";
 import { createRandomId } from "@/utils/random.utils";
 
 interface PendingMessage {
   messageId: string;
-  channels: Set<RTCDataChannel>;
+  channels: Set<TPeerChannel>;
 }
 
 const pendingMessages = new Map<string, PendingMessage>();
@@ -20,7 +21,7 @@ export const sendMessageToTargets = (content: string): boolean => {
     ackId: createRandomId(),
     content,
   };
-  const channels = new Set<RTCDataChannel>();
+  const channels = new Set<TPeerChannel>();
 
   for (const target of usePeersStore.getState().targetPeers) {
     if (target.channel && target.isReachable) {
@@ -44,7 +45,7 @@ export const sendMessageToTargets = (content: string): boolean => {
 
 export const receiveChatMessage = (
   message: TChatMessage,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   if (!message.content) {
     return;
@@ -71,7 +72,7 @@ export const confirmMessageDelivered = (ackId: string): boolean => {
   return true;
 };
 
-export const failMessagesPendingOn = (channel: RTCDataChannel): void => {
+export const failMessagesPendingOn = (channel: TPeerChannel): void => {
   pendingMessages.forEach((pendingMessage, ackId) => {
     if (
       pendingMessage.channels.delete(channel) &&

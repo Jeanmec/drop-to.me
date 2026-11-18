@@ -1172,6 +1172,13 @@
   resolved "https://registry.yarnpkg.com/@types/ua-parser-js/-/ua-parser-js-0.7.39.tgz#832c58e460c9435e4e34bb866e85e9146e12cdbb"
   integrity sha512-P/oDfpofrdtF5xw433SPALpdSchtJmY7nsJItf8h3KXqOslkbySh8zq4dSWXH2oTjRvJ5PczVEoCZPow6GicLg==
 
+"@types/ws@^8.18.1":
+  version "8.18.2"
+  resolved "https://registry.yarnpkg.com/@types/ws/-/ws-8.18.2.tgz#25d6321b30ef0fddf6cc7052b4eef9ce4e412b6e"
+  integrity sha512-67MQl+fpWKVTT1NYdnmo3U4sc/xPo/zQBncVnI74qmQa0z/b+1g6iYqNmGCPbxO+zz2aklb08a0oHfegiVd0/w==
+  dependencies:
+    "@types/node" "*"
+
 "@typescript-eslint/eslint-plugin@8.55.0", "@typescript-eslint/eslint-plugin@^5.4.2 || ^6.0.0 || ^7.0.0 || ^8.0.0":
   version "8.55.0"
   resolved "https://registry.yarnpkg.com/@typescript-eslint/eslint-plugin/-/eslint-plugin-8.55.0.tgz#086d2ef661507b561f7b17f62d3179d692a0765f"

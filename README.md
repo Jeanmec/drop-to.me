@@ -20,7 +20,7 @@ DropToMe lets users send files and messages directly between browsers with no ac
 2. **You join a room** — either automatically (users on the same public IP are grouped together) or manually via a 6-character room code.
 3. **The server introduces peers** — Socket.IO tells each browser which peer IDs are in the room, and relays the WebRTC offers, answers and ICE candidates between them.
 4. **Browsers connect directly** — WebRTC data channels are opened between peers.
-5. **Files and messages flow peer-to-peer** — all data goes directly between browsers. The server is not involved.
+5. **Files and messages flow peer-to-peer** — all data goes directly between browsers. The server is not involved. When no direct route exists, an optional relay carries the data, encrypted by the browsers from one end to the other.
 
 ```
 ┌──────────┐         Socket.IO          ┌──────────┐
@@ -34,12 +34,12 @@ DropToMe lets users send files and messages directly between browsers with no ac
 ```
 
 **Socket.IO** is used only for: joining/leaving rooms, discovering other peers, relaying WebRTC signaling, and anonymous statistics.
-**WebRTC** carries all the actual data: files (chunked in 16 KB pieces), chat messages, and acknowledgements.
+**WebRTC** carries all the actual data: files (chunked in 16 KB pieces), chat messages, and acknowledgements. Between two browsers that cannot reach each other, the same data goes through the relay, encrypted by the browsers.
 
 ## Key Features
 
 - **No account required** — open the link and start sharing.
-- **Peer-to-peer transfers** — files and messages go directly between browsers, never through a server.
+- **Peer-to-peer transfers** — files and messages go directly between browsers. An optional relay carries them, encrypted end to end, when two browsers cannot reach each other.
 - **Automatic room grouping** — users on the same network are placed in the same room automatically (based on a hashed IP, no actual IP is shared).
 - **Room codes** — create or join a room with a 6-character code. Shareable via URL (`?room=XXXXXX`).
 - **Chunked file transfer** — large files are split into 16 KB chunks with progress tracking and acknowledgements.
@@ -51,17 +51,18 @@ DropToMe lets users send files and messages directly between browsers with no ac
 
 Your browser may ask for permission to discover devices on your local network. This is triggered by WebRTC's ICE process, which looks for the best connection path between peers (including local network addresses).
 
-**This permission is entirely optional.** If denied, connections are established through public IP addresses via STUN servers. The app works the same way — the only difference is that two peers on the same LAN won't benefit from a direct local connection.
+**This permission is optional.** If denied, the browsers try to reach each other through their public addresses, found with the STUN servers. Not every router allows that between two devices of the same network: when no direct route exists, the transfer needs the optional relay.
 
 ## Architecture
 
-This is an Nx monorepo with Yarn workspaces, containing three packages:
+This is an Nx monorepo with Yarn workspaces, containing four packages:
 
 | Package | Stack | Role |
 |---------|-------|------|
 | **`front/`** | Next.js 15 (static export), React 19, TypeScript | UI, WebRTC connections, Socket.IO client |
 | **`back/`** | NestJS 11, TypeScript | Socket.IO gateway (rooms, signaling relay), statistics API |
-| **`libs/shared/`** | TypeScript | Socket.IO contract shared by the front and the back, room code utilities |
+| **`relay/`** | Node.js, ws, TypeScript | Optional WebSocket relay between two browsers that cannot reach each other |
+| **`libs/shared/`** | TypeScript | Socket.IO and relay contracts shared by the packages, room code utilities |
 
 ### Backend services
 

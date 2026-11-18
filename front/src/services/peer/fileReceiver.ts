@@ -13,6 +13,7 @@ import {
 } from "@/services/toastService";
 import { useChatStore } from "@/stores/useChatStore";
 import { usePeersStore } from "@/stores/usePeersStore";
+import type { TPeerChannel } from "@/types/peerChannel.t";
 import { PeerMessageType } from "@/types/peerMessage.t";
 import { toWholePercent } from "@/utils/percent.utils";
 
@@ -34,7 +35,7 @@ const receivingFiles = new Map<string, ReceivingFile>();
 const receivedPercent = (receivingFile: ReceivingFile): number =>
   toWholePercent(receivingFile.receivedBytes, receivingFile.size);
 
-const acknowledge = (channel: RTCDataChannel, ackId: string): void => {
+const acknowledge = (channel: TPeerChannel, ackId: string): void => {
   sendPeerMessage(channel, { type: PeerMessageType.ACK, ackId });
 };
 
@@ -81,7 +82,7 @@ const stopReceiving = (peerId: string): void => {
 export const receiveFileStart = (
   message: TFileStartMessage,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   // a sender that retries repeats its file-start
   if (receivingFiles.get(peerId)?.fileId !== message.fileId) {
@@ -106,7 +107,7 @@ export const receiveFileStart = (
 export const receiveFileBytes = (
   bytes: ArrayBuffer,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   const receivingFile = receivingFiles.get(peerId);
   if (!receivingFile) {
@@ -124,7 +125,7 @@ export const receiveFileBytes = (
 export const receiveFileEnd = (
   message: TFileEndMessage,
   peerId: string,
-  channel: RTCDataChannel,
+  channel: TPeerChannel,
 ): void => {
   const receivingFile = receivingFiles.get(peerId);
   if (receivingFile?.fileId !== message.fileId) {

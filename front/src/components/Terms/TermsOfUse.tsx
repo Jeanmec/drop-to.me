@@ -3,7 +3,7 @@ import SectionHeading from "@/components/ui/SectionHeading";
 import { env } from "@/env";
 import { iceServerHost } from "@/utils/ice.utils";
 
-const UPDATED_ON = "14 November 2026";
+const UPDATED_ON = "18 November 2026";
 const AUTHOR_NAME = "Jean Claverie";
 const LICENSE_NAME = "MIT License";
 
@@ -66,6 +66,8 @@ export default function TermsOfUse() {
   const stunHosts = hostListFormatter.format(
     env.NEXT_PUBLIC_STUN_URLS.map(iceServerHost),
   );
+  const relayHost =
+    env.NEXT_PUBLIC_RELAY_URL && new URL(env.NEXT_PUBLIC_RELAY_URL).hostname;
 
   return (
     <article className="grid gap-14 px-14 pt-16 pb-20 max-md:gap-10 max-md:px-4 max-md:pt-10 max-md:pb-14">
@@ -88,8 +90,10 @@ export default function TermsOfUse() {
         <p>
           {siteName} connects the devices that open it from the same network, or
           that share a room code, so they can send each other files and
-          messages. Files and messages travel straight from one browser to the
-          other.
+          messages.{" "}
+          {relayHost
+            ? "Files and messages travel straight from one browser to the other whenever the network allows it, and through an encrypted relay otherwise."
+            : "Files and messages travel straight from one browser to the other."}
         </p>
         <p>
           It is made by {AUTHOR_NAME} and offered free of charge, with no
@@ -137,15 +141,24 @@ export default function TermsOfUse() {
             other are relayed and never stored.
           </p>
         </TermsTopic>
-        <TermsTopic title="What never reaches the server">
+        <TermsTopic
+          title={
+            relayHost
+              ? "What no server can read"
+              : "What never reaches the server"
+          }
+        >
           <p>
             Your files and your messages. They go directly between browsers over
             WebRTC, which encrypts every connection.
           </p>
-          {env.NEXT_PUBLIC_TURN_URL && (
+          {relayHost && (
             <p>
-              When two devices cannot reach each other directly, their encrypted
-              exchange goes through a relay server, which cannot read it.
+              When two devices cannot reach each other directly, their browsers
+              agree on a secret key that never leaves them, encrypt everything
+              with it and send it through a relay server ({relayHost}). The
+              relay sees your IP address, how much data passes and when, but it
+              cannot read what you send and keeps none of it.
             </p>
           )}
         </TermsTopic>
@@ -156,11 +169,12 @@ export default function TermsOfUse() {
             the memory of the browser until you close the page.
           </p>
         </TermsTopic>
-        <TermsTopic title="Other parties">
+        <TermsTopic title="Who sees your IP address">
           <p>
-            To find a route between devices, your browser contacts public STUN
-            servers ({stunHosts}), which see your IP address. The other devices
-            in your room learn it too: a direct connection needs it.
+            To find a route between devices, your browser contacts STUN servers
+            ({stunHosts}), which see your IP address
+            {relayHost && ", and so does the relay when it is used"}. The other
+            devices in your room learn it too: a direct connection needs it.
           </p>
         </TermsTopic>
       </TermsSection>
