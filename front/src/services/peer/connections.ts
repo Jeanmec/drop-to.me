@@ -48,6 +48,7 @@ type PeerLink = DirectLink | RelayedLink;
 
 const CHANNEL_LABEL = "drop-to-me";
 const UNOPENED_PINGS_BEFORE_RETRY = 2;
+const ANSWERED_LINK_OPENING_MS = 1000;
 const CONNECTED_ICE_STATES: RTCIceConnectionState[] = [
   "connected",
   "completed",
@@ -195,6 +196,16 @@ const createDirectLink = (peerId: string, linkId: string): DirectLink => {
     attachChannel(peerId, link, wrapDataChannel(channel)),
   );
   return link;
+};
+
+// no event reports a direct attempt that cannot succeed: once answered, it gets one second to open
+const giveUpUnopenedLink = (peerId: string, link: DirectLink): void => {
+  // eslint-disable-next-line no-restricted-globals
+  setTimeout(() => {
+    if (!link.hasOpened) {
+      failLink(peerId, link);
+    }
+  }, ANSWERED_LINK_OPENING_MS);
 };
 
 const sendOffer = async (peerId: string, link: DirectLink): Promise<void> => {
@@ -356,6 +367,7 @@ const applySignal = async (peerId: string, signal: TSignal): Promise<void> => {
         await answerOffer(peerId, signal.linkId, signal.description);
       } else if (link?.route === LinkRoute.DIRECT) {
         await link.peerConnection.setRemoteDescription(signal.description);
+        giveUpUnopenedLink(peerId, link);
       }
       return;
     case SignalKind.CANDIDATE:
