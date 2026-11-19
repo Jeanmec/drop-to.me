@@ -42,12 +42,12 @@ export default function LighthouseScene({
   children,
   phase,
 }: LighthouseSceneProps) {
-  const isWebRtcUnsupported = useSessionStore(
-    (state) => state.isWebRtcUnsupported,
+  const isBrowserUnsupported = useSessionStore(
+    (state) => state.isBrowserUnsupported,
   );
   const isStranded = useIsStranded();
   const isBeamHeld = useTransferStore(selectIsBeamHeld);
-  const beam = beamOf(isWebRtcUnsupported || isStranded, isBeamHeld);
+  const beam = beamOf(isBrowserUnsupported || isStranded, isBeamHeld);
   const isLit = beam !== BeamState.DARK;
   const isPainted = phase === ScenePhase.PAINTED;
 

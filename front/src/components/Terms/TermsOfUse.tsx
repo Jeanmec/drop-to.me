@@ -1,16 +1,10 @@
 import type { ReactNode } from "react";
 import SectionHeading from "@/components/ui/SectionHeading";
 import { env } from "@/env";
-import { iceServerHost } from "@/utils/ice.utils";
 
-const UPDATED_ON = "18 November 2026";
+const UPDATED_ON = "19 November 2026";
 const AUTHOR_NAME = "Jean Claverie";
 const LICENSE_NAME = "MIT License";
-
-const hostListFormatter = new Intl.ListFormat("en", {
-  style: "long",
-  type: "conjunction",
-});
 
 interface TermsSectionProps {
   title: string;
@@ -63,11 +57,7 @@ function TermsLink({ href, children }: TermsLinkProps) {
 export default function TermsOfUse() {
   const siteName = env.NEXT_PUBLIC_WEBSITE_NAME;
   const sourceUrl = env.NEXT_PUBLIC_GITHUB_URL;
-  const stunHosts = hostListFormatter.format(
-    env.NEXT_PUBLIC_STUN_URLS.map(iceServerHost),
-  );
-  const relayHost =
-    env.NEXT_PUBLIC_RELAY_URL && new URL(env.NEXT_PUBLIC_RELAY_URL).hostname;
+  const relayHost = new URL(env.NEXT_PUBLIC_RELAY_URL).hostname;
 
   return (
     <article className="grid gap-14 px-14 pt-16 pb-20 max-md:gap-10 max-md:px-4 max-md:pt-10 max-md:pb-14">
@@ -90,10 +80,8 @@ export default function TermsOfUse() {
         <p>
           {siteName} connects the devices that open it from the same network, or
           that share a room code, so they can send each other files and
-          messages.{" "}
-          {relayHost
-            ? "Files and messages travel straight from one browser to the other whenever the network allows it, and through an encrypted relay otherwise."
-            : "Files and messages travel straight from one browser to the other."}
+          messages. Files and messages travel through a relay that cannot read
+          them.
         </p>
         <p>
           It is made by {AUTHOR_NAME} and offered free of charge, with no
@@ -141,26 +129,14 @@ export default function TermsOfUse() {
             other are relayed and never stored.
           </p>
         </TermsTopic>
-        <TermsTopic
-          title={
-            relayHost
-              ? "What no server can read"
-              : "What never reaches the server"
-          }
-        >
+        <TermsTopic title="What no server can read">
+          <p>Your files and your messages.</p>
           <p>
-            Your files and your messages. They go directly between browsers over
-            WebRTC, which encrypts every connection.
+            The browsers agree on a secret key that never leaves them, encrypt
+            everything with it and send it through a relay server ({relayHost}).
+            The relay sees your IP address, how much data passes and when, but
+            it cannot read what you send and keeps none of it.
           </p>
-          {relayHost && (
-            <p>
-              When two devices cannot reach each other directly, their browsers
-              agree on a secret key that never leaves them, encrypt everything
-              with it and send it through a relay server ({relayHost}). The
-              relay sees your IP address, how much data passes and when, but it
-              cannot read what you send and keeps none of it.
-            </p>
-          )}
         </TermsTopic>
         <TermsTopic title="On your device">
           <p>
@@ -171,10 +147,9 @@ export default function TermsOfUse() {
         </TermsTopic>
         <TermsTopic title="Who sees your IP address">
           <p>
-            To find a route between devices, your browser contacts STUN servers
-            ({stunHosts}), which see your IP address
-            {relayHost && ", and so does the relay when it is used"}. The other
-            devices in your room learn it too: a direct connection needs it.
+            The server and the relay, while you are connected. Neither records
+            it. The other devices in your room do not see it: nothing goes
+            straight from one device to another.
           </p>
         </TermsTopic>
       </TermsSection>

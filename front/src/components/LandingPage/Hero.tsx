@@ -37,8 +37,7 @@ export default function Hero({ phase, note, children }: HeroProps) {
         inert={isStowed}
       >
         <p className={clsx(styles.tagline, "text-lead max-md:text-base")}>
-          Share large files over your local network with peer-to-peer
-          technology.
+          Share large files over your local network with websocket technology.
         </p>
         {children}
       </div>

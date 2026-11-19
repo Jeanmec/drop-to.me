@@ -8,13 +8,17 @@ interface SessionStore {
   failedAttempts: number;
   isJoining: boolean;
   isRoomJoined: boolean;
+  // between a forced reconnection and its outcome: the links are about to be replaced
+  isRejoining: boolean;
   ip: string | null;
-  isWebRtcUnsupported: boolean;
+  isBrowserUnsupported: boolean;
   setSocketConnected: (isSocketConnected: boolean) => void;
   recordFailedAttempt: () => void;
   startJoining: () => void;
   completeJoin: (ip: string) => void;
-  markWebRtcUnsupported: () => void;
+  startRejoining: () => void;
+  finishRejoining: () => void;
+  markBrowserUnsupported: () => void;
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -23,8 +27,9 @@ export const useSessionStore = create<SessionStore>((set) => ({
   failedAttempts: 0,
   isJoining: false,
   isRoomJoined: false,
+  isRejoining: false,
   ip: null,
-  isWebRtcUnsupported: false,
+  isBrowserUnsupported: false,
 
   setSocketConnected: (isSocketConnected) =>
     set((state) => ({
@@ -34,7 +39,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     })),
 
   recordFailedAttempt: () =>
-    set((state) => ({ failedAttempts: state.failedAttempts + 1 })),
+    set((state) => ({
+      failedAttempts: state.failedAttempts + 1,
+      isRejoining: false,
+    })),
 
   startJoining: () => set({ isJoining: true, isRoomJoined: false }),
 
@@ -45,7 +53,11 @@ export const useSessionStore = create<SessionStore>((set) => ({
       ip: ip || state.ip,
     })),
 
-  markWebRtcUnsupported: () => set({ isWebRtcUnsupported: true }),
+  startRejoining: () => set({ isRejoining: true }),
+
+  finishRejoining: () => set({ isRejoining: false }),
+
+  markBrowserUnsupported: () => set({ isBrowserUnsupported: true }),
 }));
 
 export const selectIsReconnecting = (state: SessionStore): boolean =>

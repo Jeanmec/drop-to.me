@@ -2,9 +2,6 @@ import { RelayNotice, type TRelayJoin } from "@droptome/shared";
 import type { RelayCipher } from "@/services/peer/relayCipher";
 import type { TPeerChannel } from "@/types/peerChannel.t";
 
-// TCP and the relay hold back what the receiver has not taken yet
-const RELAY_SEND_WINDOW = 4 * 1024 * 1024;
-
 export const openRelayChannel = (
   relayUrl: string,
   join: TRelayJoin,
@@ -68,8 +65,6 @@ export const openRelayChannel = (
   }, close);
 
   return {
-    initialSendWindow: RELAY_SEND_WINDOW,
-    maxSendWindow: RELAY_SEND_WINDOW,
     isOpen,
     sendText: queueSend,
     sendBytes: queueSend,

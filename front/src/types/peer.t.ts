@@ -5,6 +5,7 @@ export type TPeer = {
   peerId: string;
   channel: TPeerChannel | null;
   isReachable: boolean;
+  isChoosingFile: boolean;
   isSending: boolean;
   isReceiving: boolean;
   device?: TDevice;

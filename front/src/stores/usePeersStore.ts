@@ -6,6 +6,7 @@ import type { TPeerChannel } from "@/types/peerChannel.t";
 interface PeerUpdate {
   channel?: TPeerChannel | null;
   isReachable?: boolean;
+  isChoosingFile?: boolean;
   isSending?: boolean;
   isReceiving?: boolean;
   device?: TDevice;
@@ -36,6 +37,7 @@ export const usePeersStore = create<PeersStore>((set) => ({
             peerId,
             channel: null,
             isReachable: false,
+            isChoosingFile: false,
             isSending: false,
             isReceiving: false,
           },
@@ -63,3 +65,6 @@ export const findTargetPeer = (peerId: string): TPeer | undefined =>
 
 export const selectHasReachablePeer = (state: PeersStore): boolean =>
   state.targetPeers.some((peer) => peer.isReachable);
+
+export const isPeerPresent = (peer: TPeer): boolean =>
+  peer.isReachable || peer.isChoosingFile;

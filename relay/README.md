@@ -1,9 +1,9 @@
 # 📡 Relay [Drop-to.me](https://drop-to.me/)
 
 This project is developed in **TypeScript** on **Node.js** with the **ws** library.  
-It connects two browsers that cannot reach each other directly: it pairs the two WebSocket connections that present the same link ID, then forwards every frame from one to the other. It reads, stores and logs nothing.
+It carries every file and message two browsers exchange: it pairs the two WebSocket connections that present the same link ID, then forwards every frame from one to the other. It reads, stores and logs nothing.
 
-The browsers encrypt everything they send through it (ECDH P-256 key agreement through the signaling server, then AES-GCM), so the relay only sees ciphertext.
+The browsers encrypt everything they send through it (ECDH P-256 key agreement through the backend, then AES-GCM), so the relay only sees ciphertext.
 
 ## 🚀 Prerequisites
 

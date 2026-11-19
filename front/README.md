@@ -1,13 +1,14 @@
 # 🌐 Frontend [Drop-to.me](https://drop-to.me/)
 
 This project is built with **Next.js** (React framework) in **TypeScript**.  
-It talks to the NestJS backend over **Socket.IO** and connects browsers to each other with native **WebRTC** data channels.
+It talks to the NestJS backend over **Socket.IO** and sends files and messages through the **WebSocket relay**, encrypted in the browser with the **Web Crypto API**.
 
 ## 🚀 Prerequisites
 
 - Node.js 20 or later (22.04 if using Nixpacks)
 - Yarn 1 (the repository is a Yarn workspace)
 - Backend URL (NestJS Socket.IO server)
+- Relay URL (WebSocket relay, see [`relay/`](../relay/README.md))
 
 ## ⚙️ Installation
 
@@ -29,8 +30,7 @@ Fill in the environment variables with your values:
 
 ```env
 NEXT_PUBLIC_BACKEND_URL=http://localhost:3000
-NEXT_PUBLIC_STUN_URLS=
-NEXT_PUBLIC_RELAY_URL=
+NEXT_PUBLIC_RELAY_URL=ws://localhost:8080
 NEXT_PUBLIC_WEBSITE_NAME=drop-to.me
 NEXT_PUBLIC_GITHUB_URL=https://github.com/Jeanmec/drop-to.me
 NEXT_PUBLIC_AUTHOR_GITHUB_URL=https://github.com/Jeanmec
@@ -41,21 +41,20 @@ All `NEXT_PUBLIC_*` values are inlined at build time (`next build`, Docker, Nixp
 
 The build is a static export written to `out/`; `yarn start` serves it on the port given by `PORT` (3000 by default).
 
+The page must be served over HTTPS (or from `localhost`): browsers only provide the Web Crypto API to such origins, and without it the page reports that it cannot connect.
+
 ### Environment Variables Explanation
 
 - **NEXT_PUBLIC_BACKEND_URL**  
-  URL of the NestJS backend server (Socket.IO signaling).
+  URL of the NestJS backend server (Socket.IO: rooms and key exchange).
 
-- **NEXT_PUBLIC_STUN_URLS**  
-  Comma-separated STUN servers the browsers use to find a route to each other. The terms of use name them.
+- **NEXT_PUBLIC_RELAY_URL**  
+  WebSocket address of the relay, for example `wss://relay.example.org` (see [`relay/`](../relay/README.md)). Every file and message goes through it, encrypted by the browsers. The backend issues the tokens the relay asks for (`RELAY_AUTH_SECRET`). The terms of use name the relay.
 
 - **NEXT_PUBLIC_WEBSITE_NAME**  
   Name of the website (used in the page and in the terms of use).
 
 The build fails when one of the three variables above is missing or malformed.
-
-- **NEXT_PUBLIC_RELAY_URL** (optional)  
-  WebSocket address of the relay used when two browsers cannot reach each other directly, for example `wss://relay.example.org` (see [`relay/`](../relay/README.md)). The backend issues the tokens (`RELAY_AUTH_SECRET`); without one the relay is not used. The browsers encrypt what they send through it. The terms of use name the relay.
 
 - **NEXT_PUBLIC_GITHUB_URL**  
   GitHub repository URL of the project, used by the footer "Get the source code" link, the FAQ and the terms of use (license and issue links). When empty, these links are hidden.
@@ -102,7 +101,7 @@ docker run -p 3000:3000 droptome-frontend
 - src/app/ : Next.js app router pages (the application and the terms of use)
 - src/components/ : UI components, one folder per domain
 - src/hooks/ : React hooks
-- src/services/ : Socket.IO session, WebRTC connections and transfers
+- src/services/ : Socket.IO session, relay links, encryption and transfers
 - src/stores/ : State management stores
 - src/schemas/ : Validation of the messages exchanged between browsers
 - src/styles/ : Theme and global styles

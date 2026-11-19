@@ -20,8 +20,8 @@ import { ScenePhase } from "@/types/scene.t";
 
 export default function HomePage() {
   const hasTargetPeers = usePeersStore((state) => state.targetPeers.length > 0);
-  const isWebRtcUnsupported = useSessionStore(
-    (state) => state.isWebRtcUnsupported,
+  const isBrowserUnsupported = useSessionStore(
+    (state) => state.isBrowserUnsupported,
   );
   const isFileDragged = useIsFileDragged();
   const roomCode = useRoomStore((state) => state.roomCode);
@@ -30,7 +30,7 @@ export default function HomePage() {
   const isStranded = useIsStranded();
   const wash = useJoiningWash(isJoining);
 
-  const isCutOff = isWebRtcUnsupported || isStranded;
+  const isCutOff = isBrowserUnsupported || isStranded;
   const isWashed = wash.isWashed && !isCutOff;
   const phase = isWashed ? ScenePhase.WASHED : ScenePhase.PAINTED;
   const isActive = isRoomJoined && hasTargetPeers && !isStranded;
@@ -46,7 +46,7 @@ export default function HomePage() {
               isWashed && roomCode && <EnteringRoomNote roomCode={roomCode} />
             }
           >
-            {isWebRtcUnsupported ? (
+            {isBrowserUnsupported ? (
               <Disconnected />
             ) : (
               <FileTransfer
@@ -57,7 +57,7 @@ export default function HomePage() {
             )}
           </Hero>
           <RoomControls />
-          {!isWebRtcUnsupported && (
+          {!isBrowserUnsupported && (
             <Chat isBuoyStowed={isWashed || isDropTarget} />
           )}
         </LighthouseScene>

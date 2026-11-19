@@ -1,7 +1,7 @@
 # 📦 Backend [Drop-to.me](https://drop-to.me/)
 
 This project is developed in **TypeScript** using the **NestJS** framework.  
-It groups browsers into rooms, relays their WebRTC signaling and keeps anonymous statistics in **PostgreSQL**.  
+It groups browsers into rooms, passes on the public keys they exchange, issues their relay tokens and keeps anonymous statistics in **PostgreSQL**.  
 All client communication is handled via **Socket.IO** (WebSocket).
 
 ## 🚀 Prerequisites
@@ -36,7 +36,7 @@ IP_HASH_SECRET=xxx
 
 CORS_ACCEPTED_ORIGINS=http://localhost:3001
 
-RELAY_AUTH_SECRET=
+RELAY_AUTH_SECRET=xxx
 ```
 
 The variables are read from the environment of the process: Docker Compose loads `.env`, a bare `node` or `nest` command does not.
@@ -59,8 +59,8 @@ The variables are read from the environment of the process: Docker Compose loads
 - **CORS_ACCEPTED_ORIGINS**  
   Defines the accepted origins for standard HTTP CORS requests.
 
-- **RELAY_AUTH_SECRET** (optional)  
-  Secret shared with the relay (`relay/`). When set, the server issues a relay token, valid for one minute, to each browser of a room that opens a relayed link; when empty, no relay is offered.
+- **RELAY_AUTH_SECRET**  
+  Secret shared with the relay (`relay/`). The server signs with it the relay token, valid for one minute, that each browser of a room asks for when it opens a link. The server does not start without it.
 
 - **PORT** (optional)  
   Port the server listens on, 3000 by default.
@@ -80,11 +80,11 @@ Alter the column in the database before starting the new version. A database cre
 ALTER TABLE file_transfers ALTER COLUMN "fileSize" TYPE bigint;
 ```
 
-## 📡 Relay (optional)
+## 📡 Relay
 
-Two browsers that cannot reach each other directly go through the [relay](../relay/README.md), which only sees what they encrypted.
+Browsers send their files and messages through the [relay](../relay/README.md), which only sees what they encrypted.
 
-A browser asks the server for a token when it opens a relayed link: the expiry time in epoch milliseconds, one minute ahead, a dot, and the base64url HMAC-SHA256 of that expiry under `RELAY_AUTH_SECRET`. The relay checks it with the same secret. The front names the relay in `NEXT_PUBLIC_RELAY_URL`.
+A browser asks the server for a token when it opens a link: the expiry time in epoch milliseconds, one minute ahead, a dot, and the base64url HMAC-SHA256 of that expiry under `RELAY_AUTH_SECRET`. The relay checks it with the same secret. The front names the relay in `NEXT_PUBLIC_RELAY_URL`.
 
 ## ▶️ Run the Project
 
@@ -125,11 +125,11 @@ docker run --env-file .env -p 3000:3000 droptome-back
 
 **Note:**
 
-- Port 3000 is used for the NestJS backend (Socket.IO: rooms, WebRTC signaling and statistics)
+- Port 3000 is used for the NestJS backend (Socket.IO: rooms, key exchange and statistics)
 
 ## 🗂 Project Structure
 
-- src/signal/ : Socket.IO gateway (rooms, signaling relay), peer ID ownership and relay tokens
+- src/signal/ : Socket.IO gateway (rooms, key exchange), peer ID ownership, places held during a file selection and relay tokens
 - src/stats/ : statistics entities and service
 - src/database/ : database connection
 - .env : Local environment variables

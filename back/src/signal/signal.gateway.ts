@@ -22,6 +22,7 @@ import {
   type TStatUpdate,
 } from '@droptome/shared';
 import { StatsService } from '../stats/stats.service';
+import { HeldPlacesService } from './held-places.service';
 import { PeerClaimsService } from './peer-claims.service';
 import { RelayTokensService } from './relay-tokens.service';
 import { getHashedIp, extractIp } from 'src/utils/ip.utils';
@@ -29,6 +30,8 @@ import { getHashedIp, extractIp } from 'src/utils/ip.utils';
 interface SocketData {
   roomId?: string;
   peerId?: string;
+  isChoosingFile?: boolean;
+  hasTimedOut?: boolean;
 }
 
 type RoomServer = Server<
@@ -73,6 +76,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private readonly statsService: StatsService,
     private readonly peerClaims: PeerClaimsService,
+    private readonly heldPlaces: HeldPlacesService,
     private readonly relayTokens: RelayTokensService,
   ) {}
 
@@ -81,6 +85,11 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: RoomSocket): Promise<void> {
+    client.on('disconnecting', (reason) => {
+      client.data.hasTimedOut = reason === 'ping timeout';
+    });
+    client.conn.on('heartbeat', () => void this.announceExpiredPlaces());
+
     try {
       const result = await this.statsService.updateStats(StatType.USER);
       if (result) {
@@ -116,6 +125,10 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
         ? `room:${roomCode}`
         : getHashedIp(socket.request);
 
+      const heldPlace = this.heldPlaces.release(peerId);
+      if (heldPlace && heldPlace.roomId !== roomId) {
+        await this.announceIfPeerLeft(heldPlace.roomId, peerId);
+      }
       await this.leaveCurrentRoom(socket);
       socket.data.roomId = roomId;
       await socket.join(roomId);
@@ -126,6 +139,12 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
         peers: peerIds.filter((id) => id !== peerId),
         ip: extractIp(socket.request),
         roomCode,
+      });
+      this.heldPlaces.listPeerIds(roomId).forEach((heldPeerId) => {
+        socket.emit(SocketEvent.PEER_CHOOSING_FILE, {
+          peerId: heldPeerId,
+          isChoosing: true,
+        });
       });
     } catch (error) {
       this.logger.error(
@@ -172,6 +191,10 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       this.peerClaims.release(peerId);
       if (roomId) {
+        // a page frozen behind its file picker answers no ping: its place waits for it
+        if (socket.data.isChoosingFile && socket.data.hasTimedOut) {
+          this.heldPlaces.hold(peerId, roomId);
+        }
         await this.announceIfPeerLeft(roomId, peerId);
       }
     } catch (error) {
@@ -217,6 +240,23 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
+  @SubscribeMessage(SocketEvent.CHOOSE_FILE)
+  handleChooseFile(
+    @MessageBody() isChoosing: unknown,
+    @ConnectedSocket() socket: RoomSocket,
+  ): void {
+    const { roomId, peerId } = socket.data;
+    if (!roomId || !peerId || typeof isChoosing !== 'boolean') {
+      return;
+    }
+
+    socket.data.isChoosingFile = isChoosing;
+    socket
+      .to(roomId)
+      .emit(SocketEvent.PEER_CHOOSING_FILE, { peerId, isChoosing });
+  }
+
+  // a returned null sends no acknowledgement: a socket outside a room gets no answer
   @SubscribeMessage(SocketEvent.GET_RELAY_TOKEN)
   handleGetRelayToken(@ConnectedSocket() socket: RoomSocket): string | null {
     return socket.data.roomId ? this.relayTokens.issue() : null;
@@ -248,7 +288,20 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.announceIfPeerLeft(roomId, peerId);
   }
 
-  // a peer stays in the room while another of its sockets is there
+  private async announceExpiredPlaces(): Promise<void> {
+    try {
+      for (const { roomId, peerId } of this.heldPlaces.takeExpired()) {
+        await this.announceIfPeerLeft(roomId, peerId);
+      }
+    } catch (error) {
+      this.logger.error(
+        'announceExpiredPlaces failed',
+        error instanceof Error ? error.stack : error,
+      );
+    }
+  }
+
+  // a peer stays in the room while another of its sockets is there, or while its place is held
   private async announceIfPeerLeft(
     roomId: string,
     peerId: string,
@@ -264,7 +317,7 @@ export class SignalGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const peerIds = sockets
       .map((socket) => socket.data.peerId)
       .filter((peerId) => peerId !== undefined);
-    return [...new Set(peerIds)];
+    return [...new Set([...peerIds, ...this.heldPlaces.listPeerIds(roomId)])];
   }
 
   private broadcastStatUpdate(update: TStatUpdate): void {

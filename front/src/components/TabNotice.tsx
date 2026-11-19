@@ -3,7 +3,7 @@
 import { useChatStore } from "@/stores/useChatStore";
 import { useReceivedFilesStore } from "@/stores/useReceivedFilesStore";
 
-const SITE_TITLE = "Drop to me | Peer to peer transfer";
+const SITE_TITLE = "Drop to me | Local file transfer";
 
 export default function TabNotice() {
   const unreadCount = useChatStore((state) => state.unreadCount);

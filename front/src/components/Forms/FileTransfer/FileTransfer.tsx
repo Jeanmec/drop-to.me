@@ -5,8 +5,10 @@ import GlobalFileDropzone from "@/components/Forms/FileTransfer/GlobalFileDropzo
 import InputFile from "@/components/Forms/FileTransfer/InputFile";
 import TransferStatus from "@/components/Forms/FileTransfer/TransferStatus";
 import { useScreenWakeLock } from "@/hooks/useScreenWakeLock";
+import { refreshSession } from "@/services/session";
+import { announceFileChoice } from "@/services/socketService";
 import { sendFiles } from "@/services/transferService";
-import { usePeersStore } from "@/stores/usePeersStore";
+import { isPeerPresent, usePeersStore } from "@/stores/usePeersStore";
 import {
   selectIsTransferLocked,
   useTransferStore,
@@ -34,7 +36,9 @@ const sendLabelOf = (phase: TransferPhase, isDropping: boolean): string => {
   }
 };
 
+// a page that Android froze behind its file picker rejoins its room before it sends
 const handleFilesSelected = (files: File[]): void => {
+  refreshSession();
   void sendFiles(files);
 };
 
@@ -62,6 +66,7 @@ export default function FileTransfer({
       />
       <InputFile
         onFilesSelected={handleFilesSelected}
+        onChoosingChange={announceFileChoice}
         disabled={isTransferLocked}
         hasNoRecipient={!isActive}
         isDropTarget={isDropping}
@@ -74,9 +79,7 @@ export default function FileTransfer({
           <TransferStatus
             isDropping={isDropping}
             peerCount={targetPeers.length}
-            connectedCount={
-              targetPeers.filter((peer) => peer.isReachable).length
-            }
+            connectedCount={targetPeers.filter(isPeerPresent).length}
           />
         )}
       </div>

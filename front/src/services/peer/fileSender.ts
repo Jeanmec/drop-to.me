@@ -4,7 +4,6 @@ import type {
 } from "@/schemas/peerMessage.schema";
 import { sendPeerMessage } from "@/services/peer/peerChannel";
 import {
-  recordTransferDuration,
   trackSendProgress,
   type ByteReporter,
 } from "@/services/peer/sendProgress";
@@ -25,6 +24,8 @@ interface SendTransfer {
 }
 
 const CHUNK_SIZE = 16 * 1024;
+// bytes a receiver may leave unacknowledged: TCP and the relay hold back what it has not taken yet
+const SEND_WINDOW = 4 * 1024 * 1024;
 
 const activeSendTransfers = new Map<string, SendTransfer>();
 const pendingFileAcks = new Map<string, string>();
@@ -116,11 +117,10 @@ const sendChunks = async (
 ): Promise<boolean> => {
   let sentBytes = 0;
   let acknowledgedBytes = 0;
-  let sendWindow = channel.initialSendWindow;
 
   while (acknowledgedBytes < file.size) {
     const sendableChunks = Math.floor(
-      (sendWindow - (sentBytes - acknowledgedBytes)) / CHUNK_SIZE,
+      (SEND_WINDOW - (sentBytes - acknowledgedBytes)) / CHUNK_SIZE,
     );
 
     if (sentBytes < file.size && sendableChunks > 0) {
@@ -152,12 +152,6 @@ const sendChunks = async (
       }
     }
 
-    const newlyAcknowledgedBytes =
-      sendTransfer.receivedBytes - acknowledgedBytes;
-    sendWindow = Math.min(
-      channel.maxSendWindow,
-      sendWindow + (CHUNK_SIZE * newlyAcknowledgedBytes) / sendWindow,
-    );
     acknowledgedBytes = sendTransfer.receivedBytes;
     reportBytes(peerId, acknowledgedBytes);
   }
@@ -225,7 +219,6 @@ export const sendFileToTargets = async (
     return false;
   }
 
-  const startedAt = performance.now();
   const reportBytes = trackSendProgress(
     file.size,
     targets.map((target) => target.peerId),
@@ -264,6 +257,5 @@ export const sendFileToTargets = async (
     );
   }
 
-  recordTransferDuration(file.size, performance.now() - startedAt);
   return true;
 };

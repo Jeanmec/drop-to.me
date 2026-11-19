@@ -11,6 +11,8 @@ export enum SocketEvent {
   ADD_STAT = 'add-stat',
   UPDATE_STAT = 'update-stat',
   GET_RELAY_TOKEN = 'get-relay-token',
+  CHOOSE_FILE = 'choose-file',
+  PEER_CHOOSING_FILE = 'peer-choosing-file',
 }
 
 export type TJoinRoom = {
@@ -24,6 +26,11 @@ export type TJoinSuccess = {
   peers: string[];
   ip: string;
   roomCode: string | null;
+};
+
+export type TPeerChoosingFile = {
+  peerId: string;
+  isChoosing: boolean;
 };
 
 // the server relays the signal without reading it
@@ -43,6 +50,7 @@ export interface ServerToClientEvents {
   [SocketEvent.PEER_LEFT]: (peerId: string) => void;
   [SocketEvent.SIGNAL]: (signal: TSignalFromPeer) => void;
   [SocketEvent.UPDATE_STAT]: (update: TStatUpdate) => void;
+  [SocketEvent.PEER_CHOOSING_FILE]: (choice: TPeerChoosingFile) => void;
 }
 
 export interface ClientToServerEvents {
@@ -55,6 +63,7 @@ export interface ClientToServerEvents {
   [SocketEvent.ADD_STAT]: (addStat: TAddStat) => void;
   [SocketEvent.GET_RELAY_TOKEN]: (
     payload: null,
-    reply: (relayToken: string | null) => void,
+    reply: (relayToken: string) => void,
   ) => void;
+  [SocketEvent.CHOOSE_FILE]: (isChoosing: boolean) => void;
 }

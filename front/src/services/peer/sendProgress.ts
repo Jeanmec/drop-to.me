@@ -11,18 +11,6 @@ export type ByteReporter = (peerId: string, sentBytes: number) => void;
 
 const MAX_UNCONFIRMED_PERCENT = 99;
 const LONG_TRANSFER_SECONDS = 5;
-const MIN_MEASURED_TRANSFER_MS = 300;
-
-let knownBytesPerSecond: number | null = null;
-
-export const recordTransferDuration = (
-  fileSize: number,
-  elapsedMs: number,
-): void => {
-  if (elapsedMs >= MIN_MEASURED_TRANSFER_MS) {
-    knownBytesPerSecond = (fileSize / elapsedMs) * MILLISECONDS_PER_SECOND;
-  }
-};
 
 export const trackSendProgress = (
   fileSize: number,
@@ -37,9 +25,7 @@ export const trackSendProgress = (
   let reported: TSendProgress = {
     progress: 0,
     remainingSeconds: null,
-    isLong:
-      knownBytesPerSecond !== null &&
-      fileSize / knownBytesPerSecond >= LONG_TRANSFER_SECONDS,
+    isLong: false,
   };
   onProgress(reported);
 
@@ -47,8 +33,7 @@ export const trackSendProgress = (
     let slowestRemainingSeconds = 0;
 
     for (const [peerId, sentBytes] of sentBytesByPeer) {
-      const bytesPerSecond =
-        meters.get(peerId)?.bytesPerSecond() ?? knownBytesPerSecond;
+      const bytesPerSecond = meters.get(peerId)?.bytesPerSecond() ?? null;
       if (bytesPerSecond === null || bytesPerSecond <= 0) {
         return null;
       }

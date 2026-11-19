@@ -7,9 +7,9 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   description:
-    "Send files online via secure peer to peer transfer. Free, unlimited size, no logs.",
+    "Transfer files via secure, encrypted transfer. Free, unlimited size, no logs.",
   keywords:
-    "peer to peer, file transfer, secure sharing, fast transfer, free, unlimited",
+    "encrypted transfer, file transfer, secure sharing, fast transfer, free, unlimited",
 };
 
 const fraunces = Fraunces({

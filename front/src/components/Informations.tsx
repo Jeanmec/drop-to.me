@@ -15,8 +15,8 @@ export default function Informations() {
       content: (
         <>
           <p>
-            This is a peer-to-peer file transfer application that allows you to
-            send files or messages directly between devices on the same network.
+            This is a file transfer application that allows you to send files or
+            messages between devices on the same network.
           </p>
           <p>It is designed to be fast, secure, and easy to use.</p>
         </>
@@ -36,11 +36,8 @@ export default function Informations() {
           </p>
           <p>
             For statistics, it counts connections, messages and files, with the
-            size of each file.{" "}
-            {env.NEXT_PUBLIC_RELAY_URL
-              ? "No server can read the files or messages you send."
-              : "The content of the files or messages you send never reaches the server."}{" "}
-            The{" "}
+            size of each file. No server can read the files or messages you
+            send. The{" "}
             <Link
               href="/terms"
               target="_blank"
@@ -60,10 +57,9 @@ export default function Informations() {
       content: (
         <>
           <p>
-            {env.NEXT_PUBLIC_RELAY_URL
-              ? "Files and messages travel from browser to browser, encrypted from end to end: over WebRTC when the devices can reach each other, through a relay that cannot read them otherwise."
-              : "Files and messages travel from browser to browser over WebRTC, which encrypts every connection."}{" "}
-            Nothing you send is stored on our servers.
+            Files and messages are encrypted from one browser to the other, and
+            travel through a relay that cannot read them. Nothing you send is
+            stored on our servers.
           </p>
           <p>
             Anyone on the same network, or anyone who has your room code, shows
@@ -81,8 +77,8 @@ export default function Informations() {
       content: (
         <>
           <p>
-            It works similarly to AirDrop by enabling direct file transfers
-            between devices on the same network without a central server.
+            It works similarly to AirDrop by enabling file transfers between
+            devices on the same network, with no account and nothing to install.
           </p>
           <p>
             However, it is not limited to Apple devices and works across

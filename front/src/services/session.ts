@@ -13,6 +13,7 @@ import {
   retryStalledLinks,
 } from "@/services/peer/connections";
 import { cancelAllSends } from "@/services/peer/fileSender";
+import { canEncrypt } from "@/services/peer/relayAccess";
 import { SELF_PEER_ID, SELF_PEER_TOKEN } from "@/services/peer/selfPeer";
 import { closeSocket, getSocket, openSocket } from "@/services/socketService";
 import { loadStatistics } from "@/services/statService";
@@ -30,6 +31,7 @@ const PING_DEADLINE_MS = 25_000;
 
 let lastJoin: TJoinRoom | null = null;
 let announcedRoom: string | null | undefined;
+let lastPingAt = Date.now();
 
 const handlePeerJoined = (peerId: string): void => {
   if (peerId === SELF_PEER_ID) {
@@ -38,6 +40,7 @@ const handlePeerJoined = (peerId: string): void => {
   // a peer that rejoins the room may have lost its end of the link without notice
   closeConnectionTo(peerId);
   usePeersStore.getState().addTargetPeer(peerId);
+  usePeersStore.getState().updatePeer(peerId, { isChoosingFile: false });
   connectTo(peerId);
 };
 
@@ -52,12 +55,13 @@ const handlePeerLeft = (peerId: string): void => {
 };
 
 const replaceTargetPeers = (peerIds: string[]): void => {
-  const { targetPeers, addTargetPeer, removeTargetPeer } =
+  const { targetPeers, addTargetPeer, removeTargetPeer, updatePeer } =
     usePeersStore.getState();
   const wanted = new Set(peerIds.filter((peerId) => peerId !== SELF_PEER_ID));
 
   targetPeers.forEach(({ peerId }) => {
     closeConnectionTo(peerId);
+    updatePeer(peerId, { isChoosingFile: false });
     if (!wanted.has(peerId)) {
       cancelTransfersWith(peerId);
       removeTargetPeer(peerId);
@@ -71,6 +75,7 @@ const handleJoinSuccess = ({ peers, ip, roomCode }: TJoinSuccess): void => {
   useSessionStore.getState().completeJoin(ip);
   useRoomStore.getState().setRoomCode(roomCode);
   replaceTargetPeers(peers);
+  useSessionStore.getState().finishRejoining();
 
   if (announcedRoom !== roomCode) {
     announcedRoom = roomCode;
@@ -106,11 +111,23 @@ const enterRoom = (roomCode: string | null): void => {
   joinRoom(roomCode);
 };
 
+// a page frozen past the server ping timeout keeps a socket that reports connected
+export const refreshSession = (): void => {
+  const socket = getSocket();
+  if (
+    socket &&
+    (!socket.connected || Date.now() - lastPingAt > PING_DEADLINE_MS)
+  ) {
+    useSessionStore.getState().startRejoining();
+    socket.disconnect().connect();
+  }
+};
+
 export const startSession = (): (() => void) => {
-  const { setSocketConnected, recordFailedAttempt, markWebRtcUnsupported } =
+  const { setSocketConnected, recordFailedAttempt, markBrowserUnsupported } =
     useSessionStore.getState();
   const socket = openSocket();
-  let lastPingAt = Date.now();
+  lastPingAt = Date.now();
 
   const handleConnect = () => {
     setSocketConnected(true);
@@ -126,16 +143,9 @@ export const startSession = (): (() => void) => {
     retryStalledLinks();
   };
 
-  // a page frozen past the server ping timeout keeps a socket that reports connected
-  const reconnectIfStale = () => {
-    if (!socket.connected || Date.now() - lastPingAt > PING_DEADLINE_MS) {
-      socket.disconnect().connect();
-    }
-  };
-
   const handleVisibilityChange = () => {
     if (!document.hidden) {
-      reconnectIfStale();
+      refreshSession();
     }
   };
 
@@ -149,9 +159,12 @@ export const startSession = (): (() => void) => {
     handleSignal(from, signal),
   );
   socket.on(SocketEvent.UPDATE_STAT, useStatsStore.getState().applyUpdate);
+  socket.on(SocketEvent.PEER_CHOOSING_FILE, ({ peerId, isChoosing }) =>
+    usePeersStore.getState().updatePeer(peerId, { isChoosingFile: isChoosing }),
+  );
   socket.io.on("ping", handlePing);
   document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("online", reconnectIfStale);
+  window.addEventListener("online", refreshSession);
 
   const unsubscribeRoom = useRoomStore.subscribe((state, previousState) => {
     if (state.roomCode !== previousState.roomCode) {
@@ -159,8 +172,8 @@ export const startSession = (): (() => void) => {
     }
   });
 
-  if (typeof RTCPeerConnection === "undefined") {
-    markWebRtcUnsupported();
+  if (!canEncrypt()) {
+    markBrowserUnsupported();
     unsubscribeRoom();
   } else {
     enterRoom(useRoomStore.getState().roomCode);
@@ -170,7 +183,7 @@ export const startSession = (): (() => void) => {
     unsubscribeRoom();
     socket.io.off("ping", handlePing);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
-    window.removeEventListener("online", reconnectIfStale);
+    window.removeEventListener("online", refreshSession);
     closeSocket();
     closeAllConnections();
     lastJoin = null;

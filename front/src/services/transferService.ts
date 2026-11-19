@@ -3,6 +3,7 @@ import { addFileStat } from "@/services/statService";
 import { notify } from "@/services/toastService";
 import { useChatStore } from "@/stores/useChatStore";
 import { selectHasReachablePeer, usePeersStore } from "@/stores/usePeersStore";
+import { useSessionStore } from "@/stores/useSessionStore";
 import {
   selectIsTransferLocked,
   useTransferStore,
@@ -25,7 +26,9 @@ const describeWaiting = (isRetry: boolean): string => {
 
 // a retry waits for a peer that came back: the link that just failed may still read as reachable
 const waitForReachablePeer = (isRetry: boolean): Promise<boolean> => {
-  const isReachable = () => selectHasReachablePeer(usePeersStore.getState());
+  const isReachable = () =>
+    !useSessionStore.getState().isRejoining &&
+    selectHasReachablePeer(usePeersStore.getState());
 
   if (isReachable() && !isRetry) {
     return Promise.resolve(true);
@@ -36,17 +39,20 @@ const waitForReachablePeer = (isRetry: boolean): Promise<boolean> => {
     let hasDropped = !isReachable();
 
     const settle = (isReady: boolean) => {
-      unsubscribe();
+      unsubscribePeers();
+      unsubscribeSession();
       settleWaiting = null;
       resolve(isReady);
     };
-    const unsubscribe = usePeersStore.subscribe(() => {
+    const settleOnceBack = () => {
       if (!isReachable()) {
         hasDropped = true;
       } else if (hasDropped) {
         settle(true);
       }
-    });
+    };
+    const unsubscribePeers = usePeersStore.subscribe(settleOnceBack);
+    const unsubscribeSession = useSessionStore.subscribe(settleOnceBack);
     settleWaiting = settle;
   });
 };

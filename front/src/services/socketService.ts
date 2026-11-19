@@ -21,6 +21,12 @@ export const closeSocket = (): void => {
 
 export const getSocket = (): TRoomSocket | null => socketInstance;
 
+export const announceFileChoice = (isChoosing: boolean): void => {
+  if (socketInstance?.connected) {
+    socketInstance.emit(SocketEvent.CHOOSE_FILE, isChoosing);
+  }
+};
+
 // dropped while disconnected: the rejoin after the reconnection renegotiates every link
 export const sendSignal = (to: string, signal: TSignal): void => {
   if (socketInstance?.connected) {

@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { useState } from "react";
-import { usePeersStore } from "@/stores/usePeersStore";
+import { isPeerPresent, usePeersStore } from "@/stores/usePeersStore";
 import type { TPeer } from "@/types/peer.t";
 import { Berth, BoatSignal, type TMooring } from "@/types/scene.t";
 import { moorPeers } from "@/utils/fleet.utils";
@@ -62,7 +62,7 @@ export default function BoatFleet({ isBeamHeld }: BoatFleetProps) {
             berth={berth}
             device={mooring?.device}
             isMoored={peer !== undefined}
-            isReachable={peer?.isReachable ?? false}
+            isReachable={peer !== undefined && isPeerPresent(peer)}
             signal={signalOf(peer)}
             progress={peer?.sendProgress ?? 0}
             onReceivedShown={() => {

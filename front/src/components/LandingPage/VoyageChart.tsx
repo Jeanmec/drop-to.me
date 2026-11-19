@@ -8,7 +8,7 @@ import styles from "./VoyageChart.module.css";
 const ROSE_POINTS = [0, 1, 2, 3, 4, 5, 6, 7];
 
 const STEPS = [
-  `On connection, ${env.NEXT_PUBLIC_WEBSITE_NAME} creates a secure peer-to-peer connection between devices on the same network.`,
+  `On connection, ${env.NEXT_PUBLIC_WEBSITE_NAME} creates a secure, encrypted connection between devices on the same network.`,
   "Once the connection is established, you can start sending and receiving data between devices.",
   `${env.NEXT_PUBLIC_WEBSITE_NAME} allows you to transfer files and messages securely and efficiently to all connected users.`,
 ];
